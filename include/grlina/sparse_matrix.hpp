@@ -30,15 +30,6 @@
 
 namespace graded_linalg {
 
-template <typename T>
-using vec = std::vector<T>;
-template <typename T>
-using array = vec<vec<T>>;
-using bitset = boost::dynamic_bitset<>;
-template <typename T>
-using set = std::set<T>;
-
-
 
 // Helperfunctions for index vectors and sparse matrices
 

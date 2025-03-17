@@ -32,11 +32,6 @@
 
 namespace graded_linalg {
 
-template <typename T>
-using vec = std::vector<T>;
-template <typename T>
-using array = vec<vec<T>>;
-
 
 /**
  * @brief Constructs a vector of R2GradedSparseMatrix objects from an input file stream.
