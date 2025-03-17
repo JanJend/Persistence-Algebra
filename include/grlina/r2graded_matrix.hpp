@@ -141,12 +141,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<degree, index> {
      * @param filepath path to the scc or firep file
      * @param compute_batches whether to compute the column batches and k_max
      */
-    R2GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false) : GradedSparseMatrix<degree, index>() {
-
-        
-
-        this->parse_stream(file, lex_sort, compute_batches);
-
+    R2GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false) 
+        : GradedSparseMatrix<degree, index>(filepath, lex_sort, compute_batches) {
     } // Constructor from file
 
 
@@ -158,9 +154,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<degree, index> {
      * @param compute_batches whether to compute the column batches and k_max
      */
     R2GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false, bool compute_batches = false)
-        : GradedSparseMatrix<degree, index>() {
-        this->parse_stream(file_stream, lex_sort, compute_batches);
-    }
+        : GradedSparseMatrix<degree, index>(file_stream, lex_sort, compute_batches) {
+    } // Constructor from ifstream
 
     
 
@@ -204,7 +199,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<degree, index> {
      * 
      * @return SparseMatrix<index> 
      */
-    SparseMatrix<index> r2kernel()  override {
+    SparseMatrix<index> r2kernel() {
         this->compute_num_cols();
         SparseMatrix<index> kernel = this->get_kernel();
         // Compute degrees - Does this give the correct result?

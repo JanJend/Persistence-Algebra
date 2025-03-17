@@ -155,34 +155,24 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index> {
     R3GradedSparseMatrix(index m, index n) : GradedSparseMatrix<triple, index>(m, n) {}
 
     /**
-     * @brief Constructs an R^2 graded matrix from an scc or firep data file.
+     * @brief Constructs an R^3 graded matrix from an scc or firep data file.
      * 
      * @param filepath path to the scc or firep file
      * @param compute_batches whether to compute the column batches and k_max
      */
-    R3GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false) : GradedSparseMatrix<triple, index>() {
-
-        std::ifstream file(filepath);
-        
-        if (!file.is_open()) {
-            std::cerr << " Error: Unable to open file " << filepath << std::endl;
-            std::abort();
-        }
-
-        this->parse_stream(file, lex_sort, compute_batches);
-
+    R3GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false) 
+        : GradedSparseMatrix<triple, index>(filepath, lex_sort, compute_batches) {
     } // Constructor from file
 
     /**
-     * @brief Constructs an R^2 graded matrix from an input file stream.
+     * @brief Constructs an R^3 graded matrix from an input file stream.
      * 
      * @param file_stream input file stream containing the scc or firep data
      * @param lex_sort whether to sort lexicographically
      * @param compute_batches whether to compute the column batches and k_max
      */
     R3GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false, bool compute_batches = false)
-        : GradedSparseMatrix<triple, index>() {
-        this->parse_stream(file_stream, lex_sort, compute_batches);
+        : GradedSparseMatrix<triple, index>(file_stream, lex_sort, compute_batches ) {
     }
 
 
@@ -225,7 +215,7 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index> {
      * 
      * @return SparseMatrix<index> 
      */
-    SparseMatrix<index> kernel()  override {
+    SparseMatrix<index> r3kernel()  {
         // Implement
         return SparseMatrix<index>();
     }

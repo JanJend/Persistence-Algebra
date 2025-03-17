@@ -71,29 +71,32 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
     GradedSparseMatrix(index m, index n, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index>(m, n), col_degrees(c_degrees), row_degrees(r_degrees) {}
     
-    GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false) : SparseMatrix<index>() {
+    GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false, bool compute_batches = false)
+        : SparseMatrix<index>() {
+        this->parse_stream(file_stream, lex_sort, compute_batches);
+    }
 
+    GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false) 
+        : SparseMatrix<index>() {
+        std::ifstream file = create_ifstream(filepath);
+        this->parse_stream(file, lex_sort, compute_batches);
+    }
+
+    
+
+    private:
+    static std::ifstream create_ifstream(const std::string& filepath) {
         check_extension(filepath);
 
         std::ifstream file(filepath);
         if (!file.is_open()) {
-            std::cerr << " Error: Unable to open file " << filepath << std::endl;
+            std::cerr << "Error: Unable to open file " << filepath << std::endl;
             std::abort();
         }
-
-        this->parse_stream(file, lex_sort, compute_batches);
-
+        return file;
     }
-
-    /**
-     * @brief Infer the number of rows from the list of row degrees.
-     * 
-     */
-    void compute_num_rows(){
-        this->num_rows = this->row_degrees.size();
-    }
-
-    void check_extension(const std::string& filepath) { 
+    
+    static void check_extension(const std::string& filepath) { 
         size_t dotPosition = filepath.find_last_of('.');
         bool no_file_extension = false;
         if (dotPosition == std::string::npos) {
@@ -116,7 +119,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         }
     }
 
-    std::pair<D, std::vector<index>> parse_line(const std::string& line,  const bool& hasEntries = false) {
+    static std::pair<D, std::vector<index>> parse_line(const std::string& line,  const bool& hasEntries = false) {
         std::istringstream iss(line);
         std::vector<index> rel;
 
@@ -243,6 +246,15 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         }
     } // Constructor from ifstream
 
+    public:
+
+    /**
+     * @brief Infer the number of rows from the list of row degrees.
+     * 
+     */
+    void compute_num_rows_from_degres(){
+        this->num_rows = this->row_degrees.size();
+    }
 
 
     /**
@@ -588,12 +600,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             }
     }
 
-    /**
-     * @brief Pure virtual function for kernel computation.
-     * 
-     * @return SparseMatrix<index> 
-     */
-    virtual SparseMatrix<index> kernel() = 0;
+    
 
 
 }; // GradedSparseMatrix
