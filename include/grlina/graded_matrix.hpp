@@ -71,6 +71,20 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
     GradedSparseMatrix(index m, index n, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index>(m, n), col_degrees(c_degrees), row_degrees(r_degrees) {}
     
+    GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false) : SparseMatrix<index>() {
+
+        check_extension(filepath);
+
+        std::ifstream file(filepath);
+        if (!file.is_open()) {
+            std::cerr << " Error: Unable to open file " << filepath << std::endl;
+            std::abort();
+        }
+
+        this->parse_stream(file, lex_sort, compute_batches);
+
+    }
+
     /**
      * @brief Infer the number of rows from the list of row degrees.
      * 
@@ -79,6 +93,28 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->num_rows = this->row_degrees.size();
     }
 
+    void check_extension(const std::string& filepath) { 
+        size_t dotPosition = filepath.find_last_of('.');
+        bool no_file_extension = false;
+        if (dotPosition == std::string::npos) {
+           // No dot found, invalid file format
+           no_file_extension = true;
+            std::cout << " File does not have an extension (.scc .firep .txt)?" << std::endl;
+        }
+
+        std::string extension;
+        if(!no_file_extension) {
+            extension=filepath.substr(dotPosition);
+        }
+
+        // Check the file extension and perform actions accordingly
+        if (extension == ".scc" || extension == ".firep" || extension == ".txt" || no_file_extension) {
+            // std::cout << "Reading presentation file: " << filepath << std::endl;
+        } else {
+            // Invalid file extension
+            std::cout << "Warning, extension does not match .scc, .firep, .txt, or no extension." << std::endl;
+        }
+    }
 
     std::pair<D, std::vector<index>> parse_line(const std::string& line,  const bool& hasEntries = false) {
         std::istringstream iss(line);
