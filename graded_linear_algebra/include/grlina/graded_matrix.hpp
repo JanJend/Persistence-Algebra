@@ -938,7 +938,41 @@ Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index>& A, const Gra
     return result;
 }
 
+/**
+ * @brief Can be used to recognise file extension, not really needed right now.
+ * 
+ * @param filepath 
+ * @return std::ifstream 
+ */
+std::ifstream check_matrix_file(const std::string& filepath) {
+    size_t dotPosition = filepath.find_last_of('.');
+    bool no_file_extension = false;
+    if (dotPosition == std::string::npos) {
+        // No dot found, invalid file format
+        no_file_extension = true;
+        std::cout << " File does not have an extension (.scc .firep .txt)?" << std::endl;
+    }
 
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        std::cerr << " Error: Unable to open file " << filepath << std::endl;
+        std::abort();
+    }
+
+    std::string extension;
+    if(!no_file_extension) {
+        extension=filepath.substr(dotPosition);
+    }
+
+    // Check the file extension and perform actions accordingly
+    if (extension == ".scc" || extension == ".firep" || extension == ".txt" || no_file_extension) {
+        // std::cout << "Reading presentation file: " << filepath << std::endl;
+    } else {
+        // Invalid file extension
+        std::cout << "Warning, extension does not match .scc, .firep, .txt, or no extension." << std::endl;
+    }
+    return file;
+}
 
 } // namespace graded_linalg
 

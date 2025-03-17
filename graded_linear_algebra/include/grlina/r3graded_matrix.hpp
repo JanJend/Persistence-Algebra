@@ -162,32 +162,11 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index> {
      */
     R3GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false) : GradedSparseMatrix<triple, index>() {
 
-        size_t dotPosition = filepath.find_last_of('.');
-        bool no_file_extension = false;
-        if (dotPosition == std::string::npos) {
-           // No dot found, invalid file format
-           no_file_extension = true;
-            std::cout << " File does not have an extension (.scc .firep .txt)?" << std::endl;
-        }
-
         std::ifstream file(filepath);
+        
         if (!file.is_open()) {
             std::cerr << " Error: Unable to open file " << filepath << std::endl;
             std::abort();
-        }
-
-        std::string extension;
-        if(!no_file_extension) {
-            extension=filepath.substr(dotPosition);
-        }
-        std::string line;
-
-        // Check the file extension and perform actions accordingly
-        if (extension == ".scc" || extension == ".firep" || extension == ".txt" || no_file_extension) {
-            // std::cout << "Reading presentation file: " << filepath << std::endl;
-        } else {
-            // Invalid file extension
-            std::cout << "Warning, extension does not match .scc, .firep, .txt, or no extension." << std::endl;
         }
 
         this->parse_stream(file, lex_sort, compute_batches);
