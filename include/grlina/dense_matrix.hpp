@@ -27,13 +27,6 @@
 namespace graded_linalg {
 
 
-template <typename T>
-using vec = std::vector<T>;
-template <typename T>
-using array = vec<vec<T>>;
-
-
-
 struct BitsetHash {
     unsigned long operator()(const boost::dynamic_bitset<>& bs) const {
         // Safe to use to_ulong() if the bitset size is guaranteed to be <= 32

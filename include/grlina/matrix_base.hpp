@@ -34,8 +34,11 @@ template <typename T>
 using vec = std::vector<T>;
 template <typename T>
 using array = vec<vec<T>>;
+template <typename T>
+using pair = std::pair<T, T>;
 
 using bitset = boost::dynamic_bitset<>;
+
 
 
 template <typename T>
