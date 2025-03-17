@@ -741,7 +741,22 @@ struct MatrixUtil{
         return true;
     }
 
-    
+    /**
+     * @brief Returns a basis for the kernel of the matrix via column reduction.
+     * 
+     * @return DERIVED 
+     */
+    DERIVED kernel(){
+        DERIVED solution = DERIVED(num_cols, num_cols, "Identity");
+        vec<index> basis_indices = vec<index>();
+        this->column_reduction_triangular_with_memory(solution, basis_indices);
+        for(index i = 0; i < num_cols; i++){
+            if(this->col_last(i) == 0){
+                basis_indices.push_back(i);
+            }
+        }
+        return solution.restricted_domain_copy(basis_indices);
+    }    
 
     /**
      * @brief Michaels Column-Reduction Solver, modified to return the correct solution. Also deleted non-functional code.
@@ -791,6 +806,7 @@ struct MatrixUtil{
         return true;
     }
 
+    
     
     /**
      * @brief Computes this*other.

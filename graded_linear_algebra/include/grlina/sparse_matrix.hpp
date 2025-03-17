@@ -1494,13 +1494,10 @@ void simultaneous_row_reduction_on_submatrix(std::unordered_map<index, SparseMat
     }
 }
 
-// TODO
+// TODO: Implement this
 template <typename index>
 vec<index> solve_gauss(SparseMatrix<index>& A, vec<index>& b, bool supress_output = false){
-    auto B = A;
-    B.data.push_back(b);
-    B.num_cols++;
-    B.column_reduction();
+
 }
 
 // Helper-functions for sets

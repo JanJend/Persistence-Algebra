@@ -225,12 +225,15 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<degree, index> {
     }
 
     /**
-     * @brief Returns a basis for the kernel of a 2d graded matrix.
+     * @brief Returns a basis for the kernel of a 2d graded matrix. 
+     * Assumes that the columns are sorted lexicographically.
      * 
      * @return SparseMatrix<index> 
      */
-    SparseMatrix<index> kernel()  override {
-        // Implement
+    SparseMatrix<index> r2kernel()  override {
+        this->compute_num_cols();
+        SparseMatrix<index> kernel = this->get_kernel();
+        // Compute degrees - Does this give the correct result?
         return SparseMatrix<index>();
     }
 
