@@ -119,7 +119,7 @@ std::function<bool(const r2degree&, const r2degree&)> Degree_traits<r2degree>::l
 /**
  * @brief Michael Kerbers Grid_scheduler class from mpfree for fast kernel computation.
  * 
- */
+
 template <typename index>
 class Grid_scheduler {
 
@@ -197,6 +197,8 @@ class Grid_scheduler {
       }
       
     };
+
+*\
 
 
 /**

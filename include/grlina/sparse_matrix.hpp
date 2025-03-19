@@ -31,6 +31,7 @@
 namespace graded_linalg {
 
 
+
 // Helperfunctions for index vectors and sparse matrices
 
 template <typename index>

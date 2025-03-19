@@ -37,6 +37,9 @@ using array = vec<vec<T>>;
 template <typename T>
 using pair = std::pair<T, T>;
 
+template <typename T>
+using set = std::set<T>;
+
 using bitset = boost::dynamic_bitset<>;
 
 
