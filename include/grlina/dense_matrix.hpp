@@ -36,11 +36,6 @@ struct BitsetHash {
 
 /**
  * @brief asks if a < b in order of the entries (reverse of standard comparison)
- * 
- * @param a 
- * @param b 
- * @return true 
- * @return false 
  */
 bool compareBitsets(const boost::dynamic_bitset<>& a, const boost::dynamic_bitset<>& b) {
     if (a.size() != b.size()) {
@@ -143,31 +138,6 @@ boost::dynamic_bitset<> deserializeDynamicBitset(std::ifstream& file) {
     return bitset(length, bs_data);
 }
 
-/**
- * @brief Adds bitset 'a' to bitset 'b' using the XOR operation.
- * 
- * @param a 
- * @param b 
- */
-void add_to(boost::dynamic_bitset<> &a, boost::dynamic_bitset<> &b) {
-    assert(a.size() != b.size());
-    b ^= a;
-}
-
-/**
- * @brief Returns the int of the last non-zero entry in the bitset or -1 if there are no non-zero entries.
- * 
- * @param v 
- * @return int 
- */
-int last_entry_index(bitset& v) {
-    for (int i = v.size() - 1; i >= 0; --i) {
-        if (v[i]) {
-            return i;
-        }
-    }
-    return -1;
-};
 
 vec<bitset> compute_standard_vectors(int k){
     vec<bitset> result;
@@ -236,55 +206,6 @@ struct DenseMatrix : public MatrixUtil<bitset, int, DenseMatrix>{
     bool completeRowReduced = false;
     boost::dynamic_bitset<> pivot_vector;
 
-    bool vis_nonzero_at(bitset& v, int i) override {
-        return v[i];
-    };
-
-    void vadd_to(bitset& v, bitset& w) override {
-        add_to(v, w);
-    };
-
-    /**
-     * @brief Returns the int of the last non-zero entry in the bitset or -1 if there are no non-zero entries.
-     * 
-     * @param v
-     * @return int 
-     */
-    int vlast_entry_index(bitset& v) override {
-        for (int i = v.size() - 1; i >= 0; --i) {
-            if (v[i]) {
-                return i;
-            }
-        }
-        return -1;
-    };
-
-    bool vis_equal(boost::dynamic_bitset<>& a, boost::dynamic_bitset<>& b) override {
-        return(a == b);
-    };
-
-    bool vproduct(bitset& a, bitset& b) override {
-        return (a & b).count() % 2;
-    };
-
-    bitset get_standard_vector(int i, int n)  {
-        return bitset(n, 0).set(i);
-    };
-
-    bitset get_random_vector(int length, int perc) {
-        bitset result(length, 0);
-        for (int i = 0; i < length; i++){
-            if (std::rand() % 100 < perc){
-                result.set(i);
-            }
-        }
-        return result;
-    };
-    
-
-    void vset_entry(bitset& v, int j){
-        v.flip(j);
-    };
 
     /**
      * @brief Deletes the last i rows of the matrix.
@@ -465,7 +386,7 @@ struct DenseMatrix : public MatrixUtil<bitset, int, DenseMatrix>{
      * 
      * @param other 
      */
-    DenseMatrix multiply_right(DenseMatrix& other) override {
+    DenseMatrix multiply_right(DenseMatrix& other)  {
         assert(this->get_num_cols() == other.get_num_rows());
         DenseMatrix result(other.get_num_cols(), this->get_num_rows());
 
@@ -487,7 +408,7 @@ struct DenseMatrix : public MatrixUtil<bitset, int, DenseMatrix>{
      * 
      * @return DenseMatrix 
      */
-    DenseMatrix transposed_copy() override {
+    DenseMatrix transposed_copy() {
         DenseMatrix result(this->get_num_rows(), this->get_num_cols());
         for (int i = 0; i < this->get_num_cols(); i++){
             for (int j = 0; j < this->get_num_rows(); j++){
@@ -695,50 +616,7 @@ std::vector<transition> load_transition_list(const std::string& filename) {
     return transitions;
 }
 
-/**
- * @brief Tests if A == B wrt. their data. Shouldnt be needed with .equals() already existing
- * 
- * @param A 
- * @param B 
- * @return true 
- * @return false 
- */
-bool compare_matrices(DenseMatrix& A, DenseMatrix& B){
-    if (A.get_num_cols() != B.get_num_cols() || A.get_num_rows() != B.get_num_rows()){
-        return false;
-    }
-    for (int i = 0; i < A.get_num_cols(); i++){
-        for (int j = 0; j < A.get_num_rows(); j++){
-            if (A.data[i][j] != B.data[i][j]){
-                return false;
-            }
-        }
-    }
-    return true;
-}
 
-/**
- * @brief Generates a random bit matrix with the given dimensions.
- * 
- * @param cols 
- * @param rows 
- * @return DenseMatrix 
- */
-DenseMatrix RandomBitMatrix(int cols, int rows) {
-    DenseMatrix randomMatrix(cols, rows);
-
-    // Seed the random number generator
-    std::srand(static_cast<unsigned>(std::time(nullptr)));
-
-    // Fill the matrix with random data
-    for (int i = 0; i < cols; i++) {
-        for (int j = 0; j < rows; j++) {
-            randomMatrix.data[i][j] = std::rand() % 2;
-        }
-    }
-
-    return randomMatrix;
-}
 
 } // namespace graded_linalg
 

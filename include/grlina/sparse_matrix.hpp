@@ -34,98 +34,15 @@ namespace graded_linalg {
 
 // Helperfunctions for index vectors and sparse matrices
 
-template <typename index>
-struct pair_hash {
-    std::size_t operator()(const std::pair<index, index>& p) const {
-        auto hash1 = std::hash<index>{}(p.first);
-        auto hash2 = std::hash<index>{}(p.second);
-        return hash1 ^ (hash2 << 1); // or use another method?
-    }
-};
-
     template <typename index>
-    vec<index> operator+(const vec<index>& a, vec<index>& b) {
-        vec<index> c;
-        auto a_it = a.begin();
-        auto b_it = b.begin();
-        while(a_it!=a.end() || b_it!=b.end()) {
-            if(a_it==a.end()) {
-                c.push_back(*b_it);
-                b_it++;
-                continue;
-            }
-            if(b_it==b.end()) {
-                c.push_back(*a_it);
-                a_it++;
-                continue;
-            }
-            if(*a_it<*b_it) {
-                c.push_back(*a_it);
-                a_it++;
-            } else if(*a_it>*b_it) {
-                c.push_back(*b_it);
-                b_it++;
-            } else { // *a_it==*b_it
-                assert(*a_it==*b_it);
-                a_it++;
-                b_it++;
-            }      
+    struct pair_hash {
+        std::size_t operator()(const std::pair<index, index>& p) const {
+            auto hash1 = std::hash<index>{}(p.first);
+            auto hash2 = std::hash<index>{}(p.second);
+            return hash1 ^ (hash2 << 1); // or use another method?
         }
-        return c;
-    }
+    };
 
-    template <typename index>
-    vec<index> rev_add(vec<index>& a, vec<index>& b) {
-        vec<index> c;
-        auto a_it = a.begin();
-        auto b_it = b.begin();
-        while(a_it != a.end() || b_it != b.end()) {
-            if(a_it==a.end()) {
-                c.push_back(*b_it);
-                b_it++;
-                continue;
-            }
-            if(b_it == b.end()) {
-                c.push_back(*a_it);
-                a_it++;
-                continue;
-            }
-            if(*a_it > *b_it) {
-                c.push_back(*a_it);
-                a_it++;
-            } else if(*a_it < *b_it) {
-                c.push_back(*b_it);
-                b_it++;
-            } else { // *a_it==*b_it
-                assert(*a_it==*b_it);
-                a_it++;
-                b_it++;
-            }      
-        }
-        return c;
-    }
-
-    /**
-    * @brief sparse column addition over F_2. Adds a to b.
-    * 
-    * @param a a vector containing integers representing the indices of the nonzero entries of the column
-    * @param b a vector containing integers representing the indices of the nonzero entries of the column
-    */
-    template <typename index>
-    void add_to(const vec<index>& a, vec<index>& b) {
-        b = a + b;
-    }
-
-    /**
-    * @brief sparse column addition over F_2 for vectors whose entries are stored in reverse order. Adds a to b.
-    * 
-    * @param a a vector containing integers representing the indices of the nonzero entries of the column
-    * @param b a vector containing integers representing the indices of the nonzero entries of the column
-    */
-    template <typename index>
-    void rev_add_to(vec<index>& a, vec<index>& b) {
-        b = rev_add(a, b);
-    }
 
     /**
      * @brief Returns a copy of the target vector with the entries at the indices given in the mask.
@@ -144,6 +61,7 @@ struct pair_hash {
         }
         return result;
     }
+
     /**
      * @brief Attention: This might be slower then just counting parallelized! Returns the xor of all vectors whose indices are in the mask, generalizing the approach of add_to/ + operator. 
      * In essence this computes the product of the matrix with the column vector given by the mask over GF(2)
@@ -270,102 +188,6 @@ struct pair_hash {
         return result;
     }
     
-
-    
-
-/**
- * @brief Returns the scalar product of two sparse vectors over F_2
- * 
- * @param v 
- * @param w 
- * @return true 
- * @return false 
- */
-template <typename index>
-bool scalar_product(vec<index>& v, vec<index>& w){
-
-  auto it_v = v.begin();
-  auto it_w = w.begin();
-  index count = 0;
-
-  while (it_v != v.end() && it_w != w.end()) {
-      if (*it_v < *it_w) {
-          // Move iterator of v because the current index in v is smaller
-          ++it_v;
-      } else if (*it_w < *it_v) {
-          // Move iterator of w because the current index in w is smaller
-          ++it_w; 
-      } else {
-          // Indices are equal, move both iterators without counting
-          ++it_v;
-          ++it_w;
-          count++;  
-      }
-  }
-  return count % 2 != 0;
-}
-
-
-/**
- * @brief Compares two vectors with generic content.
- * 
- * @tparam index 
- * @param v 
- * @param w 
- * @return true 
- * @return false 
- */
-template <typename index>
-bool is_equal(vec<index>& v,vec<index>& w){ return v == w; }
-
-/**
- * @brief Returns the index of the last entry in the vector. If the vector is empty, -1 is returned.
- * 
- * @tparam index 
- * @param v 
- * @return index 
- */
-template <typename index>
-index last_entry_index(vec<index>& v){
-    if(v.size() == 0){
-        return -1;
-    } else {
-        return v.back();
-    } 
-}
-
-/**
- * @brief Flips the j entry of v.
- * 
- * @tparam index 
- * @param v 
- * @param j 
- */
-template <typename index>
-void set_entry(vec<index>& v, index j) {
-    if(last_entry_index(v) < j){
-        v.push_back(j);
-    } else {
-        auto it = std::lower_bound(v.begin(), v.end(), j);
-        if(*it != j){
-            v.insert(it, j);
-        } else {
-            v.erase(it);
-        }
-    }  
-}
-
-/**
- * @brief Performs a binary search on the sorted vector to find the index i. Is it clear that this works?? 
- * 
- * @tparam index 
- * @param v 
- * @param i 
- * @return true 
- * @return false 
- */
-template <typename index>
-bool is_nonzero_at(vec<index>& v, index i){ return std::binary_search(v.begin(), v.end(), i); }
 
 /**
  * @brief Erases i from v and returns true if i was found and erased.
@@ -540,25 +362,6 @@ void convert_mod_2(vec<index>& v){
 }
 
 /**
- * @brief Get a random sparse vector 
- * 
- * @tparam index 
- * @param n length of vector
- * @param m estimated percentage of non-zero entries
- * @return vec<index> 
- */
-template<typename index>
-vec<index> get_random_sparse_vector(index n, index m){
-    vec<index> result;
-    for(index i = 0; i < n; i++){
-        if(rand() % 100 < m){
-            result.push_back(i);
-        }
-    }
-    return result;
-}
-
-/**
  * @brief Checks if the entries of the vectors are strictly increasing.
  * 
  * @tparam index 
@@ -585,7 +388,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 
     // Stores the rows (sometimes in reverse order!).
     vec<vec<index>> _rows;
-    // So that the rows are not computed multiple times.
+    // So that the rows are not computed multiple times by accident.
     bool rows_computed;
 
     SparseMatrix& operator=(SparseMatrix&& other) {
@@ -595,6 +398,9 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         return *this;
     }
 
+    void sort_column(index i){
+        std::sort(this->data[i].begin(), this->data[i].end());
+    }
     
     /**
      * @brief Computes all rows from column data in reverse order.
@@ -737,7 +543,6 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param row_indices 
      */
     void compute_normalisation(const vec<index>& row_indices) {
-        assert(row_indices.size() == this->num_rows);
         auto row_map = shiftIndicesMap(row_indices);
         transform_matrix(this->data, row_map, true);
     }
@@ -809,50 +614,13 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 
     SparseMatrix(index m, index n, const array<index>& data) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, data) {}
     
-    SparseMatrix(index m, index n, const std::string& type, const index percent = -1) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, type, percent) { 
-    }
+    SparseMatrix(index m, index n, const std::string& type, const index percent = -1) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, type, percent) {}
 
-
-    
-    void vadd_to(vec<index>& v, vec<index>& w) override {
-	    add_to(v, w);
-	}
-
-    void vrev_add_to(vec<index>& v, vec<index>& w) {
-        rev_add_to(v, w);
-    }
-
-	bool vis_nonzero_at(vec<index>& v, index i) override {
-		return is_nonzero_at(v, i);
-	}
-
-    index vlast_entry_index(vec<index>& v) override {
-		return last_entry_index(v);
-	}
-
-    bool vis_equal(vec<index>& v, vec<index>& w) override {
-        return is_equal(v, w);
-    }
-
-    void vset_entry(vec<index>& v, index j) override {
-        set_entry(v, j);
-    }
-
-    bool vproduct(vec<index>& v, vec<index>& w) override {
-        return scalar_product(v, w);
-    }
-
-    vec<index> get_standard_vector(index i, index n) {
-        return vec<index>{i};
-    };
-
-    vec<index> get_random_vector(index length, index perc)  {
-        return get_random_sparse_vector(length, perc);
-    };
+    SparseMatrix(index n, vec<index> indicator) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(n, indicator) {}
 
     // Adds the i-th row to the j-th. 
     void fast_row_op(index i, index j){
-        vadd_to(this->_rows[i], this->_rows[j]);
+        Column_traits<vec<index>, index>::add_to(this->_rows[i], this->_rows[j]);
     }
 
     // Adds the i-th row to the j-th when rows are stored in reverse order.
@@ -862,7 +630,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         for(index k : this->_rows[i]){
             this->data[k].push_back(j);
         }
-        vrev_add_to(this->_rows[i], this->_rows[j]);
+        rev_add_to(this->_rows[i], this->_rows[j]);
     }
 
     // Adds the i-th row to the j-th. This is so expensive because of the reindexing, we might want to use some list type instead.
@@ -1010,31 +778,15 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     */
     SparseMatrix coKernel(bool isReduced = false, vec<index>* basisLift = nullptr){
   
-		if(!isReduced){
-            try {
-                this->column_reduction();
-            } catch (std::out_of_range& e) {
-                std::cerr << "Error in coKernel Computation: " << e.what() << std::endl;
-                this->print();
-                std::abort();
-            }
-		}
-        
-		vec<index> quotientBasis;
-	
-		for(index i = 0; i < this->num_rows; i++){
-			if(this->col_last_vec[i].empty()){
-				quotientBasis.push_back(i);
-			} else {
-				// Check if matrix is really reduced and the last entry is unique
-                if(this->col_last_vec[i].size() != 1) {
-                    std::cerr << "Error: The matrix is not reduced. The last entry in row " << i << " is not unique, but of size " << this->col_last_vec[i].size() << std::endl;
-                    this->print();
-                    std::abort();
-                };
-			}
-		}
-
+        vec<index> quotientBasis;
+        try {
+            // If isRedcued is true, make sure that pivots are set!
+            quotientBasis = this->coKernel_basis(isReduced);
+        } catch (std::out_of_range& e) {
+            std::cerr << "Error in coKernel Computation: " << e.what() << std::endl;
+            this->print();
+            std::abort();
+        }
 
 		auto indexMap = shiftIndicesMap(quotientBasis);
 		SparseMatrix trunc(*this);
@@ -1046,7 +798,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 		index newRows = quotientBasis.size();
 		index newCols = this->num_rows;
 		SparseMatrix result(newCols, newRows);
-
+        result.data = vec<vec<index>>(newCols, vec<index>());
 		index j = 0;
 		for(index i = 0; i < newCols; i++){
 		// Construct Identity Matrix on the generators which descend to the quotient basis. 
@@ -1055,7 +807,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 				j++;
 			} else {
 				// Locate the unqiue column with the last entry at i.
-				index colForPivot = *this->col_last_vec[i].begin();
+				index colForPivot = this->pivots[i];
 				result.data[i] = trunc.data[colForPivot];
 			}
 		}
@@ -1249,63 +1001,6 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         // this->print();
     }
 
-    /**
-     * @brief Returns true if the selected columns are empty.
-     * 
-     * @return true 
-     * @return false 
-     */
-    bool is_zero(bitset& col_indices){
-        for(auto i = col_indices.find_first(); i != bitset::npos ; i = col_indices.find_next(i)){
-            if(!this->data[i].empty()){
-                return false;
-            }
-        }
-        return true;
-    }
-
-    bool is_zero(){
-        for(auto i = 0; i < this->num_cols; i++){
-            if(!this->data[i].empty()){
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * @brief Checks if the matrix is nonzero
-     * 
-     * @return true 
-     * @return false 
-     */
-    bool is_nonzero(){
-        for(auto i = 0; i < this->num_cols; i++){
-            if(!this->data[i].empty()){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * @brief Checks if the matrix is nonzero at col_indices
-     * 
-     * @return true 
-     * @return false 
-     */
-    bool is_nonzero(bitset& col_indices){
-        for(auto i = col_indices.find_first(); i != bitset::npos ; i = col_indices.find_next(i)){
-            if(!this->data[i].empty()){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool is_nonzero(index i){
-        return !this->data[i].empty();
-    }
 
 
     vec<index> multiply_with_sparse_vector(vec<index>& v){
@@ -1366,49 +1061,37 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 }; // SparseMatrix;
 
 
-
 /**
- * @brief Computes the transpose of M, then multiplies the columns.
+ * @brief Assumes that M is already transposed, then multiplies as before.
  * 
- * @param M 
- * @param N 
- * @return product M*N over F_2 
- */
-template <typename index>
-SparseMatrix<index> multiply(SparseMatrix<index>& M, SparseMatrix<index>& N){
-  SparseMatrix<index> result(N.get_num_cols(), M.get_num_rows());
-  result.data.resize(result.num_cols);
-  SparseMatrix<index> transpose = M.transposed_copy();
-  for(index i = 0; i < N.get_num_cols(); i++){
-    for(index j = 0; j < transpose.get_num_cols(); j++){
-      if(scalar_product(transpose.data[j], N.data[i])){ 
-        result.data[i].push_back(j);
-      }
-    }
-  }
-  return result;
-}
-
-/**
- * @brief Computes the transpose of M, then multiplies the columns.
- * 
- * @param M 
- * @param N 
- * @return product M*N over F_2 
  */
 template <typename index>
 SparseMatrix<index> multiply_transpose(SparseMatrix<index>& M, SparseMatrix<index>& N){
   SparseMatrix<index> result(N.get_num_cols(), M.get_num_rows());
-  result.data.resize(result.num_cols);
+  result.data.resize(result.get_num_cols());
+  assert(M.get_num_rows() == N.get_num_rows());
   for(index i = 0; i < N.get_num_cols(); i++){
     for(index j = 0; j < M.get_num_cols(); j++){
-      if(scalar_product(M.data[j], N.data[i])){ 
+      if(Column_traits<vec<index>, index>::scalar_product(M.data[j], N.data[i])){ 
         result.data[i].push_back(j);
       }
     }
   }
   return result;
 }
+
+/**
+ * @brief Computes the transpose of M, then multiplies the columns.
+ * 
+ */
+template <typename index>
+SparseMatrix<index> multiply(SparseMatrix<index>& M, SparseMatrix<index>& N){
+    assert(M.get_num_cols() == N.get_num_rows());
+    SparseMatrix<index> transpose = M.transposed_copy();
+    return multiply_transpose(transpose, N);
+}
+
+
 
 template <typename index>
 SparseMatrix<index> SparseMatrix<index>::multiply_right(SparseMatrix<index>& N) {
@@ -1486,104 +1169,6 @@ void simultaneous_row_reduction_on_submatrix(std::unordered_map<index, SparseMat
     }
 }
 
-// TODO: Implement this
-template <typename index>
-vec<index> solve_gauss(SparseMatrix<index>& A, vec<index>& b, bool supress_output = false){
-
-}
-
-// Helper-functions for sets
-
-
-
-template <typename index>
-void add_to(set<index>& v, set<index>& w) {
-    auto it_v = v.begin();
-    auto it_w = w.begin();
-
-    while (it_v != v.end() && it_w != w.end()) {
-        if (*it_v < *it_w) {
-            it_w = w.insert(it_w, *it_v);
-            ++it_v;
-        } else if (*it_w < *it_v) {
-            ++it_w;
-        } else {
-            it_w = w.erase(it_w);
-            ++it_v;
-        }
-    }
-
-    // Insert remaining elements from v if any
-    w.insert(it_v, v.end());
-}
-
-template <typename index>
-set<index> operator+(set<index>& a, set<index>& b) {
-    set<index> result;
-    std::set_symmetric_difference(a.begin(), a.end(), b.begin(), b.end(), std::inserter(result, result.begin()));
-    return result;
-}
-
-
-
-
-template <typename index>
-index last_entry_index(set<index>& v){
-    if(v.size() == 0){
-        return -1;
-    } else {
-        return *v.rbegin();
-    }
-}
-
-
-template <typename index>
-void set_entry(set<index>& v, index j) {
-    auto ins = v.insert(j);
-    if(ins.second == false){
-        v.erase(ins.first);
-    }
-}
-
-
-template <typename index>
-bool is_nonzero_at(set<index>& v, index i){ 
-    return (v.find(i) != v.end());
-}
-
-template <typename index>
-bool is_equal(set<index>& v, set<index>& w){ 
-    return v == w; 
-}
-
-template <typename index>
-bool scalar_product(set<index>& v, set<index>& w){
-    //TO-DO: This isnt efficent, but it works for now.
-    set<index> intersection;
-    std::set_intersection(v.begin(), v.end(), w.begin(), w.end(), std::inserter(intersection, intersection.begin()));
-    return intersection.size() % 2 == 1;
-}
-
-/**
- * @brief Get a random sparse vector 
- * 
- * @tparam index 
- * @param n length of vector
- * @param perc estimated percentage of non-zero entries
- * @return vec<index> 
- */
-template<typename index>
-set<index> get_random_sparse_set(index n, index perc){
-    set<index> result;
-    for(index i = 0; i < n; i++){
-        if(rand() % 100 < perc){
-            result.insert(result.end(), i);
-        }
-    }
-    return result;
-}
-
-
 
 /**
  * @brief F_2 Sparse Matrix using std::set / binary trees for its columns.
@@ -1592,38 +1177,6 @@ set<index> get_random_sparse_set(index n, index perc){
  */
 template <typename index>
 struct SparseMatrix_set : public MatrixUtil<set<index>, index, SparseMatrix_set<index>>{
-
-    void vadd_to(set<index>& v, set<index>& w) override {
-	    add_to(v, w);
-	}
-
-	bool vis_nonzero_at(set<index>& v, index i) override {
-		return is_nonzero_at(v, i);
-	}
-
-    index vlast_entry_index(set<index>& v) override {
-		return last_entry_index(v);
-	}
-
-    bool vis_equal(set<index>& v, set<index>& w) override {
-        return is_equal(v, w);
-    }
-
-    void vset_entry(set<index>& v, index j) override {
-        set_entry(v, j);
-    }
-
-    bool vproduct(set<index>& v, set<index>& w) override {
-        return scalar_product(v, w);
-    }
-
-    set<index> get_standard_vector(index i, index n)  {
-        return set<index>{i};
-    };
-
-    set<index> get_random_vector(index length, index perc) {
-        return get_random_sparse_set(length, perc);
-    };
 
     SparseMatrix_set() : MatrixUtil<set<index>, index, SparseMatrix_set<index>>() {}
 

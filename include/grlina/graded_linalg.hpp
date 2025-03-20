@@ -170,28 +170,25 @@ void write_vector_of_sets_to_file(const std::vector<std::set<T>>& vec, const std
     }
 }
 
+
 /**
  * @brief If the two streams contain lists of graded matrices, then
  * this function returns false if they have non-matching degrees.
  * 
- * @param stream1 
- * @param stream2 
- * @return true 
- * @return false 
  */
 template <typename index>
 bool compare_streams_of_graded_matrices(std::ifstream& stream1, std::ifstream& stream2) {
     vec<R2GradedSparseMatrix<index>> matrices1;
     construct_matrices_from_stream(matrices1, stream1, false, false);
     vec<R2GradedSparseMatrix<index>> matrices2;
-    construct_matrices_from_stream(matrices2, stream1, false, false);
+    construct_matrices_from_stream(matrices2, stream2, false, false);
     if(matrices1.size() != matrices2.size()){
         return false;
     }
-    std::sort(matrices1.begin(), matrices1.end(), Compare_by_degrees<degree, index>());
-    std::sort(matrices2.begin(), matrices2.end(), Compare_by_degrees<degree, index>());
+    std::sort(matrices1.begin(), matrices1.end(), Compare_by_degrees<r2degree, index>());
+    std::sort(matrices2.begin(), matrices2.end(), Compare_by_degrees<r2degree, index>());
     for(index i = 0; i < matrices1.size(); i++){
-        if( Compare_by_degrees<degree, index>::compare_three_way(matrices1[i], matrices2[i]) != 0){
+        if( Compare_by_degrees<r2degree, index>::compare_three_way(matrices1[i], matrices2[i]) != 0){
             return false;
         }
     }
@@ -251,48 +248,19 @@ DenseMatrix restricted_dense_copy(const SparseMatrix<index>& M, vec<index> col_i
 }
 */
 
-/**
- * @brief Computes A^{-1}*B by operating on B.
- * 
- * @tparam index 
- * @tparam COLUMN 
- * @tparam DERIVED 
- * @param A Needs to be a square invertible matrix
- * @param B 
- * @return DERIVED 
- */
-template <typename index, typename COLUMN, typename DERIVEDfirst, typename DERIVEDsecond>
-DERIVEDsecond divide(const MatrixUtil<index, COLUMN, DERIVEDfirst>& A, const MatrixUtil<index, COLUMN, DERIVEDsecond>& B){
-    DERIVEDfirst A_copy(A);
-    DERIVEDsecond B_copy(B);
-    index m = B.get_num_cols();
-    index n = B.get_num_rows();
-    assert(A.get_num_cols() == A.get_num_rows() && A.get_num_rows() == n);
-
-
-} 
-
-/**
-DenseMatrix::DenseMatrix(SparseMatrix<index> M) : MatrixUtil<bitset,index>(M.get_num_rows(),M.get_num_cols()){
-    this->num_cols = M.get_num_cols();
-    this->num_rows = M.get_num_rows();
-    this->data = vec<bitset>(num_cols,bitset(num_rows));
+template <typename index>
+DenseMatrix from_sparse (SparseMatrix<index>& M) {
+    DenseMatrix result(M.get_num_cols(), M.get_num_rows());
+    result.data = vec<bitset>(M.get_num_cols(), bitset(M.get_num_rows()));
     for(int i = 0; i < M.get_num_cols(); i++){
         for(index j : M.data[i]){
-            this->data[i].set(j);
+            result.data[i].set(j);
         }
     }
+    return result;
 }
-*/
 
-// Function to randomly return false or true
-bool random_bool() {
-    static std::random_device rd;  // Seed for the random number engine
-    static std::mt19937 gen(rd()); // Mersenne Twister random number engine
-    static std::bernoulli_distribution d(0.5); // Distribution that produces true with probability 0.5
 
-    return d(gen);
-}
 
 } // namespace graded_linalg
 
