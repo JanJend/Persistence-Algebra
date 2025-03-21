@@ -782,6 +782,11 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         return col_operations.restricted_domain_copy(zero_cols);
     }
 
+    SparseMatrix<index> get_kernel(){
+			//TODO Just added this to be able to compile! 
+			return *this;
+		}
+
     /**
      * @brief Computes the cokernel of a sparse matrix over F_2 by column reducing the matrix first
      * Notice that the result must be a cokernel to the non-reduced matrix, too, so we can also use a copy instead, if we want to keep the original matrix.

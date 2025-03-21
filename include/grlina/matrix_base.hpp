@@ -483,7 +483,7 @@ class MatrixUtil{
         assert(support.size() == this->num_cols);
         assert(zero_cols.size() == this->num_cols);
         pivots.clear();
-        for(index j = support.find_first; j < this->num_cols; j = support.find_next(j)) {
+        for(index j = support.find_first(); j < this->num_cols; j = support.find_next(j)) {
             COLUMN& curr = data[j];
             index p = col_last(curr);
             while( p >= 0) {
@@ -1325,7 +1325,7 @@ template <typename index, typename DERIVED>
 void simultaneous_align(std::unordered_map<index, DERIVED>& N_map, vec<index>& all_blocks, bitset& support, bitset& non_zero_cols){
     index num_cols = N_map[all_blocks[0]].num_cols;
     auto non_zero = non_zero_cols.find_first();
-    for(index col = support.find_first; non_zero != bitset::npos; col = support.find_next(col)){
+    for(index col = support.find_first(); non_zero != bitset::npos; col = support.find_next(col)){
         if(col == non_zero){
             non_zero = non_zero_cols.find_next(non_zero);
         } else {

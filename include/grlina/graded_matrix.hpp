@@ -835,7 +835,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index, index> > > block_hom_space_
     S.compute_num_cols();
 
     if(system_size){
-        std::cout << "System size: " << S.num_cols << std::endl;
+        std::cout << "System size: " << S.get_num_cols() << std::endl;
     }
 
     // If M, N present the modules, then the following computes Hom(M,N), i.e. pairs of matrices st. QM = NP.
