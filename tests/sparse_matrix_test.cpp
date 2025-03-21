@@ -4,7 +4,7 @@
 #include <boost/timer/timer.hpp>
 
 using namespace graded_linalg;
-using namespace boost::timer;
+// using namespace boost::timer;
 
 void functionality_demo(){
     std::cout << "Basic functionality of SparseMatrix: \n" 
@@ -151,7 +151,7 @@ void row_test(){
     A.print();
 }
 
-
+/*
 void compare_vec_set_test(const vec<int>& test_sizes = {2000}){
     std::cout << "Comparing speed of reduction algorithms for sparse vector and set implementation:" << std::endl;
     for(int n : test_sizes){
@@ -171,6 +171,7 @@ void compare_vec_set_test(const vec<int>& test_sizes = {2000}){
         std::cout << "Set time for n = " << n << ": " << set_timer.format() << std::endl;
     }
 }
+*/
 
 void test_kernel(){
     int n = 4;
@@ -190,7 +191,6 @@ int main() {
 
     functionality_demo();
     row_test();
-    compare_vec_set_test();
     test_kernel();
 
     return 0;
