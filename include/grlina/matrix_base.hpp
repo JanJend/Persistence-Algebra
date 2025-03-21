@@ -484,13 +484,12 @@ class MatrixUtil{
         assert(zero_cols.size() == this->num_cols);
         pivots.clear();
         for(index j = support.find_first(); j < this->num_cols; j = support.find_next(j)) {
-            COLUMN& curr = data[j];
-            index p = col_last(curr);
+            index p = col_last(j);
             while( p >= 0) {
                 if(pivots.count(p)) {
                     index i = pivots[p];
                     col_op(i, j);
-                    auto new_p = col_last(curr);
+                    auto new_p = col_last(j);
                     assert( new_p < p);
                     p = new_p;
                 } else {

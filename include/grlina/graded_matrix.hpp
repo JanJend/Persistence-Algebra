@@ -839,7 +839,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index, index> > > block_hom_space_
     }
 
     // If M, N present the modules, then the following computes Hom(M,N), i.e. pairs of matrices st. QM = NP.
-    K = S.get_kernel();
+    K = S.kernel();
     // To see how much the following reduces K: index K_size = K.data.size();
     // Now we need to delete the entries of K which correspond to the row-operations.
     K.cull_columns(row_op_threshold, false);
