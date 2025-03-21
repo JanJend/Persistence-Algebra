@@ -82,7 +82,36 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->parse_stream(file, lex_sort, compute_batches);
     }
 
-    
+    /**
+     * @brief Checks if the matrix is actually graded.
+     */
+    bool is_graded_matrix(bool output = false) const {
+        for(index i = 0; i < this->num_cols; i++){
+            for(index j : this->data[i]){
+                if(!Degree_traits<D>::greater_equal(this->col_degrees[i], this->row_degrees[j])){
+                    if(output){
+                        std::cout << "Column " << i << " has degree " << this->col_degrees[i] << " but row " << j << " has degree " << this->row_degrees[j] << std::endl;
+                    }
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @brief Deletes all entries which violate the gradedness condition.
+     * 
+     */
+    void make_graded(){
+        for(index i = 0; i < this->num_cols; i++){
+            for(index j : this->data[i]){
+                if(!Degree_traits<D>::greater_equal(this->col_degrees[i], this->row_degrees[j])){
+                    this->set_entry(i, j);
+                }
+            }
+        }
+    }
 
     private:
     static std::ifstream create_ifstream(const std::string& filepath) {
@@ -292,7 +321,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
     /**
      * @brief computes the linear map induced at a single degree by cutting all columns and rows of a higher degree.
-     * 
+     *      First output is the matrix, second is a list of generators.
      * @param d 
      * @param shifted if true then this reshifts to normalise the entries
      * @return std::pair<SparseMatrix, vec<index>> 
@@ -309,9 +338,9 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         }
         index new_row = selectedRowDegrees.size();
         SparseMatrix<index> result;
-        result.num_rows = new_row;
+        result.set_num_rows(new_row);
         if(new_row == 0){
-            result.num_cols = 0;
+            result.set_num_cols(0);
             return std::move(std::make_pair(result, selectedRowDegrees));
         }
         for(index i = 0; i < this->num_cols; i++) {
@@ -545,6 +574,12 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         return minimal_directed_graph<D, index>(row_degrees);
     }
 
+    array<index> get_support_graph() {
+        vec<D> support = discrete_support();
+        return minimal_directed_graph<D, index>(support);
+    }
+
+
     /**
      * @brief Sorts the columns lexicographically by degree, 
      *  using a pointer which points two both the column degrees and the data.
@@ -675,14 +710,20 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space(const Gr
     vec<SparseMatrix<index>> result;
     vec<std::pair<index,index>> variable_positions; // Stores the position of the variables in the matrix Q
     SparseMatrix<index> S(0,0);
-    S.data.reserve( A.num_rows + B.num_rows + 1);
+    S.data.reserve( A.get_num_rows() + B.get_num_rows() + 1);
     index S_index = 0;
 
     // TO-DO: Right now we compute map_at_degree possibly multiple times! This could be optimised.
-    for(index i = 0; i < A.num_rows; i++) {
+    for(index i = 0; i < A.get_num_rows(); i++) {
         // Compute the target space B_alpha for each generator of A to minimise the number of variables.
         auto [B_alpha, rows_alpha] = B.map_at_degree_pair(A.row_degrees[i]);
-        vec<index> basislift = B_alpha.coKernel_basis(rows_alpha, row_indices_B );
+        vec<index> basislift;
+        if(row_indices_B.size() != 0){
+            basislift = B_alpha.coKernel_basis(rows_alpha, row_indices_B );
+        } else {
+            // This is broken, fix TO-DO:
+            basislift = B_alpha.coKernel_basis(rows_alpha);
+        }
 
         // Then add the effect of all row-operations from A to B (modulo the image of B).
         for(index j : basislift) {
@@ -690,7 +731,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space(const Gr
     	    variable_positions.push_back(std::make_pair(i, j));
             for(auto rit = A._rows[i].rbegin(); rit != A._rows[i].rend(); rit++){
                 auto& column_index = *rit;
-                S.data[S_index].emplace_back(linearise_position_reverse_ext(column_index, j, A.num_cols, B.num_rows));
+                S.data[S_index].emplace_back(linearise_position_reverse_ext(column_index, j, A.get_num_cols(), B.get_num_rows()));
             }
             S_index++;
         }
@@ -710,15 +751,15 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space(const Gr
     }
 
     // Then all column-operations from B to A
-    for(index i = A.num_cols-1; i > -1; i--){
-        for(index j = 0; j < B.num_cols; j++){
+    for(index i = A.get_num_cols()-1; i > -1; i--){
+        for(index j = 0; j < B.get_num_cols(); j++){
             if(B.is_admissible_column_operation(j, A.col_degrees[i])){
                 S.data.push_back(vec<index>());
                 for(index row_index : B.data[j]){
                     if(row_indices_B.size() != 0){
-                        S.data[S_index].emplace_back(linearise_position_reverse_ext(i, row_map[row_index], A.num_cols, B.num_rows));
+                        S.data[S_index].emplace_back(linearise_position_reverse_ext(i, row_map[row_index], A.get_num_cols(), B.get_num_rows()));
                     } else {
-                        S.data[S_index].emplace_back(linearise_position_reverse_ext(i, row_index, A.num_cols, B.num_rows));        
+                        S.data[S_index].emplace_back(linearise_position_reverse_ext(i, row_index, A.get_num_cols(), B.get_num_rows()));        
                     }
                 }
                 S_index++;
@@ -727,9 +768,8 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space(const Gr
     }
 
 
-
     S.compute_num_cols();
-    auto K = S.get_kernel();
+    auto K = S.kernel();
     K.cull_columns(row_op_threshold, false);
     K.compute_num_cols();
     K.column_reduction_triangular(true);
@@ -968,18 +1008,17 @@ template <typename D, typename index>
 Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index>& A, const GradedSparseMatrix<D, index>& B, Hom_space_temp<index>& full_hom_space, const D alpha) {
     
     Hom_space_temp<index> result;
-    auto& [B_alpha, B_alpha_basis] = B.map_at_degree_pair(alpha);
-    auto& [A_alpha, A_alpha_basis] = A.map_at_degree_pair(alpha);
+    auto [B_alpha, B_alpha_gens] = B.map_at_degree_pair(alpha);
+    auto [A_alpha, A_alpha_gens] = A.map_at_degree_pair(alpha);
 
-    SparseMatrix<index> coker_B_alpha = B_alpha.coKernel_without_prelim(B_alpha_basis);
+    vec<index> B_alpha_basis = B_alpha.coKernel_basis(B_alpha_gens);
+    vec<index> A_alpha_basis = A_alpha.coKernel_basis(A_alpha_gens);
 
-    vec<index> hom_quotient_basis = hom_quotient(full_hom_space, coker_B_alpha, A_alpha_basis);
+    // What should the indexing for this be? TO-DO: Check this.
+    SparseMatrix<index> coker_B_alpha = B_alpha.coKernel_without_prelim(B_alpha_basis, B_alpha_gens);
 
-    result.first = A_alpha.restricted_domain_copy(hom_quotient_basis);
-    result.second = hom_quotient_basis;
-
-    return result;
-}
+    //TO-DO: Finish this.
+}   
 
 /**
  * @brief Can be used to recognise file extension, not really needed right now.

@@ -505,6 +505,21 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     }
 
     /**
+     * @brief Computes the columns from the rows if the rows contain only 0..num_cols .
+     * 
+     * @param col_indices 
+     */
+    void compute_columns_from_rows() {
+        this->data.clear();
+        this->data.resize(this->num_cols);
+        for(index i = 0; i < _rows.size(); i++) {
+            for(index j : _rows[i]) {
+                this->data[j].push_back(i);
+            }
+        }
+    }
+
+    /**
      * @brief Computes the columns from the rows if the rows contain only indices in col_indices.
      * 
      * @param col_indices 
@@ -534,6 +549,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
             }
         }
     }
+
 
     /**
      * @brief If the entries of data are not from 1..n, but lie in row_indices, then this function
@@ -623,6 +639,13 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         Column_traits<vec<index>, index>::add_to(this->_rows[i], this->_rows[j]);
     }
 
+    void row_op_with_update(index i, index j){
+        fast_row_op(i, j);
+        for(index k : this->_rows[i]){
+            this->set_entry(k, j);
+        }
+    }
+
     // Adds the i-th row to the j-th when rows are stored in reverse order.
     // also updates the columns, but without sorting or removing duplicates.
     void fast_rev_row_op(index i, index j){
@@ -637,16 +660,8 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     // Not finished yet.
     void row_op_on_cols(index i, index j) {
         for(index k = 0; k < this->num_cols; k++) {
-            if( vis_nonzero_at(this->data[k], i)) {
-                //What does this return when the element is not found?
-                auto index_i = vis_nonzero_at(this->data[k], j);
-                if(index_i != this->data[k].size()) {
-                    //?
-                    this->data[k].erase(this->data[k].begin() + index_i);
-                } else {
-                    // J: This would insert unsorted, so not sure if we want this.
-                    this->data[j].push_back(k);
-                }
+            if( this->is_nonzero_entry(k,i) ) {
+                this->set_entry(k,j);
             }
         }
     }
@@ -849,7 +864,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
             } else {
                 // If were in a non-basis-column, compute the entries directly:
                 // Locate the unqiue column in the input matrix with the last entry at i.
-                // Observe that the matrix trun is exactly the non-identity part of the matrix as long as we work over F_2
+                // Observe that the matrix trunc is exactly the non-identity part of the matrix as long as we work over F_2
                 result.data[i] = trunc.data[this->pivots[i]];
             }
         }

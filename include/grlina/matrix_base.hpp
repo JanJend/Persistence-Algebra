@@ -126,6 +126,9 @@ class MatrixUtil{
     
     void set_num_rows(index m){num_rows = m;};
     void set_num_cols(index n){num_cols = n;};
+    void increase_num_cols(index n){num_cols += n;};
+    void increase_num_rows(index n){num_rows += n;};
+
 
     MatrixUtil() {};
 
@@ -220,7 +223,7 @@ class MatrixUtil{
 
     void cull_columns(index& threshold, bool from_end = true){};
 
-    
+    public:
     /**
      * @brief sets num_cols to th enumber of entries in data. Useful for many subroutines.
      * 
@@ -234,6 +237,7 @@ class MatrixUtil{
         
     };
 
+    public:
     /**
      * @brief Swaps the columns i and j.
      * 
@@ -260,9 +264,6 @@ class MatrixUtil{
 
     /**
      * @brief Returns the entry at col i and row j 
-     * 
-     * @param i col index   
-     * @param j row index
      */
     bool is_nonzero_entry(index i, index j){
         return CT::is_nonzero_at(data[i] , j);   
@@ -690,7 +691,7 @@ class MatrixUtil{
         return result;
     }
 
-    protected:
+    public:
     /**
      * @brief Re-coordinatises the positions in the matrix by counting from top to bottom and right to left.
      * @param i column-index from the right
@@ -1085,17 +1086,6 @@ class MatrixUtil{
      *          Equivalently, the set of row indices which are not pivots after column-reduction.
      * @return vec<index> 
      */
-    vec<index> coKernel_basis(){
-        vec<index> basis;
-        column_reduction();
-        for(index i = 0; i < num_rows; i++){
-            if(pivots.count(i) == 0){
-                basis.push_back(i);
-            }
-        }
-        return basis;
-    }
-
     vec<index> coKernel_basis(const bool& no_reduction = false){
         vec<index> basis;
         if(!no_reduction){

@@ -441,6 +441,21 @@ array<index> minimal_directed_graph(vec<D>& degrees, vec<index> support = vec<in
     return edges;
 }
 
+template <typename index>
+Graph boost_graph_from_edge_list(const array<index>& edges) {
+    Graph g;
+    for (index i = 0; i < edges.size(); i++) {
+        boost::add_vertex(g);
+    }
+    for (index i = 0; i < edges.size(); i++) {
+        for (index j : edges[i]) {
+            boost::add_edge(i, j, g);
+        }
+    }
+    return g;
+}
+
+
 template <typename D>
 void writeDegreeListToCSV(const std::string& filename, const vec<D>& degrees) {
 

@@ -39,9 +39,37 @@ void functionality_demo(){
     auto dense = from_sparse(A);
     dense.print();
 
-    std::cout << " Column reduction:" << std::endl;
+    std::cout << " Perform column operations, which is fast:" << std::endl;
+    A_copy1.col_op(0, 1);
+    A_copy1.print();
+
+    std::cout << " Or perform row operations, which is slow:" << std::endl;
+    A_copy1.row_op_on_cols(0, 1);
+
+    std::cout << " If we want the row operations to be fast, we need to compute the rows first:" << std::endl;
+    A_copy1.compute_rows_forward();
+    A_copy1.print_rows();
+    std::cout << " Now we can perform a row operation fast on the rows, without touching the columns" << std::endl;
+    A_copy1.fast_row_op(0, 1);
+    A_copy1.print_rows();
+    std::cout << " But this does not change the columns yet, so we need to recompute them:" << std::endl;
+    A_copy1.compute_columns_from_rows();
+    A_copy1.print();
+    std::cout << " We can also perform a row operation on the rows and update the columns instantly, if we only do it a couple of times:" << std::endl;
+    A_copy1.row_op_with_update(0, 1);
+    A_copy1.print();
+
+    std::cout << " Column reduction is fast:" << std::endl;
     A_copy1.column_reduction_triangular();
     A_copy1.print();
+
+    std::cout << " So to do row reduction, we want to transpose and then reduce: " << std::endl;
+    auto AT = A.transposed_copy();
+    AT.print();
+    AT.column_reduction_triangular();
+    AT.print();
+    auto A_row_reduced = AT.transposed_copy();
+    A_row_reduced.print();
 
     std::cout << "Compute Kernel (Careful, this reduces the matrix, so make copy):" << std::endl;
     auto A_copy2 = A;
@@ -99,28 +127,21 @@ void functionality_demo(){
 
 }
 
-void transpose_test(){
-    std::cout << "Testing transpose function:" << std::endl;
-    vec<vec<int>> data = {{0, 2},{1, 3},{0,3}};
-    SparseMatrix<int> A(3, 4, data);
-    auto AT = A.transposed_copy();
-    assert(AT.get_num_cols() ==  4);
-    AT.print();
-
-}
 
 void row_test(){
     vec<vec<int>> data = {{0, 1, 2}, {1, 3}, {0, 2, 3}, {2}};
     SparseMatrix<int> A(4, 4, data);
     std::cout << "Testing fast row operations. Example Matrix is:" << std::endl;
     A.print();
+    std::cout << "For this we compute the rows in reverse direction. \n"
+     "The idea is that we're only updating the last columns of the matrix very late" << std::endl;
     A.compute_revrows();
     std::cout << "The rows are:" << std::endl;
     A.print_rows();
-    std::cout << "Adding 0th to first row:" << std::endl;
+    std::cout << "Adding 0th to first row. This updates the columns in the fastest possible way by only appending an index" << std::endl;
     A.fast_rev_row_op(0, 1);
     A.print_rows();
-    std::cout << "We can see that this did not correctly compute the columns yet, we just added entries if the row operation should have changed anything:" << std::endl;
+    std::cout << "We can see that this did not correctly compute the columns:" << std::endl;
     A.print();
     std::cout << "To rectify, we need to sort and remove duplicates:" << std::endl;
     for(int i = 0; i < A.get_num_cols(); i++){
@@ -168,7 +189,6 @@ void test_kernel(){
 int main() {
 
     functionality_demo();
-    transpose_test();
     row_test();
     compare_vec_set_test();
     test_kernel();
