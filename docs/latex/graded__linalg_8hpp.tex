@@ -1,0 +1,220 @@
+\hypertarget{graded__linalg_8hpp}{}\doxysection{Persistence-\/\+Algebra/include/grlina/graded\+\_\+linalg.hpp File Reference}
+\label{graded__linalg_8hpp}\index{Persistence-\/Algebra/include/grlina/graded\_linalg.hpp@{Persistence-\/Algebra/include/grlina/graded\_linalg.hpp}}
+
+
+This library was created to provide a set of tools for working with (graded) matrices over F\+\_\+2 for the A\+I\+DA algorithm which decomposes minimal presentations of persistence modules.  
+
+
+{\ttfamily \#include $<$vector$>$}\newline
+{\ttfamily \#include $<$random$>$}\newline
+{\ttfamily \#include $<$grlina/sparse\+\_\+matrix.\+hpp$>$}\newline
+{\ttfamily \#include $<$grlina/graded\+\_\+matrix.\+hpp$>$}\newline
+{\ttfamily \#include $<$grlina/matrix\+\_\+base.\+hpp$>$}\newline
+{\ttfamily \#include $<$grlina/r2graded\+\_\+matrix.\+hpp$>$}\newline
+{\ttfamily \#include $<$grlina/r3graded\+\_\+matrix.\+hpp$>$}\newline
+{\ttfamily \#include $<$grlina/dense\+\_\+matrix.\+hpp$>$}\newline
+Include dependency graph for graded\+\_\+linalg.\+hpp\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{graded__linalg_8hpp__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename index $>$ }\\std\+::vector$<$ R2\+Graded\+Sparse\+Matrix$<$ index $>$ $>$ \mbox{\hyperlink{graded__linalg_8hpp_a42d160abd436208e0d3853daa61cf43b}{graded\+\_\+linalg\+::get\+\_\+matrices\+\_\+from\+\_\+stream}} (std\+::ifstream \&file\+\_\+stream, bool lex\+\_\+sort=false, bool compute\+\_\+batches=false)
+\begin{DoxyCompactList}\small\item\em Constructs a vector of \mbox{\hyperlink{structgraded__linalg_1_1R2GradedSparseMatrix}{R2\+Graded\+Sparse\+Matrix}} objects from an input file stream. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index , typename Input\+Stream $>$ }\\void \mbox{\hyperlink{graded__linalg_8hpp_a3ef72b046af67f5855fc89d7035b19be}{graded\+\_\+linalg\+::construct\+\_\+matrices\+\_\+from\+\_\+stream}} (std\+::vector$<$ R2\+Graded\+Sparse\+Matrix$<$ index $>$$>$ \&matrices, Input\+Stream \&file\+\_\+stream, bool lex\+\_\+sort=false, bool compute\+\_\+batches=false)
+\begin{DoxyCompactList}\small\item\em Constructs a vector of \mbox{\hyperlink{structgraded__linalg_1_1R2GradedSparseMatrix}{R2\+Graded\+Sparse\+Matrix}} objects from an input file stream. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\void \mbox{\hyperlink{graded__linalg_8hpp_af4d3a73789d843c269b4e050cc7133fa}{graded\+\_\+linalg\+::write\+\_\+vector\+\_\+to\+\_\+file}} (const std\+::vector$<$ T $>$ \&vec, const std\+::string \&folder, const std\+::string \&filename)
+\begin{DoxyCompactList}\small\item\em Writes a vector of numbers (arithmetic type) to a .txt file. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\void \mbox{\hyperlink{graded__linalg_8hpp_a39bdb997c68d7c43d826163b4a431d6c}{graded\+\_\+linalg\+::write\+\_\+vector\+\_\+of\+\_\+sets\+\_\+to\+\_\+file}} (const std\+::vector$<$ std\+::set$<$ T $>$$>$ \&vec, const std\+::string \&relative\+\_\+folder, const std\+::string \&filename)
+\begin{DoxyCompactList}\small\item\em Writes a vector of sets of numbers to a .txt file. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\bool \mbox{\hyperlink{graded__linalg_8hpp_a462ae33754abaa2179442ef2797baaf2}{graded\+\_\+linalg\+::compare\+\_\+streams\+\_\+of\+\_\+graded\+\_\+matrices}} (std\+::ifstream \&stream1, std\+::ifstream \&stream2)
+\begin{DoxyCompactList}\small\item\em If the two streams contain lists of graded matrices, then this function returns false if they have non-\/matching degrees. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\bool \mbox{\hyperlink{graded__linalg_8hpp_ad8142b880c81dfa7a9e76459dcadd426}{graded\+\_\+linalg\+::compare\+\_\+files\+\_\+of\+\_\+graded\+\_\+matrices}} (std\+::string path1, std\+::string path2)
+\begin{DoxyCompactList}\small\item\em If the two files contain lists of graded matrices, then this function returns false if they have non-\/matching degrees. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\Dense\+Matrix \mbox{\hyperlink{graded__linalg_8hpp_ac431c725b6b66681e05bb35f1aa8eb52}{graded\+\_\+linalg\+::from\+\_\+sparse}} (Sparse\+Matrix$<$ index $>$ \&M)
+\begin{DoxyCompactList}\small\item\em Gets the Minor of M with respect to the row and column indices and saves the result as a \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}}. Not tested yet! \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+This library was created to provide a set of tools for working with (graded) matrices over F\+\_\+2 for the A\+I\+DA algorithm which decomposes minimal presentations of persistence modules. 
+
+\begin{DoxyAuthor}{Author}
+Jan Jendrysiak 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+0.\+1 
+\end{DoxyVersion}
+\begin{DoxyDate}{Date}
+2025-\/03-\/13
+\end{DoxyDate}
+\begin{DoxyCopyright}{Copyright}
+2025 TU Graz This file is part of the A\+I\+DA library. You can redistribute it and/or modify it under the terms of the G\+NU Lesser General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. 
+\end{DoxyCopyright}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{graded__linalg_8hpp_ad8142b880c81dfa7a9e76459dcadd426}\label{graded__linalg_8hpp_ad8142b880c81dfa7a9e76459dcadd426}} 
+\index{graded\_linalg.hpp@{graded\_linalg.hpp}!compare\_files\_of\_graded\_matrices@{compare\_files\_of\_graded\_matrices}}
+\index{compare\_files\_of\_graded\_matrices@{compare\_files\_of\_graded\_matrices}!graded\_linalg.hpp@{graded\_linalg.hpp}}
+\doxysubsubsection{\texorpdfstring{compare\_files\_of\_graded\_matrices()}{compare\_files\_of\_graded\_matrices()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+bool graded\+\_\+linalg\+::compare\+\_\+files\+\_\+of\+\_\+graded\+\_\+matrices (\begin{DoxyParamCaption}\item[{std\+::string}]{path1,  }\item[{std\+::string}]{path2 }\end{DoxyParamCaption})}
+
+
+
+If the two files contain lists of graded matrices, then this function returns false if they have non-\/matching degrees. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em path1} & \\
+\hline
+{\em path2} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true 
+
+false 
+\end{DoxyReturn}
+\mbox{\Hypertarget{graded__linalg_8hpp_a462ae33754abaa2179442ef2797baaf2}\label{graded__linalg_8hpp_a462ae33754abaa2179442ef2797baaf2}} 
+\index{graded\_linalg.hpp@{graded\_linalg.hpp}!compare\_streams\_of\_graded\_matrices@{compare\_streams\_of\_graded\_matrices}}
+\index{compare\_streams\_of\_graded\_matrices@{compare\_streams\_of\_graded\_matrices}!graded\_linalg.hpp@{graded\_linalg.hpp}}
+\doxysubsubsection{\texorpdfstring{compare\_streams\_of\_graded\_matrices()}{compare\_streams\_of\_graded\_matrices()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+bool graded\+\_\+linalg\+::compare\+\_\+streams\+\_\+of\+\_\+graded\+\_\+matrices (\begin{DoxyParamCaption}\item[{std\+::ifstream \&}]{stream1,  }\item[{std\+::ifstream \&}]{stream2 }\end{DoxyParamCaption})}
+
+
+
+If the two streams contain lists of graded matrices, then this function returns false if they have non-\/matching degrees. 
+
+\mbox{\Hypertarget{graded__linalg_8hpp_a3ef72b046af67f5855fc89d7035b19be}\label{graded__linalg_8hpp_a3ef72b046af67f5855fc89d7035b19be}} 
+\index{graded\_linalg.hpp@{graded\_linalg.hpp}!construct\_matrices\_from\_stream@{construct\_matrices\_from\_stream}}
+\index{construct\_matrices\_from\_stream@{construct\_matrices\_from\_stream}!graded\_linalg.hpp@{graded\_linalg.hpp}}
+\doxysubsubsection{\texorpdfstring{construct\_matrices\_from\_stream()}{construct\_matrices\_from\_stream()}}
+{\footnotesize\ttfamily template$<$typename index , typename Input\+Stream $>$ \\
+void graded\+\_\+linalg\+::construct\+\_\+matrices\+\_\+from\+\_\+stream (\begin{DoxyParamCaption}\item[{std\+::vector$<$ \mbox{\hyperlink{structgraded__linalg_1_1R2GradedSparseMatrix}{R2\+Graded\+Sparse\+Matrix}}$<$ index $>$$>$ \&}]{matrices,  }\item[{Input\+Stream \&}]{file\+\_\+stream,  }\item[{bool}]{lex\+\_\+sort = {\ttfamily false},  }\item[{bool}]{compute\+\_\+batches = {\ttfamily false} }\end{DoxyParamCaption})}
+
+
+
+Constructs a vector of R2\+Graded\+Sparse\+Matrix objects from an input file stream. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em matrices} & vector to store the constructed matrices \\
+\hline
+{\em file\+\_\+stream} & input file stream containing multiple matrices \\
+\hline
+{\em lex\+\_\+sort} & whether to sort lexicographically \\
+\hline
+{\em compute\+\_\+batches} & whether to compute the column batches and k\+\_\+max \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::vector$<$\+R2\+Graded\+Sparse\+Matrix$>$ vector of R2\+Graded\+Sparse\+Matrix objects 
+\end{DoxyReturn}
+\mbox{\Hypertarget{graded__linalg_8hpp_ac431c725b6b66681e05bb35f1aa8eb52}\label{graded__linalg_8hpp_ac431c725b6b66681e05bb35f1aa8eb52}} 
+\index{graded\_linalg.hpp@{graded\_linalg.hpp}!from\_sparse@{from\_sparse}}
+\index{from\_sparse@{from\_sparse}!graded\_linalg.hpp@{graded\_linalg.hpp}}
+\doxysubsubsection{\texorpdfstring{from\_sparse()}{from\_sparse()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+Dense\+Matrix graded\+\_\+linalg\+::from\+\_\+sparse (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$ \&}]{M }\end{DoxyParamCaption})}
+
+
+
+Gets the Minor of M with respect to the row and column indices and saves the result as a Dense\+Matrix. Not tested yet! 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em M} & \\
+\hline
+{\em col\+\_\+indices} & \\
+\hline
+{\em row\+\_\+indices} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Dense\+Matrix template $<$typename index$>$ Dense\+Matrix restricted\+\_\+dense\+\_\+copy(const Sparse\+Matrix$<$index$>$\& M, vec$<$index$>$ col\+\_\+indices, vec$<$index$>$ row\+\_\+indices) \{ Dense\+Matrix$<$int$>$ result(col\+\_\+indices.\+size(), row\+\_\+indices.\+size()); for(index i = 0; i $<$ col\+\_\+indices.\+size(); i++)\{ auto c = col\+\_\+indices\mbox{[}i\mbox{]}; auto it = std\+::lower\+\_\+bound(M.\+data\mbox{[}c\mbox{]}.begin(), M.\+data\mbox{[}c\mbox{]}.end(), row\+\_\+indices\mbox{[}0\mbox{]}); index j = 0; while(it != M.\+data\mbox{[}c\mbox{]}.end() \&\& j $<$ row\+\_\+indices.\+size())\{ auto r = row\+\_\+indices\mbox{[}j\mbox{]}; if($\ast$it == r)\{ result.\+data\mbox{[}i\mbox{]}.set(j); j++; it++; \} else if($\ast$it $<$ r)\{ it++; \} else \{ j++; \} \} \} \} 
+\end{DoxyReturn}
+\mbox{\Hypertarget{graded__linalg_8hpp_a42d160abd436208e0d3853daa61cf43b}\label{graded__linalg_8hpp_a42d160abd436208e0d3853daa61cf43b}} 
+\index{graded\_linalg.hpp@{graded\_linalg.hpp}!get\_matrices\_from\_stream@{get\_matrices\_from\_stream}}
+\index{get\_matrices\_from\_stream@{get\_matrices\_from\_stream}!graded\_linalg.hpp@{graded\_linalg.hpp}}
+\doxysubsubsection{\texorpdfstring{get\_matrices\_from\_stream()}{get\_matrices\_from\_stream()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+std\+::vector$<$R2\+Graded\+Sparse\+Matrix$<$index$>$ $>$ graded\+\_\+linalg\+::get\+\_\+matrices\+\_\+from\+\_\+stream (\begin{DoxyParamCaption}\item[{std\+::ifstream \&}]{file\+\_\+stream,  }\item[{bool}]{lex\+\_\+sort = {\ttfamily false},  }\item[{bool}]{compute\+\_\+batches = {\ttfamily false} }\end{DoxyParamCaption})}
+
+
+
+Constructs a vector of R2\+Graded\+Sparse\+Matrix objects from an input file stream. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em file\+\_\+stream} & input file stream containing multiple matrices \\
+\hline
+{\em lex\+\_\+sort} & whether to sort lexicographically \\
+\hline
+{\em compute\+\_\+batches} & whether to compute the column batches and k\+\_\+max \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::vector$<$\+R2\+Graded\+Sparse\+Matrix$>$ vector of R2\+Graded\+Sparse\+Matrix objects 
+\end{DoxyReturn}
+\mbox{\Hypertarget{graded__linalg_8hpp_a39bdb997c68d7c43d826163b4a431d6c}\label{graded__linalg_8hpp_a39bdb997c68d7c43d826163b4a431d6c}} 
+\index{graded\_linalg.hpp@{graded\_linalg.hpp}!write\_vector\_of\_sets\_to\_file@{write\_vector\_of\_sets\_to\_file}}
+\index{write\_vector\_of\_sets\_to\_file@{write\_vector\_of\_sets\_to\_file}!graded\_linalg.hpp@{graded\_linalg.hpp}}
+\doxysubsubsection{\texorpdfstring{write\_vector\_of\_sets\_to\_file()}{write\_vector\_of\_sets\_to\_file()}}
+{\footnotesize\ttfamily template$<$typename T $>$ \\
+void graded\+\_\+linalg\+::write\+\_\+vector\+\_\+of\+\_\+sets\+\_\+to\+\_\+file (\begin{DoxyParamCaption}\item[{const std\+::vector$<$ std\+::set$<$ T $>$$>$ \&}]{vec,  }\item[{const std\+::string \&}]{relative\+\_\+folder,  }\item[{const std\+::string \&}]{filename }\end{DoxyParamCaption})}
+
+
+
+Writes a vector of sets of numbers to a .txt file. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em vec} & \\
+\hline
+{\em relative\+\_\+folder} & \\
+\hline
+{\em filename} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{graded__linalg_8hpp_af4d3a73789d843c269b4e050cc7133fa}\label{graded__linalg_8hpp_af4d3a73789d843c269b4e050cc7133fa}} 
+\index{graded\_linalg.hpp@{graded\_linalg.hpp}!write\_vector\_to\_file@{write\_vector\_to\_file}}
+\index{write\_vector\_to\_file@{write\_vector\_to\_file}!graded\_linalg.hpp@{graded\_linalg.hpp}}
+\doxysubsubsection{\texorpdfstring{write\_vector\_to\_file()}{write\_vector\_to\_file()}}
+{\footnotesize\ttfamily template$<$typename T $>$ \\
+void graded\+\_\+linalg\+::write\+\_\+vector\+\_\+to\+\_\+file (\begin{DoxyParamCaption}\item[{const std\+::vector$<$ T $>$ \&}]{vec,  }\item[{const std\+::string \&}]{folder,  }\item[{const std\+::string \&}]{filename }\end{DoxyParamCaption})}
+
+
+
+Writes a vector of numbers (arithmetic type) to a .txt file. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em vec} & \\
+\hline
+{\em folder} & \\
+\hline
+{\em filename} & \\
+\hline
+\end{DoxyParams}

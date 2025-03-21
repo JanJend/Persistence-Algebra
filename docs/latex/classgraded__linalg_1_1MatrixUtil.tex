@@ -1,0 +1,877 @@
+\hypertarget{classgraded__linalg_1_1MatrixUtil}{}\doxysection{graded\+\_\+linalg\+::Matrix\+Util$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$ Class Template Reference}
+\label{classgraded__linalg_1_1MatrixUtil}\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a07ce89ba41b86c9ee46f095ed2f0a95c}\label{classgraded__linalg_1_1MatrixUtil_a07ce89ba41b86c9ee46f095ed2f0a95c}} 
+index {\bfseries get\+\_\+num\+\_\+rows} () const
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a2147ec3692ea3d219bb1f9afa2950f7a}\label{classgraded__linalg_1_1MatrixUtil_a2147ec3692ea3d219bb1f9afa2950f7a}} 
+index {\bfseries get\+\_\+num\+\_\+cols} () const
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a3defd97b6075398802653b3dd49abc55}\label{classgraded__linalg_1_1MatrixUtil_a3defd97b6075398802653b3dd49abc55}} 
+void {\bfseries set\+\_\+num\+\_\+rows} (index m)
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a6e5417aea7760e5592b638ed75ee3e71}\label{classgraded__linalg_1_1MatrixUtil_a6e5417aea7760e5592b638ed75ee3e71}} 
+void {\bfseries set\+\_\+num\+\_\+cols} (index n)
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a30ce24d76bc84e459c3677edf22f097a}\label{classgraded__linalg_1_1MatrixUtil_a30ce24d76bc84e459c3677edf22f097a}} 
+void {\bfseries increase\+\_\+num\+\_\+cols} (index n)
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a8f5f050612d0a5e5d817f35671652f96}\label{classgraded__linalg_1_1MatrixUtil_a8f5f050612d0a5e5d817f35671652f96}} 
+void {\bfseries increase\+\_\+num\+\_\+rows} (index n)
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_afda458c0c2a3a2794ca6564d9049c5a0}\label{classgraded__linalg_1_1MatrixUtil_afda458c0c2a3a2794ca6564d9049c5a0}} 
+{\bfseries Matrix\+Util} (index m)
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_acb6e34c03cd428b73c0edcbf5cf0a1ac}\label{classgraded__linalg_1_1MatrixUtil_acb6e34c03cd428b73c0edcbf5cf0a1ac}} 
+{\bfseries Matrix\+Util} (index m, index n)
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a4b69b31d76f5a8c598628632913661e5}\label{classgraded__linalg_1_1MatrixUtil_a4b69b31d76f5a8c598628632913661e5}} 
+{\bfseries Matrix\+Util} (const \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{Matrix\+Util}} \&other)
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_af8f24ccf52fe4f4ec8e0eac8ef22951c}\label{classgraded__linalg_1_1MatrixUtil_af8f24ccf52fe4f4ec8e0eac8ef22951c}} 
+{\bfseries Matrix\+Util} (index m, index n, vec$<$ C\+O\+L\+U\+MN $>$ d)
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a42b458567f94979b12233eba43577c8b}\label{classgraded__linalg_1_1MatrixUtil_a42b458567f94979b12233eba43577c8b}} 
+\mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{Matrix\+Util}} \& {\bfseries operator=} (\mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{Matrix\+Util}} \&other)
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a3b78863e18f0e751991f925e1e960df8}\label{classgraded__linalg_1_1MatrixUtil_a3b78863e18f0e751991f925e1e960df8}} 
+{\bfseries Matrix\+Util} (\mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{Matrix\+Util}} \&\&other) noexcept
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_af121235e5d87cc4363add89684310666}\label{classgraded__linalg_1_1MatrixUtil_af121235e5d87cc4363add89684310666}} 
+{\bfseries Matrix\+Util} (index m, index n, const std\+::string \&type, const index percent=-\/1)
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a24bc75b3de115e79d159a51d08fd43b2}\label{classgraded__linalg_1_1MatrixUtil_a24bc75b3de115e79d159a51d08fd43b2}} 
+{\bfseries Matrix\+Util} (index n, vec$<$ index $>$ indicator)
+\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a6240f48c53a0ba78c01effacdb4eb76b}{compute\+\_\+num\+\_\+cols}} ()
+\begin{DoxyCompactList}\small\item\em sets num\+\_\+cols to th enumber of entries in data. Useful for many subroutines. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_aea54594ce7e3e8a3faaedf6c21df6868}{swap\+\_\+cols}} (index i, index j)
+\begin{DoxyCompactList}\small\item\em Swaps the columns i and j. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_ab399600a28754a3ab3910654745f07ab}\label{classgraded__linalg_1_1MatrixUtil_ab399600a28754a3ab3910654745f07ab}} 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_ab399600a28754a3ab3910654745f07ab}{col\+\_\+op}} (index i, index j)
+\begin{DoxyCompactList}\small\item\em Adds column i to column j. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a59db562e79e28e02b49ac6a77b55f406}\label{classgraded__linalg_1_1MatrixUtil_a59db562e79e28e02b49ac6a77b55f406}} 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a59db562e79e28e02b49ac6a77b55f406}{add\+\_\+to\+\_\+col}} (index i, C\+O\+L\+U\+MN v)
+\begin{DoxyCompactList}\small\item\em Adds v to column i. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_aee40e0dbc88b4ed17c9513267884b40b}\label{classgraded__linalg_1_1MatrixUtil_aee40e0dbc88b4ed17c9513267884b40b}} 
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_aee40e0dbc88b4ed17c9513267884b40b}{is\+\_\+nonzero\+\_\+entry}} (index i, index j)
+\begin{DoxyCompactList}\small\item\em Returns the entry at col i and row j. \end{DoxyCompactList}\item 
+index \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_af35280c57c430e4bd006084279c65dc0}{col\+\_\+last}} (index i)
+\begin{DoxyCompactList}\small\item\em Returns the index of the last entry in column i. \end{DoxyCompactList}\item 
+const void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_ade49cb67cdf38784509a04cfc0bafe88}{print}} (bool suppress\+\_\+description=false, bool space=false)
+\begin{DoxyCompactList}\small\item\em Prints the matrix to the console. If suppress\+\_\+description is set to true, it will not print the number of rows and columns. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a0ffb2739c57cf0c4b9f2ce6942ca79eb}\label{classgraded__linalg_1_1MatrixUtil_a0ffb2739c57cf0c4b9f2ce6942ca79eb}} 
+bool {\bfseries is\+\_\+zero} ()
+\item 
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a716d4bf1a958a7b94166a10b33ee365c}{is\+\_\+zero}} (bitset \&col\+\_\+indices)
+\begin{DoxyCompactList}\small\item\em Returns true if the selected columns are empty. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_af22ae1bab70922c2c30a0a1a45fae116}{is\+\_\+nonzero}} ()
+\begin{DoxyCompactList}\small\item\em Checks if the matrix is nonzero. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a0993de1cad87c2a1c7025a02619e7270}{is\+\_\+nonzero}} (bitset \&col\+\_\+indices)
+\begin{DoxyCompactList}\small\item\em Checks if the matrix is nonzero at col\+\_\+indices. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_ad4d187c4fcbbd4cd21fc95c1d202bfbd}\label{classgraded__linalg_1_1MatrixUtil_ad4d187c4fcbbd4cd21fc95c1d202bfbd}} 
+bool {\bfseries is\+\_\+zero} (index i)
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a3ab0ddfc3ef0de7449b0d76f17e0ea2b}\label{classgraded__linalg_1_1MatrixUtil_a3ab0ddfc3ef0de7449b0d76f17e0ea2b}} 
+bool {\bfseries is\+\_\+nonzero} (index i)
+\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a17e964a8cd29c4bb4e4879f2aa7181fa}{column\+\_\+reduction\+\_\+triangular}} (bool delete\+\_\+zero\+\_\+columns=false)
+\begin{DoxyCompactList}\small\item\em Michael\textquotesingle{}s column reduction algorithm. Brings Matrix in {\itshape non}-\/completely reduced Column Echelon Form. All column operations go from left to right and go {\itshape to} the active column. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a3d5ea7f83c7104b4ee6bcba1f7295a7c}{column\+\_\+reduction\+\_\+triangular}} (index threshold, bool delete\+\_\+zero\+\_\+columns=false)
+\begin{DoxyCompactList}\small\item\em Michael\textquotesingle{}s column reduction algorithm. Brings Matrix in {\itshape non}-\/completely reduced Column Echelon Form. All column operations go from left to right and go {\itshape to} the active column. Only reduces columns with a last entry larger than the threshold. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a38ef47bfe880402d2031e9f87b4999b7}{column\+\_\+reduction\+\_\+triangular}} (bitset \&support, bitset \&zero\+\_\+cols)
+\begin{DoxyCompactList}\small\item\em Michael\textquotesingle{}s column reduction algorithm. Brings Matrix in {\itshape non}-\/completely reduced Column Echelon Form. All column operations go from left to right and go {\itshape to} the active column. Only reduces the column indices given by the support bitset.\+add\+\_\+to. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_aefc34e3c704c0f5b90236a947e12e9fb}{column\+\_\+reduction\+\_\+with\+\_\+memory}} (D\+E\+R\+I\+V\+ED \&performed\+\_\+ops, bool comments=false, bool with\+\_\+swaps=false)
+\begin{DoxyCompactList}\small\item\em Brings Matrix in reduced Column Echelon form and returns the performed operations if output is set to true. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a713bacbe2596fbf9e0d6379d69979188}{column\+\_\+reduction\+\_\+triangular\+\_\+with\+\_\+memory}} (D\+E\+R\+I\+V\+ED \&performed\+\_\+ops)
+\begin{DoxyCompactList}\small\item\em Brings Matrix in {\itshape non}-\/completely reduced Column Echelon Form and returns the performed operations. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a82c1af9335940960f6ad47bbc188fd33}{column\+\_\+reduction\+\_\+triangular\+\_\+with\+\_\+memory}} (D\+E\+R\+I\+V\+ED \&performed\+\_\+ops, vec$<$ index $>$ \&zero\+\_\+cols)
+\begin{DoxyCompactList}\small\item\em Brings Matrix in {\itshape non}-\/completely reduced Column Echelon Form and returns the performed operations. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_aee1e7f66ffcc38f0a372f98d571afcc3}{equals}} (\mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{Matrix\+Util}} \&other, bool output=false)
+\begin{DoxyCompactList}\small\item\em Compares the raw data of this matrix to another one, ignoring all other attributes. \end{DoxyCompactList}\item 
+index \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_ae1b04b9d584a91b610330013e1999c15}{equals\+\_\+with\+\_\+entry\+\_\+check}} (\mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{Matrix\+Util}} \&other, bool output=false)
+\begin{DoxyCompactList}\small\item\em Compares with another matrix and returns the index of the first column that does not match or -\/1 if they are equal. \end{DoxyCompactList}\item 
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a31335e6b487d36b3b73b092cbabd670a}{restricted\+\_\+domain\+\_\+copy}} (vec$<$ index $>$ \&col\+Indices)
+\begin{DoxyCompactList}\small\item\em Returns a copy with only the columns at the indices given in col\+Indices. \end{DoxyCompactList}\item 
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_ac71053e13a75e1a165259b4a6e8961f8}{restricted\+\_\+domain\+\_\+copy}} (bitset \&col\+Indices, index start=0)
+\begin{DoxyCompactList}\small\item\em Returns a copy with only the columns at the indices given in col\+Indices but adding start. \end{DoxyCompactList}\item 
+long \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a4a58306531d050002550f10c0ea19c04}{linearise\+\_\+position\+\_\+reverse}} (index i, index j)
+\begin{DoxyCompactList}\small\item\em Re-\/coordinatises the positions in the matrix by counting from top to bottom and right to left. \end{DoxyCompactList}\item 
+std\+::pair$<$ index, index $>$ \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a658935c9751d6f0900b2d7aa3303a94b}{delinearise\+\_\+position\+\_\+reverse}} (long k)
+\begin{DoxyCompactList}\small\item\em Inverse function to linearize\+\_\+position\+\_\+reverse. \end{DoxyCompactList}\item 
+index \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a86da43525595d020020e287544c2200c}{linearise\+\_\+position}} (index i, index j)
+\begin{DoxyCompactList}\small\item\em Counts the entries in the matrix from left to right and top to bottom. \end{DoxyCompactList}\item 
+std\+::pair$<$ index, index $>$ \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_ae6fcf41b9f2498b72287d6d64eea5acf}{delinearise\+\_\+position}} (index k)
+\begin{DoxyCompactList}\small\item\em Inverse function to linearise\+\_\+position. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a6860210886698581edc75e7bcc40b416}{solve\+\_\+col\+\_\+reduction}} (D\+E\+R\+I\+V\+ED \&N, D\+E\+R\+I\+V\+ED \&\&solution=D\+E\+R\+I\+V\+ED(), bool get\+\_\+ops=false)
+\begin{DoxyCompactList}\small\item\em Solves the Linear System (data $\ast$ x) = N\+\_\+\{target\} using triangular column-\/reduction and returns a solution. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a027ff91825e52f6cd6f3ad304e05f919}{solve\+\_\+col\+\_\+reduction}} (C\+O\+L\+U\+MN \&c, C\+O\+L\+U\+MN \&solution, bool complete\+\_\+reduce=true, bool reduce\+\_\+S=true, bool get\+\_\+ops=true)
+\begin{DoxyCompactList}\small\item\em Michaels Column-\/\+Reduction Solver, modified to return the correct solution. Also deleted non-\/functional code. This reducer is better than the other one, because it does not require re-\/transformation when there are many empty rows. This is now a function of the object \char`\"{}\+S\char`\"{} instead of a pure function for no good reason other than trying an object-\/oriented approach. \end{DoxyCompactList}\item 
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a723039e87a732839bb4573c1a4771725}{kernel}} ()
+\begin{DoxyCompactList}\small\item\em Returns a basis for the kernel of the matrix via column reduction. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a5751803a21ffb75a4cc2fea0e8db4b7a}{column\+\_\+gauss\+\_\+jordan}} (D\+E\+R\+I\+V\+ED \&performed\+\_\+ops)
+\begin{DoxyCompactList}\small\item\em Computes A, B, such that this$\ast$A = B and B is column-\/reduced and ordered. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_ace314c157c53beac7049b31c52337d13}{column\+\_\+gauss\+\_\+solver}} (C\+O\+L\+U\+MN \&performed\+\_\+ops)
+\begin{DoxyCompactList}\small\item\em Solves (A$^\wedge$T)x=b with Gauss elimination, pretending that this is a row-\/matrix. T\+O-\/\+DO \+: Implement. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_ab012d0edd2bb11939a22c9b0f29f4ed7}\label{classgraded__linalg_1_1MatrixUtil_ab012d0edd2bb11939a22c9b0f29f4ed7}} 
+bool {\bfseries is\+\_\+invertible} ()
+\item 
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a8432f42d69bb06eb10da4c91cec66dfd}{inverse}} ()
+\begin{DoxyCompactList}\small\item\em Computes an inverse using column-\/reduction without changing the matrix. \end{DoxyCompactList}\item 
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_af90bf0f1b0f35c461411d7b26644dab6}{inverse\+\_\+nocopy}} ()
+\begin{DoxyCompactList}\small\item\em Computes an inverse using column-\/reduction without changing the matrix. \end{DoxyCompactList}\item 
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_ab233a26079efb5138deceba7aa57015a}{divide\+\_\+right}} (D\+E\+R\+I\+V\+ED \&other)
+\begin{DoxyCompactList}\small\item\em Computes this$\ast$other$^\wedge$\{-\/1\} without changing either matrix. Can be computed faster even using column\+\_\+reduction\+\_\+with\+\_\+memory using other as input, extending the getinverse function. (Could implement this). \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a9c1fd5655298f8511262157aeb0cb5c6}{divide\+\_\+right\+\_\+nocopy}} (D\+E\+R\+I\+V\+ED \&other)
+\begin{DoxyCompactList}\small\item\em Computes this$\ast$other$^\wedge$\{-\/1\} without changing either matrix. Can be computed faster even using column\+\_\+reduction\+\_\+with\+\_\+memory using other as input, extending the getinverse function. (Could implement this). \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a682bfda06128d770fa35746601515f5f}{append\+\_\+matrix}} (D\+E\+R\+I\+V\+ED \&other)
+\begin{DoxyCompactList}\small\item\em Appends the columns of another matrix. \end{DoxyCompactList}\item 
+vec$<$ index $>$ \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a1ff64bd5f6ca58259507a6c2bbf38910}{co\+Kernel\+\_\+basis}} (const bool \&no\+\_\+reduction=false)
+\begin{DoxyCompactList}\small\item\em Computes a set of row indices whose images under the quotient map form a basis of the cokernel. Equivalently, the set of row indices which are not pivots after column-\/reduction. \end{DoxyCompactList}\item 
+vec$<$ index $>$ \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a745fc3285515a4a686b94144c1720b80}{co\+Kernel\+\_\+basis}} (const vec$<$ index $>$ \&mask, const vec$<$ index $>$ \&row\+\_\+indices, const bool \&no\+\_\+reduction=false)
+\begin{DoxyCompactList}\small\item\em Computes a set of row indices whose images under the quotient map form a basis of the cokernel. Equivalently, the set of row indices which are not pivots after column-\/reduction. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a38c59a97d259838b4b633f77be4955b0}\label{classgraded__linalg_1_1MatrixUtil_a38c59a97d259838b4b633f77be4955b0}} 
+vec$<$ index $>$ {\bfseries co\+Kernel\+\_\+basis} (const vec$<$ index $>$ \&row\+\_\+indices, const bool \&no\+\_\+reduction=false)
+\item 
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a175951d48c4e8a34a8ca944f134f46a0}{operator+}} (const D\+E\+R\+I\+V\+ED \&other) const
+\begin{DoxyCompactList}\small\item\em Usual addition of matrices. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_ac8a26186692a5cb97607cac7c82fd4f9}{add\+\_\+matrix\+\_\+to}} (\mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{Matrix\+Util}} \&other)
+\begin{DoxyCompactList}\small\item\em Adds this matrix to the other matrix in place. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a057aac81133c954f447842706c21e719}\label{classgraded__linalg_1_1MatrixUtil_a057aac81133c954f447842706c21e719}} 
+pair$<$ index $>$ \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a057aac81133c954f447842706c21e719}{last\+\_\+entry}} ()
+\begin{DoxyCompactList}\small\item\em Returns the coordinates of the last non-\/zero entry for reduction. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a4d5ebe61a4ba8cb9a2bea1b465cf7be5}\label{classgraded__linalg_1_1MatrixUtil_a4d5ebe61a4ba8cb9a2bea1b465cf7be5}} 
+vec$<$ C\+O\+L\+U\+MN $>$ {\bfseries data}
+\end{DoxyCompactItemize}
+\doxysubsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a1a6b3aca683a321a5d2f85b4bc391577}{set\+\_\+entry}} (index i, index j)
+\begin{DoxyCompactList}\small\item\em Set the entry at column i and row j to 1. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a6862e32d4ebe73b350a71e9cf670d44a}\label{classgraded__linalg_1_1MatrixUtil_a6862e32d4ebe73b350a71e9cf670d44a}} 
+void {\bfseries cull\+\_\+columns} (index \&threshold, bool from\+\_\+end=true)
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a30587a8ec60f39070f3c5042b1a8a083}\label{classgraded__linalg_1_1MatrixUtil_a30587a8ec60f39070f3c5042b1a8a083}} 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a30587a8ec60f39070f3c5042b1a8a083}{set\+\_\+pivots\+\_\+without\+\_\+reducing}} ()
+\begin{DoxyCompactList}\small\item\em Sets the pivot to be the first column which has this entry as the latest non-\/zero entry in the row. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a867e7d1ea8a1c0eebea9437e90e0331c}{column\+\_\+reduction}} ()
+\begin{DoxyCompactList}\small\item\em Brings Matrix in completly reduced Column Echelon form. Operations go {\itshape from} the active column. \end{DoxyCompactList}\item 
+vec$<$ index $>$ \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a795c936b1c69e0e2296f956d45a37c07}{rectify\+\_\+invertible}} ()
+\begin{DoxyCompactList}\small\item\em Recursively finds a permutation of the column indices such that all diagonal elements are non-\/zero. Matrix needs to be square and invertible for this algorithm. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a89b97e3d7673ccb2ec486ed308e7b646}{reorder\+\_\+columns}} (vec$<$ index $>$ permutation)
+\begin{DoxyCompactList}\small\item\em Reorder the columns given a permutation as a vector of integers by copying everything. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a990e8e4f08208d928e1e7d91d204a71f}{reorder\+\_\+via\+\_\+comparison}} (vec$<$ index $>$ compare\+\_\+against)
+\begin{DoxyCompactList}\small\item\em Given a set of indices to be ordered, reorder the columns in the same way. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil_a9f2e291064939885e47918579b44c7b5}{test\+\_\+diagonal\+\_\+entries}} ()
+\begin{DoxyCompactList}\small\item\em Verifies if all diagonal entries are non-\/zero. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Protected Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a98185e60a90d7dc3e1ef5628c6d1635e}\label{classgraded__linalg_1_1MatrixUtil_a98185e60a90d7dc3e1ef5628c6d1635e}} 
+index {\bfseries num\+\_\+cols}
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a425cd7d6b3be364f1606990ffafb8e0a}\label{classgraded__linalg_1_1MatrixUtil_a425cd7d6b3be364f1606990ffafb8e0a}} 
+index {\bfseries num\+\_\+rows}
+\item 
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_ae9c7b1091833090c7330fc1d659f0aea}\label{classgraded__linalg_1_1MatrixUtil_ae9c7b1091833090c7330fc1d659f0aea}} 
+std\+::unordered\+\_\+map$<$ index, index $>$ {\bfseries pivots}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_ac8a26186692a5cb97607cac7c82fd4f9}\label{classgraded__linalg_1_1MatrixUtil_ac8a26186692a5cb97607cac7c82fd4f9}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!add\_matrix\_to@{add\_matrix\_to}}
+\index{add\_matrix\_to@{add\_matrix\_to}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{add\_matrix\_to()}{add\_matrix\_to()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::add\+\_\+matrix\+\_\+to (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$ \&}]{other }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Adds this matrix to the other matrix in place. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em other} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a682bfda06128d770fa35746601515f5f}\label{classgraded__linalg_1_1MatrixUtil_a682bfda06128d770fa35746601515f5f}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!append\_matrix@{append\_matrix}}
+\index{append\_matrix@{append\_matrix}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{append\_matrix()}{append\_matrix()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::append\+\_\+matrix (\begin{DoxyParamCaption}\item[{D\+E\+R\+I\+V\+ED \&}]{other }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Appends the columns of another matrix. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em other} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a1ff64bd5f6ca58259507a6c2bbf38910}\label{classgraded__linalg_1_1MatrixUtil_a1ff64bd5f6ca58259507a6c2bbf38910}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!coKernel\_basis@{coKernel\_basis}}
+\index{coKernel\_basis@{coKernel\_basis}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{coKernel\_basis()}{coKernel\_basis()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+vec$<$index$>$ \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::co\+Kernel\+\_\+basis (\begin{DoxyParamCaption}\item[{const bool \&}]{no\+\_\+reduction = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes a set of row indices whose images under the quotient map form a basis of the cokernel. Equivalently, the set of row indices which are not pivots after column-\/reduction. 
+
+\begin{DoxyReturn}{Returns}
+vec$<$index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a745fc3285515a4a686b94144c1720b80}\label{classgraded__linalg_1_1MatrixUtil_a745fc3285515a4a686b94144c1720b80}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!coKernel\_basis@{coKernel\_basis}}
+\index{coKernel\_basis@{coKernel\_basis}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{coKernel\_basis()}{coKernel\_basis()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+vec$<$index$>$ \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::co\+Kernel\+\_\+basis (\begin{DoxyParamCaption}\item[{const vec$<$ index $>$ \&}]{mask,  }\item[{const vec$<$ index $>$ \&}]{row\+\_\+indices,  }\item[{const bool \&}]{no\+\_\+reduction = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes a set of row indices whose images under the quotient map form a basis of the cokernel. Equivalently, the set of row indices which are not pivots after column-\/reduction. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em mask} & \\
+\hline
+{\em row\+\_\+indices} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+vec$<$index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_af35280c57c430e4bd006084279c65dc0}\label{classgraded__linalg_1_1MatrixUtil_af35280c57c430e4bd006084279c65dc0}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!col\_last@{col\_last}}
+\index{col\_last@{col\_last}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{col\_last()}{col\_last()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+index \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::col\+\_\+last (\begin{DoxyParamCaption}\item[{index}]{i }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns the index of the last entry in column i. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em i} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+index 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a5751803a21ffb75a4cc2fea0e8db4b7a}\label{classgraded__linalg_1_1MatrixUtil_a5751803a21ffb75a4cc2fea0e8db4b7a}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!column\_gauss\_jordan@{column\_gauss\_jordan}}
+\index{column\_gauss\_jordan@{column\_gauss\_jordan}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{column\_gauss\_jordan()}{column\_gauss\_jordan()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::column\+\_\+gauss\+\_\+jordan (\begin{DoxyParamCaption}\item[{D\+E\+R\+I\+V\+ED \&}]{performed\+\_\+ops }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes A, B, such that this$\ast$A = B and B is column-\/reduced and ordered. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em performed\+\_\+ops} & Applies all column operations to this matrix. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_ace314c157c53beac7049b31c52337d13}\label{classgraded__linalg_1_1MatrixUtil_ace314c157c53beac7049b31c52337d13}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!column\_gauss\_solver@{column\_gauss\_solver}}
+\index{column\_gauss\_solver@{column\_gauss\_solver}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{column\_gauss\_solver()}{column\_gauss\_solver()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::column\+\_\+gauss\+\_\+solver (\begin{DoxyParamCaption}\item[{C\+O\+L\+U\+MN \&}]{performed\+\_\+ops }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Solves (A$^\wedge$T)x=b with Gauss elimination, pretending that this is a row-\/matrix. T\+O-\/\+DO \+: Implement. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em performed\+\_\+ops} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a867e7d1ea8a1c0eebea9437e90e0331c}\label{classgraded__linalg_1_1MatrixUtil_a867e7d1ea8a1c0eebea9437e90e0331c}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!column\_reduction@{column\_reduction}}
+\index{column\_reduction@{column\_reduction}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{column\_reduction()}{column\_reduction()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::column\+\_\+reduction (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}
+
+
+
+Brings Matrix in completly reduced Column Echelon form. Operations go {\itshape from} the active column. 
+
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a38ef47bfe880402d2031e9f87b4999b7}\label{classgraded__linalg_1_1MatrixUtil_a38ef47bfe880402d2031e9f87b4999b7}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!column\_reduction\_triangular@{column\_reduction\_triangular}}
+\index{column\_reduction\_triangular@{column\_reduction\_triangular}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{column\_reduction\_triangular()}{column\_reduction\_triangular()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::column\+\_\+reduction\+\_\+triangular (\begin{DoxyParamCaption}\item[{bitset \&}]{support,  }\item[{bitset \&}]{zero\+\_\+cols }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Michael\textquotesingle{}s column reduction algorithm. Brings Matrix in {\itshape non}-\/completely reduced Column Echelon Form. All column operations go from left to right and go {\itshape to} the active column. Only reduces the column indices given by the support bitset.\+add\+\_\+to. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em delete\+\_\+zero\+\_\+columns} & If set to true, columns with only zero entries will be deleted. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a17e964a8cd29c4bb4e4879f2aa7181fa}\label{classgraded__linalg_1_1MatrixUtil_a17e964a8cd29c4bb4e4879f2aa7181fa}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!column\_reduction\_triangular@{column\_reduction\_triangular}}
+\index{column\_reduction\_triangular@{column\_reduction\_triangular}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{column\_reduction\_triangular()}{column\_reduction\_triangular()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::column\+\_\+reduction\+\_\+triangular (\begin{DoxyParamCaption}\item[{bool}]{delete\+\_\+zero\+\_\+columns = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Michael\textquotesingle{}s column reduction algorithm. Brings Matrix in {\itshape non}-\/completely reduced Column Echelon Form. All column operations go from left to right and go {\itshape to} the active column. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em delete\+\_\+zero\+\_\+columns} & If set to true, columns with only zero entries will be deleted. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a3d5ea7f83c7104b4ee6bcba1f7295a7c}\label{classgraded__linalg_1_1MatrixUtil_a3d5ea7f83c7104b4ee6bcba1f7295a7c}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!column\_reduction\_triangular@{column\_reduction\_triangular}}
+\index{column\_reduction\_triangular@{column\_reduction\_triangular}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{column\_reduction\_triangular()}{column\_reduction\_triangular()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::column\+\_\+reduction\+\_\+triangular (\begin{DoxyParamCaption}\item[{index}]{threshold,  }\item[{bool}]{delete\+\_\+zero\+\_\+columns = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Michael\textquotesingle{}s column reduction algorithm. Brings Matrix in {\itshape non}-\/completely reduced Column Echelon Form. All column operations go from left to right and go {\itshape to} the active column. Only reduces columns with a last entry larger than the threshold. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em delete\+\_\+zero\+\_\+columns} & If set to true, columns with only zero entries will be deleted. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a713bacbe2596fbf9e0d6379d69979188}\label{classgraded__linalg_1_1MatrixUtil_a713bacbe2596fbf9e0d6379d69979188}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!column\_reduction\_triangular\_with\_memory@{column\_reduction\_triangular\_with\_memory}}
+\index{column\_reduction\_triangular\_with\_memory@{column\_reduction\_triangular\_with\_memory}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{column\_reduction\_triangular\_with\_memory()}{column\_reduction\_triangular\_with\_memory()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::column\+\_\+reduction\+\_\+triangular\+\_\+with\+\_\+memory (\begin{DoxyParamCaption}\item[{D\+E\+R\+I\+V\+ED \&}]{performed\+\_\+ops }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Brings Matrix in {\itshape non}-\/completely reduced Column Echelon Form and returns the performed operations. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em performed\+\_\+ops} & Applies all column operations to this matrix. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a82c1af9335940960f6ad47bbc188fd33}\label{classgraded__linalg_1_1MatrixUtil_a82c1af9335940960f6ad47bbc188fd33}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!column\_reduction\_triangular\_with\_memory@{column\_reduction\_triangular\_with\_memory}}
+\index{column\_reduction\_triangular\_with\_memory@{column\_reduction\_triangular\_with\_memory}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{column\_reduction\_triangular\_with\_memory()}{column\_reduction\_triangular\_with\_memory()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::column\+\_\+reduction\+\_\+triangular\+\_\+with\+\_\+memory (\begin{DoxyParamCaption}\item[{D\+E\+R\+I\+V\+ED \&}]{performed\+\_\+ops,  }\item[{vec$<$ index $>$ \&}]{zero\+\_\+cols }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Brings Matrix in {\itshape non}-\/completely reduced Column Echelon Form and returns the performed operations. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em performed\+\_\+ops} & Applies all column operations to this matrix. \\
+\hline
+{\em zero\+\_\+cols} & Stores the indices of the columns which are completely zero. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_aefc34e3c704c0f5b90236a947e12e9fb}\label{classgraded__linalg_1_1MatrixUtil_aefc34e3c704c0f5b90236a947e12e9fb}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!column\_reduction\_with\_memory@{column\_reduction\_with\_memory}}
+\index{column\_reduction\_with\_memory@{column\_reduction\_with\_memory}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{column\_reduction\_with\_memory()}{column\_reduction\_with\_memory()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::column\+\_\+reduction\+\_\+with\+\_\+memory (\begin{DoxyParamCaption}\item[{D\+E\+R\+I\+V\+ED \&}]{performed\+\_\+ops,  }\item[{bool}]{comments = {\ttfamily false},  }\item[{bool}]{with\+\_\+swaps = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Brings Matrix in reduced Column Echelon form and returns the performed operations if output is set to true. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em performed\+\_\+ops} & Pass an empty matrix of the same type as the current matrix. The performed operations will be stored in this matrix. \\
+\hline
+{\em comments} & If set to true, the function will print out the pivot rows and the operations performed. \\
+\hline
+{\em with\+\_\+swaps} & If set to true, the function will also perform swaps to bring the matrix in standard form. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a6240f48c53a0ba78c01effacdb4eb76b}\label{classgraded__linalg_1_1MatrixUtil_a6240f48c53a0ba78c01effacdb4eb76b}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!compute\_num\_cols@{compute\_num\_cols}}
+\index{compute\_num\_cols@{compute\_num\_cols}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_num\_cols()}{compute\_num\_cols()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::compute\+\_\+num\+\_\+cols (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+sets num\+\_\+cols to th enumber of entries in data. Useful for many subroutines. 
+
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_ae6fcf41b9f2498b72287d6d64eea5acf}\label{classgraded__linalg_1_1MatrixUtil_ae6fcf41b9f2498b72287d6d64eea5acf}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!delinearise\_position@{delinearise\_position}}
+\index{delinearise\_position@{delinearise\_position}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{delinearise\_position()}{delinearise\_position()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+std\+::pair$<$index,index$>$ \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::delinearise\+\_\+position (\begin{DoxyParamCaption}\item[{index}]{k }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Inverse function to linearise\+\_\+position. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em k} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::pair$<$index,index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a658935c9751d6f0900b2d7aa3303a94b}\label{classgraded__linalg_1_1MatrixUtil_a658935c9751d6f0900b2d7aa3303a94b}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!delinearise\_position\_reverse@{delinearise\_position\_reverse}}
+\index{delinearise\_position\_reverse@{delinearise\_position\_reverse}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{delinearise\_position\_reverse()}{delinearise\_position\_reverse()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+std\+::pair$<$index,index$>$ \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::delinearise\+\_\+position\+\_\+reverse (\begin{DoxyParamCaption}\item[{long}]{k }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Inverse function to linearize\+\_\+position\+\_\+reverse. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em k} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::pair$<$index,index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_ab233a26079efb5138deceba7aa57015a}\label{classgraded__linalg_1_1MatrixUtil_ab233a26079efb5138deceba7aa57015a}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!divide\_right@{divide\_right}}
+\index{divide\_right@{divide\_right}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{divide\_right()}{divide\_right()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::divide\+\_\+right (\begin{DoxyParamCaption}\item[{D\+E\+R\+I\+V\+ED \&}]{other }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes this$\ast$other$^\wedge$\{-\/1\} without changing either matrix. Can be computed faster even using column\+\_\+reduction\+\_\+with\+\_\+memory using other as input, extending the getinverse function. (Could implement this). 
+
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a9c1fd5655298f8511262157aeb0cb5c6}\label{classgraded__linalg_1_1MatrixUtil_a9c1fd5655298f8511262157aeb0cb5c6}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!divide\_right\_nocopy@{divide\_right\_nocopy}}
+\index{divide\_right\_nocopy@{divide\_right\_nocopy}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{divide\_right\_nocopy()}{divide\_right\_nocopy()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::divide\+\_\+right\+\_\+nocopy (\begin{DoxyParamCaption}\item[{D\+E\+R\+I\+V\+ED \&}]{other }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes this$\ast$other$^\wedge$\{-\/1\} without changing either matrix. Can be computed faster even using column\+\_\+reduction\+\_\+with\+\_\+memory using other as input, extending the getinverse function. (Could implement this). 
+
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_aee1e7f66ffcc38f0a372f98d571afcc3}\label{classgraded__linalg_1_1MatrixUtil_aee1e7f66ffcc38f0a372f98d571afcc3}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!equals@{equals}}
+\index{equals@{equals}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{equals()}{equals()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::equals (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$ \&}]{other,  }\item[{bool}]{output = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Compares the raw data of this matrix to another one, ignoring all other attributes. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em other} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true 
+
+false 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_ae1b04b9d584a91b610330013e1999c15}\label{classgraded__linalg_1_1MatrixUtil_ae1b04b9d584a91b610330013e1999c15}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!equals\_with\_entry\_check@{equals\_with\_entry\_check}}
+\index{equals\_with\_entry\_check@{equals\_with\_entry\_check}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{equals\_with\_entry\_check()}{equals\_with\_entry\_check()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+index \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::equals\+\_\+with\+\_\+entry\+\_\+check (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$ \&}]{other,  }\item[{bool}]{output = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Compares with another matrix and returns the index of the first column that does not match or -\/1 if they are equal. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em other} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true 
+
+false 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a8432f42d69bb06eb10da4c91cec66dfd}\label{classgraded__linalg_1_1MatrixUtil_a8432f42d69bb06eb10da4c91cec66dfd}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!inverse@{inverse}}
+\index{inverse@{inverse}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{inverse()}{inverse()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::inverse (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes an inverse using column-\/reduction without changing the matrix. 
+
+\begin{DoxyReturn}{Returns}
+D\+E\+R\+I\+V\+ED 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_af90bf0f1b0f35c461411d7b26644dab6}\label{classgraded__linalg_1_1MatrixUtil_af90bf0f1b0f35c461411d7b26644dab6}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!inverse\_nocopy@{inverse\_nocopy}}
+\index{inverse\_nocopy@{inverse\_nocopy}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{inverse\_nocopy()}{inverse\_nocopy()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::inverse\+\_\+nocopy (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes an inverse using column-\/reduction without changing the matrix. 
+
+\begin{DoxyReturn}{Returns}
+D\+E\+R\+I\+V\+ED 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_af22ae1bab70922c2c30a0a1a45fae116}\label{classgraded__linalg_1_1MatrixUtil_af22ae1bab70922c2c30a0a1a45fae116}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!is\_nonzero@{is\_nonzero}}
+\index{is\_nonzero@{is\_nonzero}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{is\_nonzero()}{is\_nonzero()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::is\+\_\+nonzero (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Checks if the matrix is nonzero. 
+
+\begin{DoxyReturn}{Returns}
+true 
+
+false 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a0993de1cad87c2a1c7025a02619e7270}\label{classgraded__linalg_1_1MatrixUtil_a0993de1cad87c2a1c7025a02619e7270}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!is\_nonzero@{is\_nonzero}}
+\index{is\_nonzero@{is\_nonzero}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{is\_nonzero()}{is\_nonzero()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::is\+\_\+nonzero (\begin{DoxyParamCaption}\item[{bitset \&}]{col\+\_\+indices }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Checks if the matrix is nonzero at col\+\_\+indices. 
+
+\begin{DoxyReturn}{Returns}
+true 
+
+false 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a716d4bf1a958a7b94166a10b33ee365c}\label{classgraded__linalg_1_1MatrixUtil_a716d4bf1a958a7b94166a10b33ee365c}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!is\_zero@{is\_zero}}
+\index{is\_zero@{is\_zero}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{is\_zero()}{is\_zero()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::is\+\_\+zero (\begin{DoxyParamCaption}\item[{bitset \&}]{col\+\_\+indices }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns true if the selected columns are empty. 
+
+\begin{DoxyReturn}{Returns}
+true 
+
+false 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a723039e87a732839bb4573c1a4771725}\label{classgraded__linalg_1_1MatrixUtil_a723039e87a732839bb4573c1a4771725}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!kernel@{kernel}}
+\index{kernel@{kernel}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{kernel()}{kernel()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::kernel (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns a basis for the kernel of the matrix via column reduction. 
+
+\begin{DoxyReturn}{Returns}
+D\+E\+R\+I\+V\+ED 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a86da43525595d020020e287544c2200c}\label{classgraded__linalg_1_1MatrixUtil_a86da43525595d020020e287544c2200c}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!linearise\_position@{linearise\_position}}
+\index{linearise\_position@{linearise\_position}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{linearise\_position()}{linearise\_position()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+index \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::linearise\+\_\+position (\begin{DoxyParamCaption}\item[{index}]{i,  }\item[{index}]{j }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Counts the entries in the matrix from left to right and top to bottom. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em i} & column-\/index \\
+\hline
+{\em j} & row-\/index \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+index 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a4a58306531d050002550f10c0ea19c04}\label{classgraded__linalg_1_1MatrixUtil_a4a58306531d050002550f10c0ea19c04}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!linearise\_position\_reverse@{linearise\_position\_reverse}}
+\index{linearise\_position\_reverse@{linearise\_position\_reverse}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{linearise\_position\_reverse()}{linearise\_position\_reverse()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+long \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::linearise\+\_\+position\+\_\+reverse (\begin{DoxyParamCaption}\item[{index}]{i,  }\item[{index}]{j }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Re-\/coordinatises the positions in the matrix by counting from top to bottom and right to left. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em i} & column-\/index from the right \\
+\hline
+{\em j} & row-\/index \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+index 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a175951d48c4e8a34a8ca944f134f46a0}\label{classgraded__linalg_1_1MatrixUtil_a175951d48c4e8a34a8ca944f134f46a0}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!operator+@{operator+}}
+\index{operator+@{operator+}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{operator+()}{operator+()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::operator+ (\begin{DoxyParamCaption}\item[{const D\+E\+R\+I\+V\+ED \&}]{other }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Usual addition of matrices. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em other} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+D\+E\+R\+I\+V\+ED 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_ade49cb67cdf38784509a04cfc0bafe88}\label{classgraded__linalg_1_1MatrixUtil_ade49cb67cdf38784509a04cfc0bafe88}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!print@{print}}
+\index{print@{print}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{print()}{print()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+const void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::print (\begin{DoxyParamCaption}\item[{bool}]{suppress\+\_\+description = {\ttfamily false},  }\item[{bool}]{space = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Prints the matrix to the console. If suppress\+\_\+description is set to true, it will not print the number of rows and columns. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em suppress\+\_\+description} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a795c936b1c69e0e2296f956d45a37c07}\label{classgraded__linalg_1_1MatrixUtil_a795c936b1c69e0e2296f956d45a37c07}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!rectify\_invertible@{rectify\_invertible}}
+\index{rectify\_invertible@{rectify\_invertible}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{rectify\_invertible()}{rectify\_invertible()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+vec$<$index$>$ \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::rectify\+\_\+invertible (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}
+
+
+
+Recursively finds a permutation of the column indices such that all diagonal elements are non-\/zero. Matrix needs to be square and invertible for this algorithm. 
+
+\begin{DoxyReturn}{Returns}
+vec$<$int$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a89b97e3d7673ccb2ec486ed308e7b646}\label{classgraded__linalg_1_1MatrixUtil_a89b97e3d7673ccb2ec486ed308e7b646}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!reorder\_columns@{reorder\_columns}}
+\index{reorder\_columns@{reorder\_columns}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{reorder\_columns()}{reorder\_columns()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::reorder\+\_\+columns (\begin{DoxyParamCaption}\item[{vec$<$ index $>$}]{permutation }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}
+
+
+
+Reorder the columns given a permutation as a vector of integers by copying everything. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em permutation} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a990e8e4f08208d928e1e7d91d204a71f}\label{classgraded__linalg_1_1MatrixUtil_a990e8e4f08208d928e1e7d91d204a71f}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!reorder\_via\_comparison@{reorder\_via\_comparison}}
+\index{reorder\_via\_comparison@{reorder\_via\_comparison}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{reorder\_via\_comparison()}{reorder\_via\_comparison()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::reorder\+\_\+via\+\_\+comparison (\begin{DoxyParamCaption}\item[{vec$<$ index $>$}]{compare\+\_\+against }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}
+
+
+
+Given a set of indices to be ordered, reorder the columns in the same way. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em permutation} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_ac71053e13a75e1a165259b4a6e8961f8}\label{classgraded__linalg_1_1MatrixUtil_ac71053e13a75e1a165259b4a6e8961f8}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!restricted\_domain\_copy@{restricted\_domain\_copy}}
+\index{restricted\_domain\_copy@{restricted\_domain\_copy}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{restricted\_domain\_copy()}{restricted\_domain\_copy()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::restricted\+\_\+domain\+\_\+copy (\begin{DoxyParamCaption}\item[{bitset \&}]{col\+Indices,  }\item[{index}]{start = {\ttfamily 0} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns a copy with only the columns at the indices given in col\+Indices but adding start. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em col\+Indices} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+sparse\+Matrix 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a31335e6b487d36b3b73b092cbabd670a}\label{classgraded__linalg_1_1MatrixUtil_a31335e6b487d36b3b73b092cbabd670a}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!restricted\_domain\_copy@{restricted\_domain\_copy}}
+\index{restricted\_domain\_copy@{restricted\_domain\_copy}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{restricted\_domain\_copy()}{restricted\_domain\_copy()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+D\+E\+R\+I\+V\+ED \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::restricted\+\_\+domain\+\_\+copy (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{col\+Indices }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns a copy with only the columns at the indices given in col\+Indices. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em col\+Indices} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+sparse\+Matrix 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a1a6b3aca683a321a5d2f85b4bc391577}\label{classgraded__linalg_1_1MatrixUtil_a1a6b3aca683a321a5d2f85b4bc391577}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!set\_entry@{set\_entry}}
+\index{set\_entry@{set\_entry}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{set\_entry()}{set\_entry()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::set\+\_\+entry (\begin{DoxyParamCaption}\item[{index}]{i,  }\item[{index}]{j }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}
+
+
+
+Set the entry at column i and row j to 1. 
+
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a027ff91825e52f6cd6f3ad304e05f919}\label{classgraded__linalg_1_1MatrixUtil_a027ff91825e52f6cd6f3ad304e05f919}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!solve\_col\_reduction@{solve\_col\_reduction}}
+\index{solve\_col\_reduction@{solve\_col\_reduction}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{solve\_col\_reduction()}{solve\_col\_reduction()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::solve\+\_\+col\+\_\+reduction (\begin{DoxyParamCaption}\item[{C\+O\+L\+U\+MN \&}]{c,  }\item[{C\+O\+L\+U\+MN \&}]{solution,  }\item[{bool}]{complete\+\_\+reduce = {\ttfamily true},  }\item[{bool}]{reduce\+\_\+S = {\ttfamily true},  }\item[{bool}]{get\+\_\+ops = {\ttfamily true} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Michaels Column-\/\+Reduction Solver, modified to return the correct solution. Also deleted non-\/functional code. This reducer is better than the other one, because it does not require re-\/transformation when there are many empty rows. This is now a function of the object \char`\"{}\+S\char`\"{} instead of a pure function for no good reason other than trying an object-\/oriented approach. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em c} & the target \\
+\hline
+{\em threshold} & \\
+\hline
+{\em solution} & Stores the column operations which where used to solve the system. \\
+\hline
+{\em complete\+\_\+reduce} & Indicate if you only want to solve the system until a certain point \\
+\hline
+{\em reduce\+\_\+S} & Indicates, if this matrix needs to be reduced. Set to false, if already reduced. Pivots will be computed again. \\
+\hline
+{\em get\+\_\+ops} & Indicates if we want to know the solution or just solvability. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a6860210886698581edc75e7bcc40b416}\label{classgraded__linalg_1_1MatrixUtil_a6860210886698581edc75e7bcc40b416}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!solve\_col\_reduction@{solve\_col\_reduction}}
+\index{solve\_col\_reduction@{solve\_col\_reduction}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{solve\_col\_reduction()}{solve\_col\_reduction()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::solve\+\_\+col\+\_\+reduction (\begin{DoxyParamCaption}\item[{D\+E\+R\+I\+V\+ED \&}]{N,  }\item[{D\+E\+R\+I\+V\+ED \&\&}]{solution = {\ttfamily DERIVED()},  }\item[{bool}]{get\+\_\+ops = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Solves the Linear System (data $\ast$ x) = N\+\_\+\{target\} using triangular column-\/reduction and returns a solution. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em N} & \\
+\hline
+{\em solution} & Stores the column operations which where used to solve the system. \\
+\hline
+{\em get\+\_\+ops} & Indicates if we want to know the solution or just solvability. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_aea54594ce7e3e8a3faaedf6c21df6868}\label{classgraded__linalg_1_1MatrixUtil_aea54594ce7e3e8a3faaedf6c21df6868}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!swap\_cols@{swap\_cols}}
+\index{swap\_cols@{swap\_cols}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{swap\_cols()}{swap\_cols()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::swap\+\_\+cols (\begin{DoxyParamCaption}\item[{index}]{i,  }\item[{index}]{j }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Swaps the columns i and j. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em i} & \\
+\hline
+{\em j} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classgraded__linalg_1_1MatrixUtil_a9f2e291064939885e47918579b44c7b5}\label{classgraded__linalg_1_1MatrixUtil_a9f2e291064939885e47918579b44c7b5}} 
+\index{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}!test\_diagonal\_entries@{test\_diagonal\_entries}}
+\index{test\_diagonal\_entries@{test\_diagonal\_entries}!graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$@{graded\_linalg::MatrixUtil$<$ COLUMN, index, DERIVED $>$}}
+\doxysubsubsection{\texorpdfstring{test\_diagonal\_entries()}{test\_diagonal\_entries()}}
+{\footnotesize\ttfamily template$<$typename C\+O\+L\+U\+MN , typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+bool \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util}}$<$ C\+O\+L\+U\+MN, index, D\+E\+R\+I\+V\+ED $>$\+::test\+\_\+diagonal\+\_\+entries (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}
+
+
+
+Verifies if all diagonal entries are non-\/zero. 
+
+\begin{DoxyReturn}{Returns}
+true 
+
+false 
+\end{DoxyReturn}
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+Persistence-\/\+Algebra/include/grlina/\mbox{\hyperlink{matrix__base_8hpp}{matrix\+\_\+base.\+hpp}}\end{DoxyCompactItemize}

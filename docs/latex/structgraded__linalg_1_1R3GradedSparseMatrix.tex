@@ -1,0 +1,117 @@
+\hypertarget{structgraded__linalg_1_1R3GradedSparseMatrix}{}\doxysection{graded\+\_\+linalg\+::R3\+Graded\+Sparse\+Matrix$<$ index $>$ Struct Template Reference}
+\label{structgraded__linalg_1_1R3GradedSparseMatrix}\index{graded\_linalg::R3GradedSparseMatrix$<$ index $>$@{graded\_linalg::R3GradedSparseMatrix$<$ index $>$}}
+
+
+Inheritance diagram for graded\+\_\+linalg\+::R3\+Graded\+Sparse\+Matrix$<$ index $>$\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=250pt]{structgraded__linalg_1_1R3GradedSparseMatrix__inherit__graph}
+\end{center}
+\end{figure}
+
+
+Collaboration diagram for graded\+\_\+linalg\+::R3\+Graded\+Sparse\+Matrix$<$ index $>$\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=250pt]{structgraded__linalg_1_1R3GradedSparseMatrix__coll__graph}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1R3GradedSparseMatrix_a15458016bb1533a613dcce9ec7ed57a5}\label{structgraded__linalg_1_1R3GradedSparseMatrix_a15458016bb1533a613dcce9ec7ed57a5}} 
+{\bfseries R3\+Graded\+Sparse\+Matrix} (index m, index n)
+\item 
+\mbox{\hyperlink{structgraded__linalg_1_1R3GradedSparseMatrix_aca1a53c4267249f0aa819cd1f9c66425}{R3\+Graded\+Sparse\+Matrix}} (const std\+::string \&filepath, bool lex\+\_\+sort=false, bool compute\+\_\+batches=false)
+\begin{DoxyCompactList}\small\item\em Constructs an R$^\wedge$3 graded matrix from an scc or firep data file. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1R3GradedSparseMatrix_a0984af35d310b2e6167c413fe034254e}{R3\+Graded\+Sparse\+Matrix}} (std\+::istream \&file\+\_\+stream, bool lex\+\_\+sort=false, bool compute\+\_\+batches=false)
+\begin{DoxyCompactList}\small\item\em Constructs an R$^\wedge$3 graded matrix from an input file stream. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename Outputstream $>$ }\\void \mbox{\hyperlink{structgraded__linalg_1_1R3GradedSparseMatrix_ab0992be23dcb206349cc0e05c25fb676}{to\+\_\+stream\+\_\+r3}} (Outputstream \&output\+\_\+stream) const
+\begin{DoxyCompactList}\small\item\em Writes the R$^\wedge$2 graded matrix to an output stream. // print\+\_\+to\+\_\+stream works more generally in every dimension. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$ \mbox{\hyperlink{structgraded__linalg_1_1R3GradedSparseMatrix_a79c84c14247e1e52718630f47983a34c}{r3kernel}} ()
+\begin{DoxyCompactList}\small\item\em Returns a basis for the kernel of a 2d graded matrix. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Additional Inherited Members}
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\mbox{\Hypertarget{structgraded__linalg_1_1R3GradedSparseMatrix_aca1a53c4267249f0aa819cd1f9c66425}\label{structgraded__linalg_1_1R3GradedSparseMatrix_aca1a53c4267249f0aa819cd1f9c66425}} 
+\index{graded\_linalg::R3GradedSparseMatrix$<$ index $>$@{graded\_linalg::R3GradedSparseMatrix$<$ index $>$}!R3GradedSparseMatrix@{R3GradedSparseMatrix}}
+\index{R3GradedSparseMatrix@{R3GradedSparseMatrix}!graded\_linalg::R3GradedSparseMatrix$<$ index $>$@{graded\_linalg::R3GradedSparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{R3GradedSparseMatrix()}{R3GradedSparseMatrix()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+\mbox{\hyperlink{structgraded__linalg_1_1R3GradedSparseMatrix}{graded\+\_\+linalg\+::\+R3\+Graded\+Sparse\+Matrix}}$<$ index $>$\+::\mbox{\hyperlink{structgraded__linalg_1_1R3GradedSparseMatrix}{R3\+Graded\+Sparse\+Matrix}} (\begin{DoxyParamCaption}\item[{const std\+::string \&}]{filepath,  }\item[{bool}]{lex\+\_\+sort = {\ttfamily false},  }\item[{bool}]{compute\+\_\+batches = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Constructs an R$^\wedge$3 graded matrix from an scc or firep data file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filepath} & path to the scc or firep file \\
+\hline
+{\em compute\+\_\+batches} & whether to compute the column batches and k\+\_\+max \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1R3GradedSparseMatrix_a0984af35d310b2e6167c413fe034254e}\label{structgraded__linalg_1_1R3GradedSparseMatrix_a0984af35d310b2e6167c413fe034254e}} 
+\index{graded\_linalg::R3GradedSparseMatrix$<$ index $>$@{graded\_linalg::R3GradedSparseMatrix$<$ index $>$}!R3GradedSparseMatrix@{R3GradedSparseMatrix}}
+\index{R3GradedSparseMatrix@{R3GradedSparseMatrix}!graded\_linalg::R3GradedSparseMatrix$<$ index $>$@{graded\_linalg::R3GradedSparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{R3GradedSparseMatrix()}{R3GradedSparseMatrix()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+\mbox{\hyperlink{structgraded__linalg_1_1R3GradedSparseMatrix}{graded\+\_\+linalg\+::\+R3\+Graded\+Sparse\+Matrix}}$<$ index $>$\+::\mbox{\hyperlink{structgraded__linalg_1_1R3GradedSparseMatrix}{R3\+Graded\+Sparse\+Matrix}} (\begin{DoxyParamCaption}\item[{std\+::istream \&}]{file\+\_\+stream,  }\item[{bool}]{lex\+\_\+sort = {\ttfamily false},  }\item[{bool}]{compute\+\_\+batches = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Constructs an R$^\wedge$3 graded matrix from an input file stream. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em file\+\_\+stream} & input file stream containing the scc or firep data \\
+\hline
+{\em lex\+\_\+sort} & whether to sort lexicographically \\
+\hline
+{\em compute\+\_\+batches} & whether to compute the column batches and k\+\_\+max \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{structgraded__linalg_1_1R3GradedSparseMatrix_a79c84c14247e1e52718630f47983a34c}\label{structgraded__linalg_1_1R3GradedSparseMatrix_a79c84c14247e1e52718630f47983a34c}} 
+\index{graded\_linalg::R3GradedSparseMatrix$<$ index $>$@{graded\_linalg::R3GradedSparseMatrix$<$ index $>$}!r3kernel@{r3kernel}}
+\index{r3kernel@{r3kernel}!graded\_linalg::R3GradedSparseMatrix$<$ index $>$@{graded\_linalg::R3GradedSparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{r3kernel()}{r3kernel()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$index$>$ \mbox{\hyperlink{structgraded__linalg_1_1R3GradedSparseMatrix}{graded\+\_\+linalg\+::\+R3\+Graded\+Sparse\+Matrix}}$<$ index $>$\+::r3kernel (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns a basis for the kernel of a 2d graded matrix. 
+
+\begin{DoxyReturn}{Returns}
+Sparse\+Matrix$<$index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1R3GradedSparseMatrix_ab0992be23dcb206349cc0e05c25fb676}\label{structgraded__linalg_1_1R3GradedSparseMatrix_ab0992be23dcb206349cc0e05c25fb676}} 
+\index{graded\_linalg::R3GradedSparseMatrix$<$ index $>$@{graded\_linalg::R3GradedSparseMatrix$<$ index $>$}!to\_stream\_r3@{to\_stream\_r3}}
+\index{to\_stream\_r3@{to\_stream\_r3}!graded\_linalg::R3GradedSparseMatrix$<$ index $>$@{graded\_linalg::R3GradedSparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{to\_stream\_r3()}{to\_stream\_r3()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+template$<$typename Outputstream $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1R3GradedSparseMatrix}{graded\+\_\+linalg\+::\+R3\+Graded\+Sparse\+Matrix}}$<$ index $>$\+::to\+\_\+stream\+\_\+r3 (\begin{DoxyParamCaption}\item[{Outputstream \&}]{output\+\_\+stream }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Writes the R$^\wedge$2 graded matrix to an output stream. // print\+\_\+to\+\_\+stream works more generally in every dimension. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em output\+\_\+stream} & output stream to write the matrix data \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+Persistence-\/\+Algebra/include/grlina/\mbox{\hyperlink{r3graded__matrix_8hpp}{r3graded\+\_\+matrix.\+hpp}}\end{DoxyCompactItemize}

@@ -1,0 +1,115 @@
+\hypertarget{structgraded__linalg_1_1Degree__traits}{}\doxysection{graded\+\_\+linalg\+::Degree\+\_\+traits$<$ D $>$ Struct Template Reference}
+\label{structgraded__linalg_1_1Degree__traits}\index{graded\_linalg::Degree\_traits$<$ D $>$@{graded\_linalg::Degree\_traits$<$ D $>$}}
+\doxysubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_a6fdb48599127bfe2248fe95ce7dd7b1b}\label{structgraded__linalg_1_1Degree__traits_a6fdb48599127bfe2248fe95ce7dd7b1b}} 
+static bool {\bfseries equals} (const D \&lhs, const D \&rhs)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_a1f232dd8efa16b64a17c4e2214004380}\label{structgraded__linalg_1_1Degree__traits_a1f232dd8efa16b64a17c4e2214004380}} 
+static bool {\bfseries smaller} (const D \&lhs, const D \&rhs)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_a0ffc95ec1b863ca769599c6b2562e231}\label{structgraded__linalg_1_1Degree__traits_a0ffc95ec1b863ca769599c6b2562e231}} 
+static bool {\bfseries greater} (const D \&lhs, const D \&rhs)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_a51a6002e90880e72f88f0da747ecf8d8}\label{structgraded__linalg_1_1Degree__traits_a51a6002e90880e72f88f0da747ecf8d8}} 
+static bool {\bfseries greater\+\_\+equal} (const D \&lhs, const D \&rhs)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_a8b0d57d9d31767fa5f30cd1a8ca53342}\label{structgraded__linalg_1_1Degree__traits_a8b0d57d9d31767fa5f30cd1a8ca53342}} 
+static bool {\bfseries smaller\+\_\+equal} (const D \&lhs, const D \&rhs)
+\item 
+static bool \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits_a161f325ca428456bd7c0099881a19649}{lex\+\_\+order}} (const D \&a, const D \&b)
+\begin{DoxyCompactList}\small\item\em This can be any topolgical order on the degrees. \end{DoxyCompactList}\item 
+static vec$<$ double $>$ \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits_a82a798afd156fa77b7884b0d7bc53341}{position}} (const D \&a)
+\begin{DoxyCompactList}\small\item\em Any Embedding of the degree poset into any R$^\wedge$n. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_a42358e828e3091c2761eab923046154a}\label{structgraded__linalg_1_1Degree__traits_a42358e828e3091c2761eab923046154a}} 
+static void {\bfseries print\+\_\+degree} (const D \&a)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_accdebdc61b577642a81417f2761c898f}\label{structgraded__linalg_1_1Degree__traits_accdebdc61b577642a81417f2761c898f}} 
+static D {\bfseries join} (const D \&a, const D \&b)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_af5221ea42dd4d107d72835bf2e3c3f97}\label{structgraded__linalg_1_1Degree__traits_af5221ea42dd4d107d72835bf2e3c3f97}} 
+static D {\bfseries meet} (const D \&a, const D \&b)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_a42bf67b1c863cae079b48322df9277e1}\label{structgraded__linalg_1_1Degree__traits_a42bf67b1c863cae079b48322df9277e1}} 
+{\footnotesize template$<$typename Output\+Stream $>$ }\\static void \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits_a42bf67b1c863cae079b48322df9277e1}{write\+\_\+degree}} (Output\+Stream \&os, const D \&a)
+\begin{DoxyCompactList}\small\item\em Writes the degree to an output stream. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_aeef8ddf751487678ea8c32b7ed3738cf}\label{structgraded__linalg_1_1Degree__traits_aeef8ddf751487678ea8c32b7ed3738cf}} 
+{\footnotesize template$<$typename Input\+Stream $>$ }\\static D \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits_aeef8ddf751487678ea8c32b7ed3738cf}{from\+\_\+stream}} (Input\+Stream \&iss)
+\begin{DoxyCompactList}\small\item\em Gets the degree from an input stream. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static std\+::function$<$ bool(const D \&, const D \&)$>$ \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits_a6e28fbc9d7a8186447241bf0cc44beb8}{lex\+\_\+lambda}}
+\begin{DoxyCompactList}\small\item\em Lambda function to compare lexicographically for sorting. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_a161f325ca428456bd7c0099881a19649}\label{structgraded__linalg_1_1Degree__traits_a161f325ca428456bd7c0099881a19649}} 
+\index{graded\_linalg::Degree\_traits$<$ D $>$@{graded\_linalg::Degree\_traits$<$ D $>$}!lex\_order@{lex\_order}}
+\index{lex\_order@{lex\_order}!graded\_linalg::Degree\_traits$<$ D $>$@{graded\_linalg::Degree\_traits$<$ D $>$}}
+\doxysubsubsection{\texorpdfstring{lex\_order()}{lex\_order()}}
+{\footnotesize\ttfamily template$<$typename D $>$ \\
+static bool \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits}{graded\+\_\+linalg\+::\+Degree\+\_\+traits}}$<$ D $>$\+::lex\+\_\+order (\begin{DoxyParamCaption}\item[{const D \&}]{a,  }\item[{const D \&}]{b }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+This can be any topolgical order on the degrees. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em a} & \\
+\hline
+{\em b} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true 
+
+false 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_a82a798afd156fa77b7884b0d7bc53341}\label{structgraded__linalg_1_1Degree__traits_a82a798afd156fa77b7884b0d7bc53341}} 
+\index{graded\_linalg::Degree\_traits$<$ D $>$@{graded\_linalg::Degree\_traits$<$ D $>$}!position@{position}}
+\index{position@{position}!graded\_linalg::Degree\_traits$<$ D $>$@{graded\_linalg::Degree\_traits$<$ D $>$}}
+\doxysubsubsection{\texorpdfstring{position()}{position()}}
+{\footnotesize\ttfamily template$<$typename D $>$ \\
+static vec$<$double$>$ \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits}{graded\+\_\+linalg\+::\+Degree\+\_\+traits}}$<$ D $>$\+::position (\begin{DoxyParamCaption}\item[{const D \&}]{a }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Any Embedding of the degree poset into any R$^\wedge$n. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em a} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+vec$<$double$>$ 
+\end{DoxyReturn}
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_a6e28fbc9d7a8186447241bf0cc44beb8}\label{structgraded__linalg_1_1Degree__traits_a6e28fbc9d7a8186447241bf0cc44beb8}} 
+\index{graded\_linalg::Degree\_traits$<$ D $>$@{graded\_linalg::Degree\_traits$<$ D $>$}!lex\_lambda@{lex\_lambda}}
+\index{lex\_lambda@{lex\_lambda}!graded\_linalg::Degree\_traits$<$ D $>$@{graded\_linalg::Degree\_traits$<$ D $>$}}
+\doxysubsubsection{\texorpdfstring{lex\_lambda}{lex\_lambda}}
+{\footnotesize\ttfamily template$<$typename D $>$ \\
+std\+::function$<$ bool(const D \&, const D \&)$>$ \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits}{graded\+\_\+linalg\+::\+Degree\+\_\+traits}}$<$ D $>$\+::lex\+\_\+lambda\hspace{0.3cm}{\ttfamily [static]}}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{= [](\textcolor{keyword}{const} D\& a, \textcolor{keyword}{const} D\& b) \{}
+\DoxyCodeLine{    \textcolor{keywordflow}{return} \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits_a161f325ca428456bd7c0099881a19649}{Degree\_traits<D>::lex\_order}}(a, b);}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+Lambda function to compare lexicographically for sorting. 
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+Persistence-\/\+Algebra/include/grlina/\mbox{\hyperlink{orders__and__graphs_8hpp}{orders\+\_\+and\+\_\+graphs.\+hpp}}\end{DoxyCompactItemize}

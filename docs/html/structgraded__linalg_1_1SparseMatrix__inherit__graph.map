@@ -1,0 +1,9 @@
+<map id="graded_linalg::SparseMatrix&lt; index &gt;" name="graded_linalg::SparseMatrix&lt; index &gt;">
+<area shape="rect" id="node1" title="Every column is stored as a list of non&#45;zero entries." alt="" coords="247,71,451,112"/>
+<area shape="rect" id="node3" href="$structgraded__linalg_1_1GradedSparseMatrix.html" title="A graded matrix with generic degree&#45;type." alt="" coords="499,5,708,47"/>
+<area shape="rect" id="node4" href="$structgraded__linalg_1_1GradedSparseMatrix.html" title=" " alt="" coords="526,71,681,112"/>
+<area shape="rect" id="node6" href="$structgraded__linalg_1_1GradedSparseMatrix.html" title=" " alt="" coords="526,136,681,177"/>
+<area shape="rect" id="node2" href="$classgraded__linalg_1_1MatrixUtil.html" title=" " alt="" coords="5,63,199,119"/>
+<area shape="rect" id="node5" href="$structgraded__linalg_1_1R2GradedSparseMatrix.html" title="Michael Kerbers Grid_scheduler class from mpfree for fast kernel computation." alt="" coords="756,71,983,112"/>
+<area shape="rect" id="node7" href="$structgraded__linalg_1_1R3GradedSparseMatrix.html" title=" " alt="" coords="756,136,983,177"/>
+</map>

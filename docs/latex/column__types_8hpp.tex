@@ -1,0 +1,103 @@
+\hypertarget{column__types_8hpp}{}\doxysection{Persistence-\/\+Algebra/include/grlina/column\+\_\+types.hpp File Reference}
+\label{column__types_8hpp}\index{Persistence-\/Algebra/include/grlina/column\_types.hpp@{Persistence-\/Algebra/include/grlina/column\_types.hpp}}
+{\ttfamily \#include $<$vector$>$}\newline
+{\ttfamily \#include $<$set$>$}\newline
+{\ttfamily \#include $<$boost/dynamic\+\_\+bitset.\+hpp$>$}\newline
+Include dependency graph for column\+\_\+types.\+hpp\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=339pt]{column__types_8hpp__incl}
+\end{center}
+\end{figure}
+This graph shows which files directly or indirectly include this file\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{column__types_8hpp__dep__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1Column__traits}{graded\+\_\+linalg\+::\+Column\+\_\+traits$<$ C\+O\+L\+U\+M\+N, index $>$}}
+\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1Column__traits_3_01vec_3_01index_01_4_00_01index_01_4}{graded\+\_\+linalg\+::\+Column\+\_\+traits$<$ vec$<$ index $>$, index $>$}}
+\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1Column__traits_3_01set_3_01index_01_4_00_01index_01_4}{graded\+\_\+linalg\+::\+Column\+\_\+traits$<$ set$<$ index $>$, index $>$}}
+\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1Column__traits_3_01bitset_00_01index_01_4}{graded\+\_\+linalg\+::\+Column\+\_\+traits$<$ bitset, index $>$}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{column__types_8hpp_a56ce051cfbe6ca1d14b92171357f9727}\label{column__types_8hpp_a56ce051cfbe6ca1d14b92171357f9727}} 
+{\footnotesize template$<$typename T $>$ }\\using {\bfseries graded\+\_\+linalg\+::vec} = std\+::vector$<$ T $>$
+\item 
+\mbox{\Hypertarget{column__types_8hpp_a16e25d1ad76328d19c0274da8f2616d7}\label{column__types_8hpp_a16e25d1ad76328d19c0274da8f2616d7}} 
+{\footnotesize template$<$typename T $>$ }\\using {\bfseries graded\+\_\+linalg\+::array} = vec$<$ vec$<$ T $>$ $>$
+\item 
+\mbox{\Hypertarget{column__types_8hpp_a32b95f613c6c94e21f4b46c55830acf9}\label{column__types_8hpp_a32b95f613c6c94e21f4b46c55830acf9}} 
+{\footnotesize template$<$typename T $>$ }\\using {\bfseries graded\+\_\+linalg\+::pair} = std\+::pair$<$ T, T $>$
+\item 
+\mbox{\Hypertarget{column__types_8hpp_a558e8aa3061ba8711be6b8f9a045a899}\label{column__types_8hpp_a558e8aa3061ba8711be6b8f9a045a899}} 
+{\footnotesize template$<$typename T $>$ }\\using {\bfseries graded\+\_\+linalg\+::set} = std\+::set$<$ T $>$
+\item 
+\mbox{\Hypertarget{column__types_8hpp_af0d553c5da27bfe43e9569c1fb4043c8}\label{column__types_8hpp_af0d553c5da27bfe43e9569c1fb4043c8}} 
+using {\bfseries graded\+\_\+linalg\+::bitset} = boost\+::dynamic\+\_\+bitset$<$$>$
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename index $>$ }\\vec$<$ index $>$ \mbox{\hyperlink{column__types_8hpp_af75e3eed661fc2a2d75872ca52a50f4e}{graded\+\_\+linalg\+::operator+}} (const vec$<$ index $>$ \&a, vec$<$ index $>$ \&b)
+\begin{DoxyCompactList}\small\item\em Returns a+b when treated as F\+\_\+2 vectors. Needs them to be ordered. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\vec$<$ index $>$ \mbox{\hyperlink{column__types_8hpp_a3cb71bee14687634a5fa69d238d1d614}{graded\+\_\+linalg\+::rev\+\_\+add}} (vec$<$ index $>$ \&a, vec$<$ index $>$ \&b)
+\begin{DoxyCompactList}\small\item\em Returns a+b when treated as F\+\_\+2 vectors. Needs them to be ordered in reverse. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{column__types_8hpp_ae29eccb4cc51ec0d16fd66021555f7f7}\label{column__types_8hpp_ae29eccb4cc51ec0d16fd66021555f7f7}} 
+{\footnotesize template$<$typename index $>$ }\\void \mbox{\hyperlink{column__types_8hpp_ae29eccb4cc51ec0d16fd66021555f7f7}{graded\+\_\+linalg\+::rev\+\_\+add\+\_\+to}} (vec$<$ index $>$ \&a, vec$<$ index $>$ \&b)
+\begin{DoxyCompactList}\small\item\em sparse column addition over F\+\_\+2 for vectors whose entries are stored in reverse order. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{column__types_8hpp_addb140a5503077e1d060bca3af2004e4}\label{column__types_8hpp_addb140a5503077e1d060bca3af2004e4}} 
+{\footnotesize template$<$typename index $>$ }\\set$<$ index $>$ {\bfseries graded\+\_\+linalg\+::operator+} (set$<$ index $>$ \&a, set$<$ index $>$ \&b)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Jan Jendrysiak 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+0.\+1 
+\end{DoxyVersion}
+\begin{DoxyDate}{Date}
+2025-\/03-\/13
+\end{DoxyDate}
+\begin{DoxyCopyright}{Copyright}
+2025 TU Graz This file is part of the A\+I\+DA library. You can redistribute it and/or modify it under the terms of the G\+NU Lesser General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. 
+\end{DoxyCopyright}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{column__types_8hpp_af75e3eed661fc2a2d75872ca52a50f4e}\label{column__types_8hpp_af75e3eed661fc2a2d75872ca52a50f4e}} 
+\index{column\_types.hpp@{column\_types.hpp}!operator+@{operator+}}
+\index{operator+@{operator+}!column\_types.hpp@{column\_types.hpp}}
+\doxysubsubsection{\texorpdfstring{operator+()}{operator+()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+vec$<$index$>$ graded\+\_\+linalg\+::operator+ (\begin{DoxyParamCaption}\item[{const vec$<$ index $>$ \&}]{a,  }\item[{vec$<$ index $>$ \&}]{b }\end{DoxyParamCaption})}
+
+
+
+Returns a+b when treated as F\+\_\+2 vectors. Needs them to be ordered. 
+
+\mbox{\Hypertarget{column__types_8hpp_a3cb71bee14687634a5fa69d238d1d614}\label{column__types_8hpp_a3cb71bee14687634a5fa69d238d1d614}} 
+\index{column\_types.hpp@{column\_types.hpp}!rev\_add@{rev\_add}}
+\index{rev\_add@{rev\_add}!column\_types.hpp@{column\_types.hpp}}
+\doxysubsubsection{\texorpdfstring{rev\_add()}{rev\_add()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+vec$<$index$>$ graded\+\_\+linalg\+::rev\+\_\+add (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{a,  }\item[{vec$<$ index $>$ \&}]{b }\end{DoxyParamCaption})}
+
+
+
+Returns a+b when treated as F\+\_\+2 vectors. Needs them to be ordered in reverse. 
+

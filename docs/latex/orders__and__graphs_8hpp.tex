@@ -1,0 +1,509 @@
+\hypertarget{orders__and__graphs_8hpp}{}\doxysection{Persistence-\/\+Algebra/include/grlina/orders\+\_\+and\+\_\+graphs.hpp File Reference}
+\label{orders__and__graphs_8hpp}\index{Persistence-\/Algebra/include/grlina/orders\_and\_graphs.hpp@{Persistence-\/Algebra/include/grlina/orders\_and\_graphs.hpp}}
+{\ttfamily \#include $<$iostream$>$}\newline
+{\ttfamily \#include $<$vector$>$}\newline
+{\ttfamily \#include $<$unordered\+\_\+map$>$}\newline
+{\ttfamily \#include $<$stack$>$}\newline
+{\ttfamily \#include $<$set$>$}\newline
+{\ttfamily \#include $<$iomanip$>$}\newline
+{\ttfamily \#include $<$boost/graph/adjacency\+\_\+list.\+hpp$>$}\newline
+{\ttfamily \#include $<$boost/graph/graph\+\_\+traits.\+hpp$>$}\newline
+{\ttfamily \#include $<$boost/graph/graphviz.\+hpp$>$}\newline
+{\ttfamily \#include $<$boost/graph/graph\+\_\+utility.\+hpp$>$}\newline
+{\ttfamily \#include $<$boost/graph/strong\+\_\+components.\+hpp$>$}\newline
+{\ttfamily \#include $<$boost/graph/topological\+\_\+sort.\+hpp$>$}\newline
+{\ttfamily \#include $<$functional$>$}\newline
+{\ttfamily \#include $<$map$>$}\newline
+Include dependency graph for orders\+\_\+and\+\_\+graphs.\+hpp\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{orders__and__graphs_8hpp__incl}
+\end{center}
+\end{figure}
+This graph shows which files directly or indirectly include this file\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{orders__and__graphs_8hpp__dep__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits}{graded\+\_\+linalg\+::\+Degree\+\_\+traits$<$ D $>$}}
+\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1Value}{graded\+\_\+linalg\+::\+Value$<$ D, Data\+T $>$}}
+\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1ValueReference}{graded\+\_\+linalg\+::\+Value\+Reference$<$ D, Data\+T $>$}}
+\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1ValueIterator}{graded\+\_\+linalg\+::\+Value\+Iterator$<$ D, Data\+T $>$}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a7f85b0825aee4c55dc6dff45297bde0c}\label{orders__and__graphs_8hpp_a7f85b0825aee4c55dc6dff45297bde0c}} 
+typedef boost\+::adjacency\+\_\+list$<$ boost\+::vecS, boost\+::vecS, boost\+::bidirectionalS $>$ {\bfseries graded\+\_\+linalg\+::\+Graph}
+\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a43e72d8487e54e6f3efda7a320d17d7c}\label{orders__and__graphs_8hpp_a43e72d8487e54e6f3efda7a320d17d7c}} 
+typedef boost\+::graph\+\_\+traits$<$ Graph $>$\+::vertex\+\_\+descriptor {\bfseries graded\+\_\+linalg\+::\+Vertex}
+\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a23854f0439874ca20015d1c293d55c24}\label{orders__and__graphs_8hpp_a23854f0439874ca20015d1c293d55c24}} 
+typedef boost\+::graph\+\_\+traits$<$ Graph $>$\+::in\+\_\+edge\+\_\+iterator {\bfseries graded\+\_\+linalg\+::in\+\_\+edge\+\_\+iterator}
+\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a03bede62351fcb49f1335603938d7d2c}\label{orders__and__graphs_8hpp_a03bede62351fcb49f1335603938d7d2c}} 
+typedef boost\+::graph\+\_\+traits$<$ Graph $>$\+::out\+\_\+edge\+\_\+iterator {\bfseries graded\+\_\+linalg\+::out\+\_\+edge\+\_\+iterator}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename index $>$ }\\Graph \mbox{\hyperlink{orders__and__graphs_8hpp_a110de84540b9c4cc0ffcf2d9eb203eea}{graded\+\_\+linalg\+::induced\+\_\+subgraph}} (const Graph \&g, const vec$<$ index $>$ \&vertices)
+\begin{DoxyCompactList}\small\item\em Creates an induced subgraph on a subset of the vertices. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a167d8f72fd2b1ac8fe4e8842c7e0db01}\label{orders__and__graphs_8hpp_a167d8f72fd2b1ac8fe4e8842c7e0db01}} 
+void {\bfseries graded\+\_\+linalg\+::delete\+\_\+incoming\+\_\+edges} (Graph \&g, const Vertex \&v)
+\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a098d59ff9bfdcca86e8a7a618bf85ee3}\label{orders__and__graphs_8hpp_a098d59ff9bfdcca86e8a7a618bf85ee3}} 
+{\footnotesize template$<$typename T $>$ }\\void {\bfseries graded\+\_\+linalg\+::print\+\_\+graph\+\_\+with\+\_\+labels} (const Graph \&g, const std\+::vector$<$ T $>$ \&labels)
+\item 
+void \mbox{\hyperlink{orders__and__graphs_8hpp_afcd4fb40a10ad094695e6e12396235ed}{graded\+\_\+linalg\+::print\+\_\+graph}} (const Graph \&g)
+\begin{DoxyCompactList}\small\item\em prints the content of a graph \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{orders__and__graphs_8hpp_a1038818379f144ebc7e00d3e2c4d8b82}{graded\+\_\+linalg\+::has\+\_\+incoming\+\_\+edges}} (const Graph \&g, const Vertex \&v)
+\begin{DoxyCompactList}\small\item\em Checks if a vertex has incoming edges. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_acc18a89802ec134741b58bd564dc9d32}\label{orders__and__graphs_8hpp_acc18a89802ec134741b58bd564dc9d32}} 
+{\footnotesize template$<$typename index $>$ }\\std\+::vector$<$ index $>$ {\bfseries graded\+\_\+linalg\+::incoming\+\_\+edges} (const Graph \&g, const Vertex \&v)
+\item 
+{\footnotesize template$<$typename index , typename Edge\+Checker $>$ }\\Graph \mbox{\hyperlink{orders__and__graphs_8hpp_a5acc0fcdfd928f6ea9e4d088dda82033}{graded\+\_\+linalg\+::construct\+\_\+boost\+\_\+graph}} (const vec$<$ index $>$ \&labels, Edge\+Checker has\+\_\+edge, bool visualise=false)
+\begin{DoxyCompactList}\small\item\em Constructs a directed boost graph from a list of labels and a function Edge\+Checker which returns true if there is a directed edge between two labels. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a5948671e3c48cc857b30ae543d548b97}\label{orders__and__graphs_8hpp_a5948671e3c48cc857b30ae543d548b97}} 
+{\footnotesize template$<$typename index , typename Edge\+Checker $>$ }\\Graph {\bfseries graded\+\_\+linalg\+::construct\+\_\+boost\+\_\+graph} (const index \&num\+\_\+vertices, Edge\+Checker has\+\_\+edge)
+\item 
+{\footnotesize template$<$typename index , typename Edge\+Checker $>$ }\\Graph \mbox{\hyperlink{orders__and__graphs_8hpp_a9b0e994da94472d05becff9cda8d02a8}{graded\+\_\+linalg\+::construct\+\_\+boost\+\_\+graph}} (const std\+::set$<$ index $>$ \&labels, Edge\+Checker has\+\_\+edge, bool visualise=false)
+\begin{DoxyCompactList}\small\item\em Constructs a directed boost graph from a list of labels and a function Edge\+Checker which returns true if there is a directed edge between two labels. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\Graph \mbox{\hyperlink{orders__and__graphs_8hpp_a3223b9d2956abe8744cc9f3bd2df1ce6}{graded\+\_\+linalg\+::compute\+\_\+scc\+\_\+and\+\_\+condensation}} (const Graph \&g, std\+::vector$<$ index $>$ \&component, std\+::vector$<$ std\+::vector$<$ index $>$$>$ \&scc\+\_\+sets)
+\begin{DoxyCompactList}\small\item\em Given a graph G computes its condenstion. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\std\+::vector$<$ index $>$ \mbox{\hyperlink{orders__and__graphs_8hpp_a322dd774300e287ea88d3b5b2ec08c0c}{graded\+\_\+linalg\+::compute\+\_\+topological\+\_\+order}} (const Graph \&g)
+\begin{DoxyCompactList}\small\item\em Returns a topological order for the input directed graph. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename D , typename index $>$ }\\array$<$ index $>$ \mbox{\hyperlink{orders__and__graphs_8hpp_a7c92898647b6679778740187aafcbc57}{graded\+\_\+linalg\+::minimal\+\_\+directed\+\_\+graph}} (vec$<$ D $>$ \&degrees, vec$<$ index $>$ support=vec$<$ index $>$())
+\begin{DoxyCompactList}\small\item\em Computes the Hasse Diagram of a sorted list of degrees fomring a Poset. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_aa43d88afa4a7087512aba6a3e2cbc500}\label{orders__and__graphs_8hpp_aa43d88afa4a7087512aba6a3e2cbc500}} 
+{\footnotesize template$<$typename index $>$ }\\Graph {\bfseries graded\+\_\+linalg\+::boost\+\_\+graph\+\_\+from\+\_\+edge\+\_\+list} (const array$<$ index $>$ \&edges)
+\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a968cd05c23dd2b3d08538783014a0ee6}\label{orders__and__graphs_8hpp_a968cd05c23dd2b3d08538783014a0ee6}} 
+{\footnotesize template$<$typename D $>$ }\\void {\bfseries graded\+\_\+linalg\+::write\+Degree\+List\+To\+C\+SV} (const std\+::string \&filename, const vec$<$ D $>$ \&degrees)
+\item 
+{\footnotesize template$<$typename index $>$ }\\void \mbox{\hyperlink{orders__and__graphs_8hpp_aebc89d7c78084ec76f9d38f9cf8bbb50}{graded\+\_\+linalg\+::write\+Edge\+List\+To\+C\+SV}} (const std\+::string \&filename, const array$<$ index $>$ \&edges)
+\begin{DoxyCompactList}\small\item\em Writes a list of edges to a C\+SV file. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\void \mbox{\hyperlink{orders__and__graphs_8hpp_ab71342d543d07dd1fda488cf6c54b2c1}{graded\+\_\+linalg\+::print\+\_\+edge\+\_\+list}} (const array$<$ index $>$ \&edges)
+\begin{DoxyCompactList}\small\item\em Print the edges of a directed graph. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_adc9426cdd14b55fdbad31d35537c2f8f}\label{orders__and__graphs_8hpp_adc9426cdd14b55fdbad31d35537c2f8f}} 
+{\footnotesize template$<$typename index $>$ }\\void {\bfseries graded\+\_\+linalg\+::tarjan\+D\+FS} (index u, const std\+::unordered\+\_\+map$<$ index, vec$<$ index $>$$>$ \&outgoing\+\_\+edges, vec$<$ index $>$ \&disc, vec$<$ index $>$ \&low, std\+::stack$<$ index $>$ \&st, vec$<$ bool $>$ \&in\+Stack, array$<$ index $>$ \&scc, index \&time)
+\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_aa3d70d45662c39ea769bb375bd957277}\label{orders__and__graphs_8hpp_aa3d70d45662c39ea769bb375bd957277}} 
+{\footnotesize template$<$typename index $>$ }\\array$<$ index $>$ {\bfseries graded\+\_\+linalg\+::condensation} (const set$<$ index $>$ \&vertex\+\_\+labels, const std\+::unordered\+\_\+map$<$ index, vec$<$ index $>$$>$ \&outgoing\+\_\+edges, array$<$ index $>$ \&scc)
+\item 
+{\footnotesize template$<$typename index $>$ }\\std\+::unordered\+\_\+map$<$ index, vec$<$ index $>$ $>$ \mbox{\hyperlink{orders__and__graphs_8hpp_a21dd8eb1150d639d0b0a787de8d49a77}{graded\+\_\+linalg\+::convert\+\_\+to\+\_\+map}} (const array$<$ index $>$ \&arr)
+\begin{DoxyCompactList}\small\item\em Copies an array into an analogous hash map. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a47ff2502e9effae2d3658725ab1cef2a}\label{orders__and__graphs_8hpp_a47ff2502e9effae2d3658725ab1cef2a}} 
+{\footnotesize template$<$typename D , typename DataT $>$ }\\bool {\bfseries graded\+\_\+linalg\+::operator$<$} (const Value\+Reference$<$ D, DataT $>$ \&a, const Value$<$ D, DataT $>$ \&b)
+\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_ad5cea328d21950642894a87116b59e4a}\label{orders__and__graphs_8hpp_ad5cea328d21950642894a87116b59e4a}} 
+{\footnotesize template$<$typename D , typename DataT $>$ }\\bool {\bfseries graded\+\_\+linalg\+::operator$<$} (const Value$<$ D, DataT $>$ \&a, const Value\+Reference$<$ D, DataT $>$ \&b)
+\item 
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a9894a63d98dd13c847fe619c6543318d}\label{orders__and__graphs_8hpp_a9894a63d98dd13c847fe619c6543318d}} 
+{\footnotesize template$<$typename D , typename DataT $>$ }\\bool {\bfseries graded\+\_\+linalg\+::operator$<$} (const Value\+Reference$<$ D, DataT $>$ \&a, const Value\+Reference$<$ D, DataT $>$ \&b)
+\item 
+{\footnotesize template$<$typename D , typename T $>$ }\\void \mbox{\hyperlink{orders__and__graphs_8hpp_a1d02900a0feba1890b02874329fee009}{graded\+\_\+linalg\+::sort\+\_\+simultaneously}} (vec$<$ D $>$ \&degrees, vec$<$ T $>$ \&data)
+\begin{DoxyCompactList}\small\item\em Sort data according to the function \char`\"{}lex\+\_\+order\char`\"{} on degrees. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename D , typename T , typename Compare $>$ }\\void \mbox{\hyperlink{orders__and__graphs_8hpp_a1dfde52656777c69117ef8a18058e163}{graded\+\_\+linalg\+::sort\+\_\+simultaneously\+\_\+custom}} (vec$<$ D $>$ \&degrees, vec$<$ T $>$ \&data, Compare comp)
+\begin{DoxyCompactList}\small\item\em Sort data according to the function \char`\"{}smaller\char`\"{} on degrees. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T , typename index $>$ }\\vec$<$ index $>$ \mbox{\hyperlink{orders__and__graphs_8hpp_a93aeae3fdeec20682710c87470a96775}{graded\+\_\+linalg\+::get\+\_\+permutation\+\_\+from\+\_\+sort}} (const std\+::vector$<$ T $>$ \&vec)
+\begin{DoxyCompactList}\small\item\em Does not sort the input vector, but returns a vector of indices representing the permutation which can be used to sort it. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T , typename index $>$ }\\vec$<$ index $>$ \mbox{\hyperlink{orders__and__graphs_8hpp_a98f3d44fb8440e9a37c0eabf3ae01d81}{graded\+\_\+linalg\+::sort\+\_\+and\+\_\+get\+\_\+permutation}} (std\+::vector$<$ T $>$ \&vec)
+\begin{DoxyCompactList}\small\item\em Sorts the input vector and returns a vector of indices representing the permutation used to sort. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T , typename index $>$ }\\std\+::vector$<$ index $>$ \mbox{\hyperlink{orders__and__graphs_8hpp_ae746dacd05ce8d33373c5fab95b1a6e6}{graded\+\_\+linalg\+::sort\+\_\+and\+\_\+get\+\_\+permutation}} (std\+::vector$<$ T $>$ \&vec, std\+::function$<$ bool(const T \&, const T \&)$>$ comp)
+\begin{DoxyCompactList}\small\item\em Sorts the input vector using a custom comparator and returns a vector of indices representing the permutation used to sort. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Jan Jendrysiak 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+0.\+1 
+\end{DoxyVersion}
+\begin{DoxyDate}{Date}
+2025-\/03-\/13
+\end{DoxyDate}
+\begin{DoxyCopyright}{Copyright}
+2025 TU Graz This file is part of the A\+I\+DA library. You can redistribute it and/or modify it under the terms of the G\+NU Lesser General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. 
+\end{DoxyCopyright}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a3223b9d2956abe8744cc9f3bd2df1ce6}\label{orders__and__graphs_8hpp_a3223b9d2956abe8744cc9f3bd2df1ce6}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!compute\_scc\_and\_condensation@{compute\_scc\_and\_condensation}}
+\index{compute\_scc\_and\_condensation@{compute\_scc\_and\_condensation}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{compute\_scc\_and\_condensation()}{compute\_scc\_and\_condensation()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+Graph graded\+\_\+linalg\+::compute\+\_\+scc\+\_\+and\+\_\+condensation (\begin{DoxyParamCaption}\item[{const Graph \&}]{g,  }\item[{std\+::vector$<$ index $>$ \&}]{component,  }\item[{std\+::vector$<$ std\+::vector$<$ index $>$$>$ \&}]{scc\+\_\+sets }\end{DoxyParamCaption})}
+
+
+
+Given a graph G computes its condenstion. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em g} & \\
+\hline
+{\em component} & will store the index of the component a vertex belongs to \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::pair$<$std\+::vector$<$std\+::set$<$int$>$$>$, Graph$>$ returns a vector containing the components as sets and the condensation graph 
+\end{DoxyReturn}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a322dd774300e287ea88d3b5b2ec08c0c}\label{orders__and__graphs_8hpp_a322dd774300e287ea88d3b5b2ec08c0c}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!compute\_topological\_order@{compute\_topological\_order}}
+\index{compute\_topological\_order@{compute\_topological\_order}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{compute\_topological\_order()}{compute\_topological\_order()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+std\+::vector$<$index$>$ graded\+\_\+linalg\+::compute\+\_\+topological\+\_\+order (\begin{DoxyParamCaption}\item[{const Graph \&}]{g }\end{DoxyParamCaption})}
+
+
+
+Returns a topological order for the input directed graph. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em g} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::vector$<$index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a9b0e994da94472d05becff9cda8d02a8}\label{orders__and__graphs_8hpp_a9b0e994da94472d05becff9cda8d02a8}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!construct\_boost\_graph@{construct\_boost\_graph}}
+\index{construct\_boost\_graph@{construct\_boost\_graph}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{construct\_boost\_graph()}{construct\_boost\_graph()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename index , typename Edge\+Checker $>$ \\
+Graph graded\+\_\+linalg\+::construct\+\_\+boost\+\_\+graph (\begin{DoxyParamCaption}\item[{const std\+::set$<$ index $>$ \&}]{labels,  }\item[{Edge\+Checker}]{has\+\_\+edge,  }\item[{bool}]{visualise = {\ttfamily false} }\end{DoxyParamCaption})}
+
+
+
+Constructs a directed boost graph from a list of labels and a function Edge\+Checker which returns true if there is a directed edge between two labels. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+{\em Edge\+Checker} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em labels} & \\
+\hline
+{\em has\+\_\+edge} & \\
+\hline
+{\em visualise} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Graph 
+\end{DoxyReturn}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a5acc0fcdfd928f6ea9e4d088dda82033}\label{orders__and__graphs_8hpp_a5acc0fcdfd928f6ea9e4d088dda82033}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!construct\_boost\_graph@{construct\_boost\_graph}}
+\index{construct\_boost\_graph@{construct\_boost\_graph}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{construct\_boost\_graph()}{construct\_boost\_graph()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename index , typename Edge\+Checker $>$ \\
+Graph graded\+\_\+linalg\+::construct\+\_\+boost\+\_\+graph (\begin{DoxyParamCaption}\item[{const vec$<$ index $>$ \&}]{labels,  }\item[{Edge\+Checker}]{has\+\_\+edge,  }\item[{bool}]{visualise = {\ttfamily false} }\end{DoxyParamCaption})}
+
+
+
+Constructs a directed boost graph from a list of labels and a function Edge\+Checker which returns true if there is a directed edge between two labels. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+{\em Edge\+Checker} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em labels} & \\
+\hline
+{\em has\+\_\+edge} & \\
+\hline
+{\em visualise} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Graph 
+\end{DoxyReturn}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a21dd8eb1150d639d0b0a787de8d49a77}\label{orders__and__graphs_8hpp_a21dd8eb1150d639d0b0a787de8d49a77}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!convert\_to\_map@{convert\_to\_map}}
+\index{convert\_to\_map@{convert\_to\_map}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{convert\_to\_map()}{convert\_to\_map()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+std\+::unordered\+\_\+map$<$index, vec$<$index$>$ $>$ graded\+\_\+linalg\+::convert\+\_\+to\+\_\+map (\begin{DoxyParamCaption}\item[{const array$<$ index $>$ \&}]{arr }\end{DoxyParamCaption})}
+
+
+
+Copies an array into an analogous hash map. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em adj\+\_\+matrix} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::unordered\+\_\+map$<$index, vec$<$index$>$$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a93aeae3fdeec20682710c87470a96775}\label{orders__and__graphs_8hpp_a93aeae3fdeec20682710c87470a96775}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!get\_permutation\_from\_sort@{get\_permutation\_from\_sort}}
+\index{get\_permutation\_from\_sort@{get\_permutation\_from\_sort}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{get\_permutation\_from\_sort()}{get\_permutation\_from\_sort()}}
+{\footnotesize\ttfamily template$<$typename T , typename index $>$ \\
+vec$<$index$>$ graded\+\_\+linalg\+::get\+\_\+permutation\+\_\+from\+\_\+sort (\begin{DoxyParamCaption}\item[{const std\+::vector$<$ T $>$ \&}]{vec }\end{DoxyParamCaption})}
+
+
+
+Does not sort the input vector, but returns a vector of indices representing the permutation which can be used to sort it. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em vec} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::vector$<$index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a1038818379f144ebc7e00d3e2c4d8b82}\label{orders__and__graphs_8hpp_a1038818379f144ebc7e00d3e2c4d8b82}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!has\_incoming\_edges@{has\_incoming\_edges}}
+\index{has\_incoming\_edges@{has\_incoming\_edges}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{has\_incoming\_edges()}{has\_incoming\_edges()}}
+{\footnotesize\ttfamily bool graded\+\_\+linalg\+::has\+\_\+incoming\+\_\+edges (\begin{DoxyParamCaption}\item[{const Graph \&}]{g,  }\item[{const Vertex \&}]{v }\end{DoxyParamCaption})}
+
+
+
+Checks if a vertex has incoming edges. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em g} & The graph. \\
+\hline
+{\em v} & The vertex. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if the vertex has incoming edges, false otherwise. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a110de84540b9c4cc0ffcf2d9eb203eea}\label{orders__and__graphs_8hpp_a110de84540b9c4cc0ffcf2d9eb203eea}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!induced\_subgraph@{induced\_subgraph}}
+\index{induced\_subgraph@{induced\_subgraph}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{induced\_subgraph()}{induced\_subgraph()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+Graph graded\+\_\+linalg\+::induced\+\_\+subgraph (\begin{DoxyParamCaption}\item[{const Graph \&}]{g,  }\item[{const vec$<$ index $>$ \&}]{vertices }\end{DoxyParamCaption})}
+
+
+
+Creates an induced subgraph on a subset of the vertices. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em g} & \\
+\hline
+{\em vertices} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Graph 
+\end{DoxyReturn}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a7c92898647b6679778740187aafcbc57}\label{orders__and__graphs_8hpp_a7c92898647b6679778740187aafcbc57}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!minimal\_directed\_graph@{minimal\_directed\_graph}}
+\index{minimal\_directed\_graph@{minimal\_directed\_graph}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{minimal\_directed\_graph()}{minimal\_directed\_graph()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+array$<$index$>$ graded\+\_\+linalg\+::minimal\+\_\+directed\+\_\+graph (\begin{DoxyParamCaption}\item[{vec$<$ D $>$ \&}]{degrees,  }\item[{vec$<$ index $>$}]{support = {\ttfamily vec$<$index$>$()} }\end{DoxyParamCaption})}
+
+
+
+Computes the Hasse Diagram of a sorted list of degrees fomring a Poset. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em D} & needs to suport functions \char`\"{}smaller\char`\"{} and \char`\"{}equals\char`\"{} \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em degrees} & needs to be sorted in any linear extension of the order \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+edge\+List 
+\end{DoxyReturn}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_ab71342d543d07dd1fda488cf6c54b2c1}\label{orders__and__graphs_8hpp_ab71342d543d07dd1fda488cf6c54b2c1}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!print\_edge\_list@{print\_edge\_list}}
+\index{print\_edge\_list@{print\_edge\_list}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{print\_edge\_list()}{print\_edge\_list()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void graded\+\_\+linalg\+::print\+\_\+edge\+\_\+list (\begin{DoxyParamCaption}\item[{const array$<$ index $>$ \&}]{edges }\end{DoxyParamCaption})}
+
+
+
+Print the edges of a directed graph. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em edges} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_afcd4fb40a10ad094695e6e12396235ed}\label{orders__and__graphs_8hpp_afcd4fb40a10ad094695e6e12396235ed}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!print\_graph@{print\_graph}}
+\index{print\_graph@{print\_graph}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{print\_graph()}{print\_graph()}}
+{\footnotesize\ttfamily void graded\+\_\+linalg\+::print\+\_\+graph (\begin{DoxyParamCaption}\item[{const Graph \&}]{g }\end{DoxyParamCaption})}
+
+
+
+prints the content of a graph 
+
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a98f3d44fb8440e9a37c0eabf3ae01d81}\label{orders__and__graphs_8hpp_a98f3d44fb8440e9a37c0eabf3ae01d81}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!sort\_and\_get\_permutation@{sort\_and\_get\_permutation}}
+\index{sort\_and\_get\_permutation@{sort\_and\_get\_permutation}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{sort\_and\_get\_permutation()}{sort\_and\_get\_permutation()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename T , typename index $>$ \\
+vec$<$index$>$ graded\+\_\+linalg\+::sort\+\_\+and\+\_\+get\+\_\+permutation (\begin{DoxyParamCaption}\item[{std\+::vector$<$ T $>$ \&}]{vec }\end{DoxyParamCaption})}
+
+
+
+Sorts the input vector and returns a vector of indices representing the permutation used to sort. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & Type of the elements in the vector. \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em vec} & The vector to be sorted. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::vector$<$index$>$ A vector of indices representing the permutation used to sort. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_ae746dacd05ce8d33373c5fab95b1a6e6}\label{orders__and__graphs_8hpp_ae746dacd05ce8d33373c5fab95b1a6e6}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!sort\_and\_get\_permutation@{sort\_and\_get\_permutation}}
+\index{sort\_and\_get\_permutation@{sort\_and\_get\_permutation}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{sort\_and\_get\_permutation()}{sort\_and\_get\_permutation()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename T , typename index $>$ \\
+std\+::vector$<$index$>$ graded\+\_\+linalg\+::sort\+\_\+and\+\_\+get\+\_\+permutation (\begin{DoxyParamCaption}\item[{std\+::vector$<$ T $>$ \&}]{vec,  }\item[{std\+::function$<$ bool(const T \&, const T \&)$>$}]{comp }\end{DoxyParamCaption})}
+
+
+
+Sorts the input vector using a custom comparator and returns a vector of indices representing the permutation used to sort. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & Type of the elements in the vector. \\
+\hline
+{\em index} & Type of the indices. \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em vec} & The vector to be sorted. \\
+\hline
+{\em comp} & The comparison function to use for sorting. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::vector$<$index$>$ A vector of indices representing the permutation used to sort. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a1d02900a0feba1890b02874329fee009}\label{orders__and__graphs_8hpp_a1d02900a0feba1890b02874329fee009}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!sort\_simultaneously@{sort\_simultaneously}}
+\index{sort\_simultaneously@{sort\_simultaneously}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{sort\_simultaneously()}{sort\_simultaneously()}}
+{\footnotesize\ttfamily template$<$typename D , typename T $>$ \\
+void graded\+\_\+linalg\+::sort\+\_\+simultaneously (\begin{DoxyParamCaption}\item[{vec$<$ D $>$ \&}]{degrees,  }\item[{vec$<$ T $>$ \&}]{data }\end{DoxyParamCaption})}
+
+
+
+Sort data according to the function \char`\"{}lex\+\_\+order\char`\"{} on degrees. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em degrees} & \\
+\hline
+{\em data} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_a1dfde52656777c69117ef8a18058e163}\label{orders__and__graphs_8hpp_a1dfde52656777c69117ef8a18058e163}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!sort\_simultaneously\_custom@{sort\_simultaneously\_custom}}
+\index{sort\_simultaneously\_custom@{sort\_simultaneously\_custom}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{sort\_simultaneously\_custom()}{sort\_simultaneously\_custom()}}
+{\footnotesize\ttfamily template$<$typename D , typename T , typename Compare $>$ \\
+void graded\+\_\+linalg\+::sort\+\_\+simultaneously\+\_\+custom (\begin{DoxyParamCaption}\item[{vec$<$ D $>$ \&}]{degrees,  }\item[{vec$<$ T $>$ \&}]{data,  }\item[{Compare}]{comp }\end{DoxyParamCaption})}
+
+
+
+Sort data according to the function \char`\"{}smaller\char`\"{} on degrees. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em degrees} & \\
+\hline
+{\em data} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{orders__and__graphs_8hpp_aebc89d7c78084ec76f9d38f9cf8bbb50}\label{orders__and__graphs_8hpp_aebc89d7c78084ec76f9d38f9cf8bbb50}} 
+\index{orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}!writeEdgeListToCSV@{writeEdgeListToCSV}}
+\index{writeEdgeListToCSV@{writeEdgeListToCSV}!orders\_and\_graphs.hpp@{orders\_and\_graphs.hpp}}
+\doxysubsubsection{\texorpdfstring{writeEdgeListToCSV()}{writeEdgeListToCSV()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void graded\+\_\+linalg\+::write\+Edge\+List\+To\+C\+SV (\begin{DoxyParamCaption}\item[{const std\+::string \&}]{filename,  }\item[{const array$<$ index $>$ \&}]{edges }\end{DoxyParamCaption})}
+
+
+
+Writes a list of edges to a C\+SV file. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em D} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & \\
+\hline
+{\em degrees} & \\
+\hline
+\end{DoxyParams}

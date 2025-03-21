@@ -1,0 +1,5 @@
+<map id="graded_linalg::GradedSparseMatrix&lt; D, index &gt;" name="graded_linalg::GradedSparseMatrix&lt; D, index &gt;">
+<area shape="rect" id="node1" title="A graded matrix with generic degree&#45;type." alt="" coords="5,199,215,240"/>
+<area shape="rect" id="node2" href="$structgraded__linalg_1_1SparseMatrix.html" title="Every column is stored as a list of non&#45;zero entries." alt="" coords="8,109,212,151"/>
+<area shape="rect" id="node3" href="$classgraded__linalg_1_1MatrixUtil.html" title=" " alt="" coords="13,5,207,61"/>
+</map>

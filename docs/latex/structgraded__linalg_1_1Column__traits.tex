@@ -1,0 +1,40 @@
+\hypertarget{structgraded__linalg_1_1Column__traits}{}\doxysection{graded\+\_\+linalg\+::Column\+\_\+traits$<$ C\+O\+L\+U\+MN, index $>$ Struct Template Reference}
+\label{structgraded__linalg_1_1Column__traits}\index{graded\_linalg::Column\_traits$<$ COLUMN, index $>$@{graded\_linalg::Column\_traits$<$ COLUMN, index $>$}}
+\doxysubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Column__traits_a000b375b511c7028c568d81b52472c22}\label{structgraded__linalg_1_1Column__traits_a000b375b511c7028c568d81b52472c22}} 
+static void \mbox{\hyperlink{structgraded__linalg_1_1Column__traits_a000b375b511c7028c568d81b52472c22}{add\+\_\+to}} (const C\+O\+L\+U\+MN \&v, C\+O\+L\+U\+MN \&w)
+\begin{DoxyCompactList}\small\item\em Changes w to w+v. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Column__traits_a9548dc9f6f0a373da02247ff043dfb8f}\label{structgraded__linalg_1_1Column__traits_a9548dc9f6f0a373da02247ff043dfb8f}} 
+static bool \mbox{\hyperlink{structgraded__linalg_1_1Column__traits_a9548dc9f6f0a373da02247ff043dfb8f}{is\+\_\+nonzero\+\_\+at}} (const C\+O\+L\+U\+MN \&v, index i)
+\begin{DoxyCompactList}\small\item\em Returns true, if the i-\/th entry of a is non-\/zero. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Column__traits_a17f34b22eb4ac95e868fca11d245b4cd}\label{structgraded__linalg_1_1Column__traits_a17f34b22eb4ac95e868fca11d245b4cd}} 
+static index \mbox{\hyperlink{structgraded__linalg_1_1Column__traits_a17f34b22eb4ac95e868fca11d245b4cd}{last\+\_\+entry\+\_\+index}} (const C\+O\+L\+U\+MN \&v)
+\begin{DoxyCompactList}\small\item\em Returns the index of the last non-\/zero entry in a or -\/1. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Column__traits_a29ef34eede401547cebbbb0b0bb0cf95}\label{structgraded__linalg_1_1Column__traits_a29ef34eede401547cebbbb0b0bb0cf95}} 
+static bool \mbox{\hyperlink{structgraded__linalg_1_1Column__traits_a29ef34eede401547cebbbb0b0bb0cf95}{is\+\_\+equal}} (const C\+O\+L\+U\+MN \&v, const C\+O\+L\+U\+MN \&w)
+\begin{DoxyCompactList}\small\item\em Compares v and w. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Column__traits_a5fe3f5506ec8ab5bf6f4f9772261fae9}\label{structgraded__linalg_1_1Column__traits_a5fe3f5506ec8ab5bf6f4f9772261fae9}} 
+static bool \mbox{\hyperlink{structgraded__linalg_1_1Column__traits_a5fe3f5506ec8ab5bf6f4f9772261fae9}{is\+\_\+zero}} (const C\+O\+L\+U\+MN \&v)
+\begin{DoxyCompactList}\small\item\em Returns true if v is the zero vector. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Column__traits_a1931e7dc02fd6c32907794b70ac06087}\label{structgraded__linalg_1_1Column__traits_a1931e7dc02fd6c32907794b70ac06087}} 
+static void \mbox{\hyperlink{structgraded__linalg_1_1Column__traits_a1931e7dc02fd6c32907794b70ac06087}{set\+\_\+entry}} (C\+O\+L\+U\+MN \&v, index j)
+\begin{DoxyCompactList}\small\item\em Flips the j-\/th entry of a. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Column__traits_a72544e5952b559815b7ca6b0c9da1353}\label{structgraded__linalg_1_1Column__traits_a72544e5952b559815b7ca6b0c9da1353}} 
+static bool \mbox{\hyperlink{structgraded__linalg_1_1Column__traits_a72544e5952b559815b7ca6b0c9da1353}{scalar\+\_\+product}} (const C\+O\+L\+U\+MN \&v, const C\+O\+L\+U\+MN \&w)
+\begin{DoxyCompactList}\small\item\em Computes the scalar product of v and w. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Column__traits_ae5b31acd7438c70e7e62e05baa2f9da9}\label{structgraded__linalg_1_1Column__traits_ae5b31acd7438c70e7e62e05baa2f9da9}} 
+static C\+O\+L\+U\+MN \mbox{\hyperlink{structgraded__linalg_1_1Column__traits_ae5b31acd7438c70e7e62e05baa2f9da9}{get\+\_\+standard\+\_\+vector}} (index i, index n)
+\begin{DoxyCompactList}\small\item\em Returns the i-\/th standard vector of length n. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Column__traits_aef09716c5cedd5c0c3aa090fe0df6b11}\label{structgraded__linalg_1_1Column__traits_aef09716c5cedd5c0c3aa090fe0df6b11}} 
+static C\+O\+L\+U\+MN \mbox{\hyperlink{structgraded__linalg_1_1Column__traits_aef09716c5cedd5c0c3aa090fe0df6b11}{get\+\_\+random\+\_\+vector}} (index length, float rate)
+\begin{DoxyCompactList}\small\item\em Returns a random vector of length length with perc percent non-\/zero entries. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Column__traits_a7388cb3eaa1d47e0c5d78f749497b1a5}\label{structgraded__linalg_1_1Column__traits_a7388cb3eaa1d47e0c5d78f749497b1a5}} 
+static C\+O\+L\+U\+MN {\bfseries get\+\_\+zero\+\_\+vector} (index length)
+\end{DoxyCompactItemize}
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+Persistence-\/\+Algebra/include/grlina/\mbox{\hyperlink{column__types_8hpp}{column\+\_\+types.\+hpp}}\end{DoxyCompactItemize}

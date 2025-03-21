@@ -1,0 +1,344 @@
+\hypertarget{dense__matrix_8hpp}{}\doxysection{Persistence-\/\+Algebra/include/grlina/dense\+\_\+matrix.hpp File Reference}
+\label{dense__matrix_8hpp}\index{Persistence-\/Algebra/include/grlina/dense\_matrix.hpp@{Persistence-\/Algebra/include/grlina/dense\_matrix.hpp}}
+{\ttfamily \#include \char`\"{}grlina/matrix\+\_\+base.\+hpp\char`\"{}}\newline
+{\ttfamily \#include $<$iostream$>$}\newline
+{\ttfamily \#include $<$vector$>$}\newline
+{\ttfamily \#include $<$fstream$>$}\newline
+{\ttfamily \#include $<$unordered\+\_\+map$>$}\newline
+Include dependency graph for dense\+\_\+matrix.\+hpp\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{dense__matrix_8hpp__incl}
+\end{center}
+\end{figure}
+This graph shows which files directly or indirectly include this file\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{dense__matrix_8hpp__dep__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1BitsetHash}{graded\+\_\+linalg\+::\+Bitset\+Hash}}
+\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{graded\+\_\+linalg\+::\+Dense\+Matrix}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{dense__matrix_8hpp_a462a97a7a1f365ee1b73ccabc704a550}\label{dense__matrix_8hpp_a462a97a7a1f365ee1b73ccabc704a550}} 
+using {\bfseries graded\+\_\+linalg\+::\+Vec\+Decomp} = std\+::pair$<$ Dense\+Matrix, Dense\+Matrix $>$
+\item 
+\mbox{\Hypertarget{dense__matrix_8hpp_a7e82b34e1615255311800ce973d775b2}\label{dense__matrix_8hpp_a7e82b34e1615255311800ce973d775b2}} 
+using {\bfseries graded\+\_\+linalg\+::\+Decomp\+Branch} = std\+::vector$<$ std\+::vector$<$ Vec\+Decomp $>$ $>$
+\item 
+\mbox{\Hypertarget{dense__matrix_8hpp_ac798c1ca8e5efb54b8788f69f0369590}\label{dense__matrix_8hpp_ac798c1ca8e5efb54b8788f69f0369590}} 
+using {\bfseries graded\+\_\+linalg\+::\+Decomp\+Tree} = std\+::unordered\+\_\+map$<$ boost\+::dynamic\+\_\+bitset$<$$>$, Decomp\+Branch, Bitset\+Hash $>$
+\item 
+\mbox{\Hypertarget{dense__matrix_8hpp_afade0f81c083b888ea0f4f286dc17ed0}\label{dense__matrix_8hpp_afade0f81c083b888ea0f4f286dc17ed0}} 
+using {\bfseries graded\+\_\+linalg\+::transition} = std\+::pair$<$ Dense\+Matrix, bitset $>$
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{dense__matrix_8hpp_a0a20b2acdd1cc6d3ea230644920f6656}\label{dense__matrix_8hpp_a0a20b2acdd1cc6d3ea230644920f6656}} 
+bool \mbox{\hyperlink{dense__matrix_8hpp_a0a20b2acdd1cc6d3ea230644920f6656}{graded\+\_\+linalg\+::compare\+Bitsets}} (const boost\+::dynamic\+\_\+bitset$<$$>$ \&a, const boost\+::dynamic\+\_\+bitset$<$$>$ \&b)
+\begin{DoxyCompactList}\small\item\em asks if a $<$ b in order of the entries (reverse of standard comparison) \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{dense__matrix_8hpp_a907747d8a782b8b2432ae32e4584f0e9}\label{dense__matrix_8hpp_a907747d8a782b8b2432ae32e4584f0e9}} 
+std\+::ostream \& {\bfseries graded\+\_\+linalg\+::operator$<$$<$} (std\+::ostream \&ostr, const boost\+::dynamic\+\_\+bitset$<$$>$ \&bs)
+\item 
+void \mbox{\hyperlink{dense__matrix_8hpp_a8c61f9e4163376a2df2b9c7b7a4ac554}{graded\+\_\+linalg\+::print\+\_\+bitset}} (const boost\+::dynamic\+\_\+bitset$<$$>$ \&bs)
+\begin{DoxyCompactList}\small\item\em prints the bitset from first to last entry \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{dense__matrix_8hpp_a73b436ebae2357d5fe3079c625e725cd}{graded\+\_\+linalg\+::print\+\_\+bitset\+\_\+reverse}} (const boost\+::dynamic\+\_\+bitset$<$$>$ \&bs)
+\begin{DoxyCompactList}\small\item\em prints the bitset from last to first entry \end{DoxyCompactList}\item 
+std\+::string \mbox{\hyperlink{dense__matrix_8hpp_ad99ae334ff455cf127c5d9e3197bb1c5}{graded\+\_\+linalg\+::bitset\+To\+String\+\_\+alt}} (const boost\+::dynamic\+\_\+bitset$<$$>$ \&bs)
+\begin{DoxyCompactList}\small\item\em Converts a bitset to a string representation in reverse order. \end{DoxyCompactList}\item 
+std\+::string \mbox{\hyperlink{dense__matrix_8hpp_a5d36e573e3eb7d052d6f2e4ba6cd918a}{graded\+\_\+linalg\+::bitset\+To\+String}} (const boost\+::dynamic\+\_\+bitset$<$$>$ \&bs)
+\begin{DoxyCompactList}\small\item\em Converts a bitset to a string representation in forward order. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{dense__matrix_8hpp_a36afa4353e45c3f528b8822e35f71ba1}{graded\+\_\+linalg\+::serialize\+Dynamic\+Bitset}} (const boost\+::dynamic\+\_\+bitset$<$$>$ \&bs, std\+::ofstream \&file)
+\begin{DoxyCompactList}\small\item\em Writes a dynamic\+\_\+bitset to a file in reverse order. \end{DoxyCompactList}\item 
+boost\+::dynamic\+\_\+bitset \mbox{\hyperlink{dense__matrix_8hpp_ab6d2b99cd097629d9a2cafb6ea3066c1}{graded\+\_\+linalg\+::deserialize\+Dynamic\+Bitset}} (std\+::ifstream \&file)
+\begin{DoxyCompactList}\small\item\em Reads a dynamic\+\_\+bitset from a file in reverse order. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{dense__matrix_8hpp_a3b06a0134bf21e2d315877fbbf412f03}\label{dense__matrix_8hpp_a3b06a0134bf21e2d315877fbbf412f03}} 
+vec$<$ bitset $>$ {\bfseries graded\+\_\+linalg\+::compute\+\_\+standard\+\_\+vectors} (int k)
+\item 
+vec$<$ boost\+::dynamic\+\_\+bitset$<$$>$ $>$ \mbox{\hyperlink{dense__matrix_8hpp_a33842bc5978b6b2a904580b3b4170c6b}{graded\+\_\+linalg\+::compute\+\_\+sum\+\_\+of\+\_\+standard\+\_\+vectors}} (int k)
+\begin{DoxyCompactList}\small\item\em returns \{ 1, 11, 111, ... \} \end{DoxyCompactList}\item 
+bitset \mbox{\hyperlink{dense__matrix_8hpp_a52b53c21afa841d7ca444b77b7faa18c}{graded\+\_\+linalg\+::glue}} (const bitset \&a, const bitset \&b)
+\begin{DoxyCompactList}\small\item\em Returns a copy of a with the 1-\/entries replaced by b. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{dense__matrix_8hpp_abd5edad61c38af01484544e06a2ba24e}{graded\+\_\+linalg\+::glue\+\_\+to}} (bitset \&a, const bitset \&b)
+\begin{DoxyCompactList}\small\item\em Copies b onto the 1-\/entries of a. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{dense__matrix_8hpp_abf2d856a30b6dcabadf569ccc0eb4928}{graded\+\_\+linalg\+::save\+Decomp\+Tree}} (const Decomp\+Tree \&tree, const std\+::string \&filename)
+\begin{DoxyCompactList}\small\item\em Writes the Decomp\+Tree to a file. \end{DoxyCompactList}\item 
+Decomp\+Tree \mbox{\hyperlink{dense__matrix_8hpp_afa507a7f3b32d89dbd568cc18c96f5e4}{graded\+\_\+linalg\+::load\+Decomp\+Tree}} (const std\+::string \&filename)
+\begin{DoxyCompactList}\small\item\em Loads a Decomp\+Tree from a file. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{dense__matrix_8hpp_ae58e54ccd1e68853b8e5e79009326c2b}{graded\+\_\+linalg\+::print\+\_\+tree}} (Decomp\+Tree \&tree)
+\begin{DoxyCompactList}\small\item\em Prints the whole content of the Decomp\+Tree to the console. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{dense__matrix_8hpp_aec551d16dc201ee18f526b46fe8e6a62}{graded\+\_\+linalg\+::save\+\_\+transition\+\_\+list}} (const std\+::vector$<$ transition $>$ \&transitions, const std\+::string \&filename)
+\begin{DoxyCompactList}\small\item\em Saves a transition list to a file. \end{DoxyCompactList}\item 
+std\+::vector$<$ transition $>$ \mbox{\hyperlink{dense__matrix_8hpp_a7ce5c8e81845a411bacd672abb292f47}{graded\+\_\+linalg\+::load\+\_\+transition\+\_\+list}} (const std\+::string \&filename)
+\begin{DoxyCompactList}\small\item\em Loads a transition list from a file. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Jan Jendrysiak 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+0.\+1 
+\end{DoxyVersion}
+\begin{DoxyDate}{Date}
+2025-\/03-\/13
+\end{DoxyDate}
+\begin{DoxyCopyright}{Copyright}
+2025 TU Graz This file is part of the A\+I\+DA library. You can redistribute it and/or modify it under the terms of the G\+NU Lesser General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. 
+\end{DoxyCopyright}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{dense__matrix_8hpp_a5d36e573e3eb7d052d6f2e4ba6cd918a}\label{dense__matrix_8hpp_a5d36e573e3eb7d052d6f2e4ba6cd918a}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!bitsetToString@{bitsetToString}}
+\index{bitsetToString@{bitsetToString}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{bitsetToString()}{bitsetToString()}}
+{\footnotesize\ttfamily std\+::string graded\+\_\+linalg\+::bitset\+To\+String (\begin{DoxyParamCaption}\item[{const boost\+::dynamic\+\_\+bitset$<$$>$ \&}]{bs }\end{DoxyParamCaption})}
+
+
+
+Converts a bitset to a string representation in forward order. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em bs} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::string 
+\end{DoxyReturn}
+\mbox{\Hypertarget{dense__matrix_8hpp_ad99ae334ff455cf127c5d9e3197bb1c5}\label{dense__matrix_8hpp_ad99ae334ff455cf127c5d9e3197bb1c5}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!bitsetToString\_alt@{bitsetToString\_alt}}
+\index{bitsetToString\_alt@{bitsetToString\_alt}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{bitsetToString\_alt()}{bitsetToString\_alt()}}
+{\footnotesize\ttfamily std\+::string graded\+\_\+linalg\+::bitset\+To\+String\+\_\+alt (\begin{DoxyParamCaption}\item[{const boost\+::dynamic\+\_\+bitset$<$$>$ \&}]{bs }\end{DoxyParamCaption})}
+
+
+
+Converts a bitset to a string representation in reverse order. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em bs} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::string 
+\end{DoxyReturn}
+\mbox{\Hypertarget{dense__matrix_8hpp_a33842bc5978b6b2a904580b3b4170c6b}\label{dense__matrix_8hpp_a33842bc5978b6b2a904580b3b4170c6b}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!compute\_sum\_of\_standard\_vectors@{compute\_sum\_of\_standard\_vectors}}
+\index{compute\_sum\_of\_standard\_vectors@{compute\_sum\_of\_standard\_vectors}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{compute\_sum\_of\_standard\_vectors()}{compute\_sum\_of\_standard\_vectors()}}
+{\footnotesize\ttfamily vec$<$boost\+::dynamic\+\_\+bitset$<$$>$ $>$ graded\+\_\+linalg\+::compute\+\_\+sum\+\_\+of\+\_\+standard\+\_\+vectors (\begin{DoxyParamCaption}\item[{int}]{k }\end{DoxyParamCaption})}
+
+
+
+returns \{ 1, 11, 111, ... \} 
+
+
+\begin{DoxyParams}{Parameters}
+{\em k} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\end{DoxyReturn}
+\mbox{\Hypertarget{dense__matrix_8hpp_ab6d2b99cd097629d9a2cafb6ea3066c1}\label{dense__matrix_8hpp_ab6d2b99cd097629d9a2cafb6ea3066c1}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!deserializeDynamicBitset@{deserializeDynamicBitset}}
+\index{deserializeDynamicBitset@{deserializeDynamicBitset}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{deserializeDynamicBitset()}{deserializeDynamicBitset()}}
+{\footnotesize\ttfamily boost\+::dynamic\+\_\+bitset graded\+\_\+linalg\+::deserialize\+Dynamic\+Bitset (\begin{DoxyParamCaption}\item[{std\+::ifstream \&}]{file }\end{DoxyParamCaption})}
+
+
+
+Reads a dynamic\+\_\+bitset from a file in reverse order. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em file} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+boost\+::dynamic\+\_\+bitset$<$$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{dense__matrix_8hpp_a52b53c21afa841d7ca444b77b7faa18c}\label{dense__matrix_8hpp_a52b53c21afa841d7ca444b77b7faa18c}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!glue@{glue}}
+\index{glue@{glue}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{glue()}{glue()}}
+{\footnotesize\ttfamily bitset graded\+\_\+linalg\+::glue (\begin{DoxyParamCaption}\item[{const bitset \&}]{a,  }\item[{const bitset \&}]{b }\end{DoxyParamCaption})}
+
+
+
+Returns a copy of a with the 1-\/entries replaced by b. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em a} & \\
+\hline
+{\em b} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+bitset 
+\end{DoxyReturn}
+\mbox{\Hypertarget{dense__matrix_8hpp_abd5edad61c38af01484544e06a2ba24e}\label{dense__matrix_8hpp_abd5edad61c38af01484544e06a2ba24e}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!glue\_to@{glue\_to}}
+\index{glue\_to@{glue\_to}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{glue\_to()}{glue\_to()}}
+{\footnotesize\ttfamily void graded\+\_\+linalg\+::glue\+\_\+to (\begin{DoxyParamCaption}\item[{bitset \&}]{a,  }\item[{const bitset \&}]{b }\end{DoxyParamCaption})}
+
+
+
+Copies b onto the 1-\/entries of a. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em a} & \\
+\hline
+{\em b} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{dense__matrix_8hpp_a7ce5c8e81845a411bacd672abb292f47}\label{dense__matrix_8hpp_a7ce5c8e81845a411bacd672abb292f47}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!load\_transition\_list@{load\_transition\_list}}
+\index{load\_transition\_list@{load\_transition\_list}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{load\_transition\_list()}{load\_transition\_list()}}
+{\footnotesize\ttfamily std\+::vector$<$transition$>$ graded\+\_\+linalg\+::load\+\_\+transition\+\_\+list (\begin{DoxyParamCaption}\item[{const std\+::string \&}]{filename }\end{DoxyParamCaption})}
+
+
+
+Loads a transition list from a file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::vector$<$transition$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{dense__matrix_8hpp_afa507a7f3b32d89dbd568cc18c96f5e4}\label{dense__matrix_8hpp_afa507a7f3b32d89dbd568cc18c96f5e4}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!loadDecompTree@{loadDecompTree}}
+\index{loadDecompTree@{loadDecompTree}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{loadDecompTree()}{loadDecompTree()}}
+{\footnotesize\ttfamily Decomp\+Tree graded\+\_\+linalg\+::load\+Decomp\+Tree (\begin{DoxyParamCaption}\item[{const std\+::string \&}]{filename }\end{DoxyParamCaption})}
+
+
+
+Loads a Decomp\+Tree from a file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Decomp\+Tree 
+\end{DoxyReturn}
+\mbox{\Hypertarget{dense__matrix_8hpp_a8c61f9e4163376a2df2b9c7b7a4ac554}\label{dense__matrix_8hpp_a8c61f9e4163376a2df2b9c7b7a4ac554}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!print\_bitset@{print\_bitset}}
+\index{print\_bitset@{print\_bitset}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{print\_bitset()}{print\_bitset()}}
+{\footnotesize\ttfamily void graded\+\_\+linalg\+::print\+\_\+bitset (\begin{DoxyParamCaption}\item[{const boost\+::dynamic\+\_\+bitset$<$$>$ \&}]{bs }\end{DoxyParamCaption})}
+
+
+
+prints the bitset from first to last entry 
+
+
+\begin{DoxyParams}{Parameters}
+{\em bs} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{dense__matrix_8hpp_a73b436ebae2357d5fe3079c625e725cd}\label{dense__matrix_8hpp_a73b436ebae2357d5fe3079c625e725cd}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!print\_bitset\_reverse@{print\_bitset\_reverse}}
+\index{print\_bitset\_reverse@{print\_bitset\_reverse}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{print\_bitset\_reverse()}{print\_bitset\_reverse()}}
+{\footnotesize\ttfamily void graded\+\_\+linalg\+::print\+\_\+bitset\+\_\+reverse (\begin{DoxyParamCaption}\item[{const boost\+::dynamic\+\_\+bitset$<$$>$ \&}]{bs }\end{DoxyParamCaption})}
+
+
+
+prints the bitset from last to first entry 
+
+
+\begin{DoxyParams}{Parameters}
+{\em bs} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{dense__matrix_8hpp_ae58e54ccd1e68853b8e5e79009326c2b}\label{dense__matrix_8hpp_ae58e54ccd1e68853b8e5e79009326c2b}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!print\_tree@{print\_tree}}
+\index{print\_tree@{print\_tree}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{print\_tree()}{print\_tree()}}
+{\footnotesize\ttfamily void graded\+\_\+linalg\+::print\+\_\+tree (\begin{DoxyParamCaption}\item[{Decomp\+Tree \&}]{tree }\end{DoxyParamCaption})}
+
+
+
+Prints the whole content of the Decomp\+Tree to the console. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em tree} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{dense__matrix_8hpp_aec551d16dc201ee18f526b46fe8e6a62}\label{dense__matrix_8hpp_aec551d16dc201ee18f526b46fe8e6a62}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!save\_transition\_list@{save\_transition\_list}}
+\index{save\_transition\_list@{save\_transition\_list}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{save\_transition\_list()}{save\_transition\_list()}}
+{\footnotesize\ttfamily void graded\+\_\+linalg\+::save\+\_\+transition\+\_\+list (\begin{DoxyParamCaption}\item[{const std\+::vector$<$ transition $>$ \&}]{transitions,  }\item[{const std\+::string \&}]{filename }\end{DoxyParamCaption})}
+
+
+
+Saves a transition list to a file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em transitions} & \\
+\hline
+{\em filename} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{dense__matrix_8hpp_abf2d856a30b6dcabadf569ccc0eb4928}\label{dense__matrix_8hpp_abf2d856a30b6dcabadf569ccc0eb4928}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!saveDecompTree@{saveDecompTree}}
+\index{saveDecompTree@{saveDecompTree}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{saveDecompTree()}{saveDecompTree()}}
+{\footnotesize\ttfamily void graded\+\_\+linalg\+::save\+Decomp\+Tree (\begin{DoxyParamCaption}\item[{const Decomp\+Tree \&}]{tree,  }\item[{const std\+::string \&}]{filename }\end{DoxyParamCaption})}
+
+
+
+Writes the Decomp\+Tree to a file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em tree} & \\
+\hline
+{\em filename} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{dense__matrix_8hpp_a36afa4353e45c3f528b8822e35f71ba1}\label{dense__matrix_8hpp_a36afa4353e45c3f528b8822e35f71ba1}} 
+\index{dense\_matrix.hpp@{dense\_matrix.hpp}!serializeDynamicBitset@{serializeDynamicBitset}}
+\index{serializeDynamicBitset@{serializeDynamicBitset}!dense\_matrix.hpp@{dense\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{serializeDynamicBitset()}{serializeDynamicBitset()}}
+{\footnotesize\ttfamily void graded\+\_\+linalg\+::serialize\+Dynamic\+Bitset (\begin{DoxyParamCaption}\item[{const boost\+::dynamic\+\_\+bitset$<$$>$ \&}]{bs,  }\item[{std\+::ofstream \&}]{file }\end{DoxyParamCaption})}
+
+
+
+Writes a dynamic\+\_\+bitset to a file in reverse order. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em bs} & \\
+\hline
+{\em file} & \\
+\hline
+\end{DoxyParams}

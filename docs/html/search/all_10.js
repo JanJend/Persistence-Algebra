@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['save_5ftransition_5flist_159',['save_transition_list',['../dense__matrix_8hpp.html#aec551d16dc201ee18f526b46fe8e6a62',1,'graded_linalg']]],
+  ['savedecomptree_160',['saveDecompTree',['../dense__matrix_8hpp.html#abf2d856a30b6dcabadf569ccc0eb4928',1,'graded_linalg']]],
+  ['scalar_5fproduct_161',['scalar_product',['../structgraded__linalg_1_1Column__traits.html#a72544e5952b559815b7ca6b0c9da1353',1,'graded_linalg::Column_traits']]],
+  ['serialize_162',['serialize',['../structgraded__linalg_1_1DenseMatrix.html#ad19222c95338387a1545fbffd68e7d14',1,'graded_linalg::DenseMatrix']]],
+  ['serializedynamicbitset_163',['serializeDynamicBitset',['../dense__matrix_8hpp.html#a36afa4353e45c3f528b8822e35f71ba1',1,'graded_linalg']]],
+  ['set_5fentry_164',['set_entry',['../structgraded__linalg_1_1Column__traits.html#a1931e7dc02fd6c32907794b70ac06087',1,'graded_linalg::Column_traits::set_entry()'],['../classgraded__linalg_1_1MatrixUtil.html#a1a6b3aca683a321a5d2f85b4bc391577',1,'graded_linalg::MatrixUtil::set_entry()']]],
+  ['set_5fpivots_5fwithout_5freducing_165',['set_pivots_without_reducing',['../classgraded__linalg_1_1MatrixUtil.html#a30587a8ec60f39070f3c5042b1a8a083',1,'graded_linalg::MatrixUtil']]],
+  ['shiftindicesmap_166',['shiftIndicesMap',['../sparse__matrix_8hpp.html#aa099e9ed6582da6526c73b2c1a79c3f7',1,'graded_linalg']]],
+  ['simultaneous_5falign_167',['simultaneous_align',['../matrix__base_8hpp.html#aaf98c2e402342dd1bdcad45fdce2772a',1,'graded_linalg']]],
+  ['simultaneous_5fcolumn_5freduction_168',['simultaneous_column_reduction',['../matrix__base_8hpp.html#a09e618133fcadee423cb3a5be24817a8',1,'graded_linalg']]],
+  ['simultaneous_5fcolumn_5freduction_5ffull_5fsupport_169',['simultaneous_column_reduction_full_support',['../matrix__base_8hpp.html#ad9bf6e16d2efebe6de2c29d4012ee8d2',1,'graded_linalg']]],
+  ['simultaneous_5frow_5freduction_170',['simultaneous_row_reduction',['../sparse__matrix_8hpp.html#a26f25bc0920551936c535879305f5abb',1,'graded_linalg']]],
+  ['simultaneous_5frow_5freduction_5fon_5fsubmatrix_171',['simultaneous_row_reduction_on_submatrix',['../sparse__matrix_8hpp.html#aac15224ad376362e6380e3682fda607f',1,'graded_linalg']]],
+  ['solve_5fcol_5freduction_172',['solve_col_reduction',['../classgraded__linalg_1_1MatrixUtil.html#a6860210886698581edc75e7bcc40b416',1,'graded_linalg::MatrixUtil::solve_col_reduction(DERIVED &amp;N, DERIVED &amp;&amp;solution=DERIVED(), bool get_ops=false)'],['../classgraded__linalg_1_1MatrixUtil.html#a027ff91825e52f6cd6f3ad304e05f919',1,'graded_linalg::MatrixUtil::solve_col_reduction(COLUMN &amp;c, COLUMN &amp;solution, bool complete_reduce=true, bool reduce_S=true, bool get_ops=true)']]],
+  ['sort_5fand_5fget_5fpermutation_173',['sort_and_get_permutation',['../orders__and__graphs_8hpp.html#a98f3d44fb8440e9a37c0eabf3ae01d81',1,'graded_linalg::sort_and_get_permutation(std::vector&lt; T &gt; &amp;vec)'],['../orders__and__graphs_8hpp.html#ae746dacd05ce8d33373c5fab95b1a6e6',1,'graded_linalg::sort_and_get_permutation(std::vector&lt; T &gt; &amp;vec, std::function&lt; bool(const T &amp;, const T &amp;)&gt; comp)']]],
+  ['sort_5fcolumns_5flexicographically_174',['sort_columns_lexicographically',['../structgraded__linalg_1_1GradedSparseMatrix.html#ae25da2e41dc83a2242f05ed4348fe00b',1,'graded_linalg::GradedSparseMatrix']]],
+  ['sort_5fcolumns_5flexicographically_5fwith_5fpointers_175',['sort_columns_lexicographically_with_pointers',['../structgraded__linalg_1_1GradedSparseMatrix.html#ab880bb2eef96d05121e2c7799024a6c4',1,'graded_linalg::GradedSparseMatrix']]],
+  ['sort_5frows_5flexicographically_176',['sort_rows_lexicographically',['../structgraded__linalg_1_1GradedSparseMatrix.html#aa278e426c175ab767901a905bd7d82f9',1,'graded_linalg::GradedSparseMatrix']]],
+  ['sort_5fsimultaneously_177',['sort_simultaneously',['../orders__and__graphs_8hpp.html#a1d02900a0feba1890b02874329fee009',1,'graded_linalg']]],
+  ['sort_5fsimultaneously_5fcustom_178',['sort_simultaneously_custom',['../orders__and__graphs_8hpp.html#a1dfde52656777c69117ef8a18058e163',1,'graded_linalg']]],
+  ['sparse_5fmatrix_2ehpp_179',['sparse_matrix.hpp',['../sparse__matrix_8hpp.html',1,'']]],
+  ['sparsematrix_180',['SparseMatrix',['../structgraded__linalg_1_1SparseMatrix.html',1,'graded_linalg']]],
+  ['sparsematrix_5fset_181',['SparseMatrix_set',['../structgraded__linalg_1_1SparseMatrix__set.html',1,'graded_linalg']]],
+  ['swap_5fcols_182',['swap_cols',['../classgraded__linalg_1_1MatrixUtil.html#aea54594ce7e3e8a3faaedf6c21df6868',1,'graded_linalg::MatrixUtil']]]
+];

@@ -1,0 +1,71 @@
+\hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4}{}\doxysection{graded\+\_\+linalg\+::Degree\+\_\+traits$<$ r2degree $>$ Struct Reference}
+\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4}\index{graded\_linalg::Degree\_traits$<$ r2degree $>$@{graded\_linalg::Degree\_traits$<$ r2degree $>$}}
+\doxysubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a7df82504be889279a7394a8be11f72c4}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a7df82504be889279a7394a8be11f72c4}} 
+static bool {\bfseries equals} (const r2degree \&lhs, const r2degree \&rhs)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a22354bae3f9cd1cf535147a65d0b43f9}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a22354bae3f9cd1cf535147a65d0b43f9}} 
+static bool {\bfseries smaller} (const r2degree \&lhs, const r2degree \&rhs)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_adb35ead8fbad8992fa1d87256531ed2a}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_adb35ead8fbad8992fa1d87256531ed2a}} 
+static bool {\bfseries greater} (const r2degree \&lhs, const r2degree \&rhs)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_aa4117dae74bfd986b626ec503ea00ada}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_aa4117dae74bfd986b626ec503ea00ada}} 
+static bool {\bfseries greater\+\_\+equal} (const r2degree \&lhs, const r2degree \&rhs)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a5e40fc37286183701e20f928598be7ff}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a5e40fc37286183701e20f928598be7ff}} 
+static bool {\bfseries smaller\+\_\+equal} (const r2degree \&lhs, const r2degree \&rhs)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a01ca60b06e5dec58f033b36e0d66e629}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a01ca60b06e5dec58f033b36e0d66e629}} 
+static bool {\bfseries lex\+\_\+order} (const r2degree \&a, const r2degree \&b)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_aecbecb1498e8c32a53d4302734b65057}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_aecbecb1498e8c32a53d4302734b65057}} 
+static vec$<$ double $>$ {\bfseries position} (const r2degree \&a)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a81299f2bcc276cf9948a4c9345731414}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a81299f2bcc276cf9948a4c9345731414}} 
+static void {\bfseries print\+\_\+degree} (const r2degree \&a)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a4822a4c52015471034621ba1c69d2ffa}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a4822a4c52015471034621ba1c69d2ffa}} 
+static r2degree {\bfseries join} (const r2degree \&a, const r2degree \&b)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a177157154360d53b7614fb2096d595ea}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a177157154360d53b7614fb2096d595ea}} 
+static r2degree {\bfseries meet} (const r2degree \&a, const r2degree \&b)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a88f5f957875d5d0093738abc9a685cc5}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a88f5f957875d5d0093738abc9a685cc5}} 
+{\footnotesize template$<$typename Output\+Stream $>$ }\\static void \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a88f5f957875d5d0093738abc9a685cc5}{write\+\_\+degree}} (Output\+Stream \&os, const r2degree \&a)
+\begin{DoxyCompactList}\small\item\em Writes the r2degree to an output stream. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a5927773c1c4e35842d149a2f9be220a9}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_a5927773c1c4e35842d149a2f9be220a9}} 
+{\footnotesize template$<$typename Input\+Stream $>$ }\\static r2degree {\bfseries from\+\_\+stream} (Input\+Stream \&iss)
+\end{DoxyCompactItemize}
+\doxysubsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static std\+::function$<$ bool(const r2degree \&, const r2degree \&)$>$ \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_aebfb0afca3f4e209794af66db29af541}{lex\+\_\+lambda}}
+\begin{DoxyCompactList}\small\item\em Lambda function to compare lexicographically for sorting. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_aebfb0afca3f4e209794af66db29af541}\label{structgraded__linalg_1_1Degree__traits_3_01r2degree_01_4_aebfb0afca3f4e209794af66db29af541}} 
+\index{graded\_linalg::Degree\_traits$<$ r2degree $>$@{graded\_linalg::Degree\_traits$<$ r2degree $>$}!lex\_lambda@{lex\_lambda}}
+\index{lex\_lambda@{lex\_lambda}!graded\_linalg::Degree\_traits$<$ r2degree $>$@{graded\_linalg::Degree\_traits$<$ r2degree $>$}}
+\doxysubsubsection{\texorpdfstring{lex\_lambda}{lex\_lambda}}
+{\footnotesize\ttfamily std\+::function$<$ bool(const r2degree \&, const r2degree \&)$>$ \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits}{graded\+\_\+linalg\+::\+Degree\+\_\+traits}}$<$ r2degree $>$\+::lex\+\_\+lambda\hspace{0.3cm}{\ttfamily [static]}}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{= [](\textcolor{keyword}{const} r2degree\& a, \textcolor{keyword}{const} r2degree\& b) \{}
+\DoxyCodeLine{    \textcolor{keywordflow}{return} \mbox{\hyperlink{structgraded__linalg_1_1Degree__traits_a161f325ca428456bd7c0099881a19649}{Degree\_traits<r2degree>::lex\_order}}(a, b);}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+Lambda function to compare lexicographically for sorting. 
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+Persistence-\/\+Algebra/include/grlina/\mbox{\hyperlink{r2graded__matrix_8hpp}{r2graded\+\_\+matrix.\+hpp}}\end{DoxyCompactItemize}

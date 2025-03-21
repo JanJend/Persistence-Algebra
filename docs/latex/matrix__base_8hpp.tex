@@ -1,0 +1,286 @@
+\hypertarget{matrix__base_8hpp}{}\doxysection{Persistence-\/\+Algebra/include/grlina/matrix\+\_\+base.hpp File Reference}
+\label{matrix__base_8hpp}\index{Persistence-\/Algebra/include/grlina/matrix\_base.hpp@{Persistence-\/Algebra/include/grlina/matrix\_base.hpp}}
+{\ttfamily \#include $<$iostream$>$}\newline
+{\ttfamily \#include $<$vector$>$}\newline
+{\ttfamily \#include $<$unordered\+\_\+map$>$}\newline
+{\ttfamily \#include $<$boost/dynamic\+\_\+bitset.\+hpp$>$}\newline
+{\ttfamily \#include $<$numeric$>$}\newline
+{\ttfamily \#include $<$cassert$>$}\newline
+{\ttfamily \#include $<$regex$>$}\newline
+{\ttfamily \#include $<$grlina/column\+\_\+types.\+hpp$>$}\newline
+Include dependency graph for matrix\+\_\+base.\+hpp\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{matrix__base_8hpp__incl}
+\end{center}
+\end{figure}
+This graph shows which files directly or indirectly include this file\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{matrix__base_8hpp__dep__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \mbox{\hyperlink{classgraded__linalg_1_1MatrixUtil}{graded\+\_\+linalg\+::\+Matrix\+Util$<$ C\+O\+L\+U\+M\+N, index, D\+E\+R\+I\+V\+E\+D $>$}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{matrix__base_8hpp_a447ff4d38fa67ccd8b442dc599f03551}\label{matrix__base_8hpp_a447ff4d38fa67ccd8b442dc599f03551}} 
+{\footnotesize template$<$typename T $>$ }\\std\+::ostream \& {\bfseries graded\+\_\+linalg\+::operator$<$$<$} (std\+::ostream \&ostr, const vec$<$ T $>$ \&c)
+\item 
+\mbox{\Hypertarget{matrix__base_8hpp_ab49c6eee354d80a7b1d9209a36235a45}\label{matrix__base_8hpp_ab49c6eee354d80a7b1d9209a36235a45}} 
+{\footnotesize template$<$typename T $>$ }\\std\+::ostream \& {\bfseries graded\+\_\+linalg\+::operator$<$$<$} (std\+::ostream \&os, const std\+::set$<$ T $>$ \&v)
+\item 
+\mbox{\Hypertarget{matrix__base_8hpp_a6fd92aefb3b9be946043d035a4f99a9f}\label{matrix__base_8hpp_a6fd92aefb3b9be946043d035a4f99a9f}} 
+{\footnotesize template$<$typename T1 , typename T2 $>$ }\\std\+::ostream \& {\bfseries graded\+\_\+linalg\+::operator$<$$<$} (std\+::ostream \&os, const std\+::pair$<$ T1, T2 $>$ \&p)
+\item 
+\mbox{\Hypertarget{matrix__base_8hpp_a660f437bfba4165a24b053398fbd00d7}\label{matrix__base_8hpp_a660f437bfba4165a24b053398fbd00d7}} 
+{\footnotesize template$<$typename index $>$ }\\vec$<$ index $>$ {\bfseries graded\+\_\+linalg\+::sort\+\_\+by\+\_\+permutation} (const vec$<$ index $>$ \&compare\+\_\+against)
+\item 
+{\footnotesize template$<$typename index $>$ }\\index \mbox{\hyperlink{matrix__base_8hpp_afa075453cf18ad26c3bc30185a462b30}{graded\+\_\+linalg\+::linearise\+\_\+position\+\_\+reverse\+\_\+ext}} (const index \&i, const index \&j, const index \&ncols, const index \&nrows)
+\begin{DoxyCompactList}\small\item\em Re-\/coordinatises the positions in the matrix by counting from top to bottom and right to left. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\index \mbox{\hyperlink{matrix__base_8hpp_a350be6a92a4881cabe83962ad221b409}{graded\+\_\+linalg\+::linearise\+\_\+position\+\_\+ext}} (const index \&i, const index \&j, const index \&ncols, const index \&nrows)
+\begin{DoxyCompactList}\small\item\em Re-\/coordinatises the positions in the matrix by counting from top to bottom and left to left. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\std\+::pair$<$ index, index $>$ \mbox{\hyperlink{matrix__base_8hpp_a22bca5e677a6bd3dd0d864f759cc0c73}{graded\+\_\+linalg\+::delinearise\+\_\+position\+\_\+reverse}} (index \&k, index \&ncols, index \&nrows)
+\item 
+{\footnotesize template$<$typename index , typename T $>$ }\\vec$<$ index $>$ \mbox{\hyperlink{matrix__base_8hpp_ab5d869600ffba4634084fdf61e3c90ce}{graded\+\_\+linalg\+::general\+\_\+reduction}} (vec$<$ T $>$ matrices)
+\begin{DoxyCompactList}\small\item\em Performs reduction on a vector of matrices. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index , typename D\+E\+R\+I\+V\+ED $>$ }\\bitset \mbox{\hyperlink{matrix__base_8hpp_a09e618133fcadee423cb3a5be24817a8}{graded\+\_\+linalg\+::simultaneous\+\_\+column\+\_\+reduction}} (std\+::unordered\+\_\+map$<$ index, D\+E\+R\+I\+V\+ED $>$ \&N\+\_\+map, vec$<$ index $>$ \&blocks\+\_\+to\+\_\+reduce, vec$<$ index $>$ \&all\+\_\+blocks, bitset \&support)
+\begin{DoxyCompactList}\small\item\em Treats all matrices in N\+\_\+map\mbox{[}all\+\_\+blocks\mbox{]} as stacked on top and column reduces them diagonally wrt. the parts given by blocks to reduce on the columns from \char`\"{}support\char`\"{}. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index , typename D\+E\+R\+I\+V\+ED $>$ }\\bitset \mbox{\hyperlink{matrix__base_8hpp_ad9bf6e16d2efebe6de2c29d4012ee8d2}{graded\+\_\+linalg\+::simultaneous\+\_\+column\+\_\+reduction\+\_\+full\+\_\+support}} (std\+::unordered\+\_\+map$<$ index, D\+E\+R\+I\+V\+ED $>$ \&N\+\_\+map, vec$<$ index $>$ \&blocks\+\_\+to\+\_\+reduce, vec$<$ index $>$ \&all\+\_\+blocks)
+\begin{DoxyCompactList}\small\item\em Treats all matrices in N\+\_\+map\mbox{[}all\+\_\+blocks\mbox{]} as stacked on top and column reduces them diagonally wrt. the parts given by blocks to reduce on the columns from \char`\"{}support\char`\"{}. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index , typename D\+E\+R\+I\+V\+ED $>$ }\\void \mbox{\hyperlink{matrix__base_8hpp_aaf98c2e402342dd1bdcad45fdce2772a}{graded\+\_\+linalg\+::simultaneous\+\_\+align}} (std\+::unordered\+\_\+map$<$ index, D\+E\+R\+I\+V\+ED $>$ \&N\+\_\+map, vec$<$ index $>$ \&all\+\_\+blocks, bitset \&support, bitset \&non\+\_\+zero\+\_\+cols)
+\begin{DoxyCompactList}\small\item\em Pushes all non-\/zero columns after support to the left. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename D\+E\+R\+I\+V\+ED $>$ }\\bool \mbox{\hyperlink{matrix__base_8hpp_a2be0ba26151b44c51300c128867b645e}{graded\+\_\+linalg\+::compare\+\_\+col\+\_\+space}} (D\+E\+R\+I\+V\+ED \&A, D\+E\+R\+I\+V\+ED \&B)
+\begin{DoxyCompactList}\small\item\em returns true if the column spaces of two matrices of equal dimension are isomorphic. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Jan Jendrysiak 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+0.\+1 
+\end{DoxyVersion}
+\begin{DoxyDate}{Date}
+2025-\/03-\/13
+\end{DoxyDate}
+\begin{DoxyCopyright}{Copyright}
+2025 TU Graz This file is part of the A\+I\+DA library. You can redistribute it and/or modify it under the terms of the G\+NU Lesser General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. 
+\end{DoxyCopyright}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{matrix__base_8hpp_a2be0ba26151b44c51300c128867b645e}\label{matrix__base_8hpp_a2be0ba26151b44c51300c128867b645e}} 
+\index{matrix\_base.hpp@{matrix\_base.hpp}!compare\_col\_space@{compare\_col\_space}}
+\index{compare\_col\_space@{compare\_col\_space}!matrix\_base.hpp@{matrix\_base.hpp}}
+\doxysubsubsection{\texorpdfstring{compare\_col\_space()}{compare\_col\_space()}}
+{\footnotesize\ttfamily template$<$typename D\+E\+R\+I\+V\+ED $>$ \\
+bool graded\+\_\+linalg\+::compare\+\_\+col\+\_\+space (\begin{DoxyParamCaption}\item[{D\+E\+R\+I\+V\+ED \&}]{A,  }\item[{D\+E\+R\+I\+V\+ED \&}]{B }\end{DoxyParamCaption})}
+
+
+
+returns true if the column spaces of two matrices of equal dimension are isomorphic. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em D\+E\+R\+I\+V\+ED} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em A} & \\
+\hline
+{\em B} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true 
+
+false 
+\end{DoxyReturn}
+\mbox{\Hypertarget{matrix__base_8hpp_a22bca5e677a6bd3dd0d864f759cc0c73}\label{matrix__base_8hpp_a22bca5e677a6bd3dd0d864f759cc0c73}} 
+\index{matrix\_base.hpp@{matrix\_base.hpp}!delinearise\_position\_reverse@{delinearise\_position\_reverse}}
+\index{delinearise\_position\_reverse@{delinearise\_position\_reverse}!matrix\_base.hpp@{matrix\_base.hpp}}
+\doxysubsubsection{\texorpdfstring{delinearise\_position\_reverse()}{delinearise\_position\_reverse()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+std\+::pair$<$index, index$>$ graded\+\_\+linalg\+::delinearise\+\_\+position\+\_\+reverse (\begin{DoxyParamCaption}\item[{index \&}]{k,  }\item[{index \&}]{ncols,  }\item[{index \&}]{nrows }\end{DoxyParamCaption})}
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em k} & \\
+\hline
+{\em ncols} & \\
+\hline
+{\em nrows} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::pair$<$index, index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{matrix__base_8hpp_ab5d869600ffba4634084fdf61e3c90ce}\label{matrix__base_8hpp_ab5d869600ffba4634084fdf61e3c90ce}} 
+\index{matrix\_base.hpp@{matrix\_base.hpp}!general\_reduction@{general\_reduction}}
+\index{general\_reduction@{general\_reduction}!matrix\_base.hpp@{matrix\_base.hpp}}
+\doxysubsubsection{\texorpdfstring{general\_reduction()}{general\_reduction()}}
+{\footnotesize\ttfamily template$<$typename index , typename T $>$ \\
+vec$<$index$>$ graded\+\_\+linalg\+::general\+\_\+reduction (\begin{DoxyParamCaption}\item[{vec$<$ T $>$}]{matrices }\end{DoxyParamCaption})}
+
+
+
+Performs reduction on a vector of matrices. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em C\+O\+L\+U\+MN} & \\
+\hline
+{\em index} & \\
+\hline
+{\em D\+E\+R\+I\+V\+ED} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em matrices} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+vec$<$index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{matrix__base_8hpp_a350be6a92a4881cabe83962ad221b409}\label{matrix__base_8hpp_a350be6a92a4881cabe83962ad221b409}} 
+\index{matrix\_base.hpp@{matrix\_base.hpp}!linearise\_position\_ext@{linearise\_position\_ext}}
+\index{linearise\_position\_ext@{linearise\_position\_ext}!matrix\_base.hpp@{matrix\_base.hpp}}
+\doxysubsubsection{\texorpdfstring{linearise\_position\_ext()}{linearise\_position\_ext()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+index graded\+\_\+linalg\+::linearise\+\_\+position\+\_\+ext (\begin{DoxyParamCaption}\item[{const index \&}]{i,  }\item[{const index \&}]{j,  }\item[{const index \&}]{ncols,  }\item[{const index \&}]{nrows }\end{DoxyParamCaption})}
+
+
+
+Re-\/coordinatises the positions in the matrix by counting from top to bottom and left to left. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em i} & column-\/index from the right \\
+\hline
+{\em j} & row-\/index \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+index 
+\end{DoxyReturn}
+\mbox{\Hypertarget{matrix__base_8hpp_afa075453cf18ad26c3bc30185a462b30}\label{matrix__base_8hpp_afa075453cf18ad26c3bc30185a462b30}} 
+\index{matrix\_base.hpp@{matrix\_base.hpp}!linearise\_position\_reverse\_ext@{linearise\_position\_reverse\_ext}}
+\index{linearise\_position\_reverse\_ext@{linearise\_position\_reverse\_ext}!matrix\_base.hpp@{matrix\_base.hpp}}
+\doxysubsubsection{\texorpdfstring{linearise\_position\_reverse\_ext()}{linearise\_position\_reverse\_ext()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+index graded\+\_\+linalg\+::linearise\+\_\+position\+\_\+reverse\+\_\+ext (\begin{DoxyParamCaption}\item[{const index \&}]{i,  }\item[{const index \&}]{j,  }\item[{const index \&}]{ncols,  }\item[{const index \&}]{nrows }\end{DoxyParamCaption})}
+
+
+
+Re-\/coordinatises the positions in the matrix by counting from top to bottom and right to left. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em i} & column-\/index from the right \\
+\hline
+{\em j} & row-\/index \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+index 
+\end{DoxyReturn}
+\mbox{\Hypertarget{matrix__base_8hpp_aaf98c2e402342dd1bdcad45fdce2772a}\label{matrix__base_8hpp_aaf98c2e402342dd1bdcad45fdce2772a}} 
+\index{matrix\_base.hpp@{matrix\_base.hpp}!simultaneous\_align@{simultaneous\_align}}
+\index{simultaneous\_align@{simultaneous\_align}!matrix\_base.hpp@{matrix\_base.hpp}}
+\doxysubsubsection{\texorpdfstring{simultaneous\_align()}{simultaneous\_align()}}
+{\footnotesize\ttfamily template$<$typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+void graded\+\_\+linalg\+::simultaneous\+\_\+align (\begin{DoxyParamCaption}\item[{std\+::unordered\+\_\+map$<$ index, D\+E\+R\+I\+V\+ED $>$ \&}]{N\+\_\+map,  }\item[{vec$<$ index $>$ \&}]{all\+\_\+blocks,  }\item[{bitset \&}]{support,  }\item[{bitset \&}]{non\+\_\+zero\+\_\+cols }\end{DoxyParamCaption})}
+
+
+
+Pushes all non-\/zero columns after support to the left. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em N\+\_\+map} & \\
+\hline
+{\em all\+\_\+blocks} & \\
+\hline
+{\em support} & \\
+\hline
+{\em non\+\_\+zero\+\_\+cols} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{matrix__base_8hpp_a09e618133fcadee423cb3a5be24817a8}\label{matrix__base_8hpp_a09e618133fcadee423cb3a5be24817a8}} 
+\index{matrix\_base.hpp@{matrix\_base.hpp}!simultaneous\_column\_reduction@{simultaneous\_column\_reduction}}
+\index{simultaneous\_column\_reduction@{simultaneous\_column\_reduction}!matrix\_base.hpp@{matrix\_base.hpp}}
+\doxysubsubsection{\texorpdfstring{simultaneous\_column\_reduction()}{simultaneous\_column\_reduction()}}
+{\footnotesize\ttfamily template$<$typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+bitset graded\+\_\+linalg\+::simultaneous\+\_\+column\+\_\+reduction (\begin{DoxyParamCaption}\item[{std\+::unordered\+\_\+map$<$ index, D\+E\+R\+I\+V\+ED $>$ \&}]{N\+\_\+map,  }\item[{vec$<$ index $>$ \&}]{blocks\+\_\+to\+\_\+reduce,  }\item[{vec$<$ index $>$ \&}]{all\+\_\+blocks,  }\item[{bitset \&}]{support }\end{DoxyParamCaption})}
+
+
+
+Treats all matrices in N\+\_\+map\mbox{[}all\+\_\+blocks\mbox{]} as stacked on top and column reduces them diagonally wrt. the parts given by blocks to reduce on the columns from \char`\"{}support\char`\"{}. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+{\em D\+E\+R\+I\+V\+ED} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em N\+\_\+map} & \\
+\hline
+{\em blocks\+\_\+to\+\_\+reduce} & \\
+\hline
+{\em all\+\_\+blocks} & \\
+\hline
+{\em support} & \\
+\hline
+{\em zero\+\_\+cols} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{matrix__base_8hpp_ad9bf6e16d2efebe6de2c29d4012ee8d2}\label{matrix__base_8hpp_ad9bf6e16d2efebe6de2c29d4012ee8d2}} 
+\index{matrix\_base.hpp@{matrix\_base.hpp}!simultaneous\_column\_reduction\_full\_support@{simultaneous\_column\_reduction\_full\_support}}
+\index{simultaneous\_column\_reduction\_full\_support@{simultaneous\_column\_reduction\_full\_support}!matrix\_base.hpp@{matrix\_base.hpp}}
+\doxysubsubsection{\texorpdfstring{simultaneous\_column\_reduction\_full\_support()}{simultaneous\_column\_reduction\_full\_support()}}
+{\footnotesize\ttfamily template$<$typename index , typename D\+E\+R\+I\+V\+ED $>$ \\
+bitset graded\+\_\+linalg\+::simultaneous\+\_\+column\+\_\+reduction\+\_\+full\+\_\+support (\begin{DoxyParamCaption}\item[{std\+::unordered\+\_\+map$<$ index, D\+E\+R\+I\+V\+ED $>$ \&}]{N\+\_\+map,  }\item[{vec$<$ index $>$ \&}]{blocks\+\_\+to\+\_\+reduce,  }\item[{vec$<$ index $>$ \&}]{all\+\_\+blocks }\end{DoxyParamCaption})}
+
+
+
+Treats all matrices in N\+\_\+map\mbox{[}all\+\_\+blocks\mbox{]} as stacked on top and column reduces them diagonally wrt. the parts given by blocks to reduce on the columns from \char`\"{}support\char`\"{}. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+{\em D\+E\+R\+I\+V\+ED} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em N\+\_\+map} & \\
+\hline
+{\em blocks\+\_\+to\+\_\+reduce} & \\
+\hline
+{\em all\+\_\+blocks} & \\
+\hline
+{\em support} & \\
+\hline
+{\em zero\+\_\+cols} & \\
+\hline
+\end{DoxyParams}

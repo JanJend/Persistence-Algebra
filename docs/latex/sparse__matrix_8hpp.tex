@@ -1,0 +1,453 @@
+\hypertarget{sparse__matrix_8hpp}{}\doxysection{Persistence-\/\+Algebra/include/grlina/sparse\+\_\+matrix.hpp File Reference}
+\label{sparse__matrix_8hpp}\index{Persistence-\/Algebra/include/grlina/sparse\_matrix.hpp@{Persistence-\/Algebra/include/grlina/sparse\_matrix.hpp}}
+{\ttfamily \#include $<$iostream$>$}\newline
+{\ttfamily \#include $<$vector$>$}\newline
+{\ttfamily \#include $<$grlina/matrix\+\_\+base.\+hpp$>$}\newline
+{\ttfamily \#include $<$grlina/dense\+\_\+matrix.\+hpp$>$}\newline
+{\ttfamily \#include $<$unordered\+\_\+map$>$}\newline
+{\ttfamily \#include $<$omp.\+h$>$}\newline
+{\ttfamily \#include $<$boost/dynamic\+\_\+bitset.\+hpp$>$}\newline
+{\ttfamily \#include $<$cmath$>$}\newline
+Include dependency graph for sparse\+\_\+matrix.\+hpp\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{sparse__matrix_8hpp__incl}
+\end{center}
+\end{figure}
+This graph shows which files directly or indirectly include this file\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{sparse__matrix_8hpp__dep__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1pair__hash}{graded\+\_\+linalg\+::pair\+\_\+hash$<$ index $>$}}
+\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix$<$ index $>$}}
+\begin{DoxyCompactList}\small\item\em Every column is stored as a list of non-\/zero entries. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix__set}{graded\+\_\+linalg\+::\+Sparse\+Matrix\+\_\+set$<$ index $>$}}
+\begin{DoxyCompactList}\small\item\em F\+\_\+2 Sparse Matrix using std\+::set / binary trees for its columns. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename index , typename T $>$ }\\vec$<$ T $>$ \mbox{\hyperlink{sparse__matrix_8hpp_adb40694818a236e4e461ee96831d0b5b}{graded\+\_\+linalg\+::vec\+\_\+restriction}} (vec$<$ T $>$ \&target, vec$<$ index $>$ \&mask)
+\begin{DoxyCompactList}\small\item\em Returns a copy of the target vector with the entries at the indices given in the mask. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\vec$<$ index $>$ \mbox{\hyperlink{sparse__matrix_8hpp_a125baaa1160e0dff47eee00a85aa543b}{graded\+\_\+linalg\+::vector\+X\+O\+R\+Multi}} (const vec$<$ vec$<$ index $>$$>$ \&matrix, const vec$<$ index $>$ \&mask)
+\begin{DoxyCompactList}\small\item\em Attention\+: This might be slower then just counting parallelized! Returns the xor of all vectors whose indices are in the mask, generalizing the approach of add\+\_\+to/ + operator. In essence this computes the product of the matrix with the column vector given by the mask over G\+F(2) \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\vec$<$ index $>$ \mbox{\hyperlink{sparse__matrix_8hpp_ad837b092bd1f7070976df445d2a57028}{graded\+\_\+linalg\+::vector\+X\+O\+R\+Multi}} (const vec$<$ vec$<$ index $>$$>$ \&matrix, const bitset \&mask)
+\begin{DoxyCompactList}\small\item\em Computes A$\ast$b over F\+\_\+2. Only somewhat fast if A is sparse. Returns the xor of all vectors whose indices are in the mask, generalizing the approach of Michaels \char`\"{}+\char`\"{} operator. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\bool \mbox{\hyperlink{sparse__matrix_8hpp_ab94a6e3de8eacac62af61d6343a16c5d}{graded\+\_\+linalg\+::erase\+\_\+from\+\_\+sorted\+\_\+vector\+\_\+bool}} (vec$<$ index $>$ \&v, index i)
+\begin{DoxyCompactList}\small\item\em Erases i from v and returns true if i was found and erased. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\void \mbox{\hyperlink{sparse__matrix_8hpp_a20084c62dd4cf9db372070f1badb987d}{graded\+\_\+linalg\+::erase\+\_\+from\+\_\+sorted\+\_\+vector}} (vec$<$ index $>$ \&v, index i)
+\begin{DoxyCompactList}\small\item\em Tries to delete i from v. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{sparse__matrix_8hpp_aef1aeb30085c7c148ebd6e8c0d195f8e}\label{sparse__matrix_8hpp_aef1aeb30085c7c148ebd6e8c0d195f8e}} 
+{\footnotesize template$<$typename index $>$ }\\void {\bfseries graded\+\_\+linalg\+::insert\+\_\+into\+\_\+sorted\+\_\+vector} (vec$<$ index $>$ \&v, index i)
+\item 
+{\footnotesize template$<$typename index $>$ }\\std\+::unordered\+\_\+map$<$ index, index $>$ \mbox{\hyperlink{sparse__matrix_8hpp_aa099e9ed6582da6526c73b2c1a79c3f7}{graded\+\_\+linalg\+::shift\+Indices\+Map}} (const vec$<$ index $>$ \&indices)
+\begin{DoxyCompactList}\small\item\em This function is used to delete rows in a L\+OC sparse matrix. It creates a map which maps the old indices to the new indices. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\std\+::unordered\+\_\+map$<$ std\+::pair$<$ index, index $>$, index, pair\+\_\+hash$<$ index $>$ $>$ \mbox{\hyperlink{sparse__matrix_8hpp_add43ed61bcc82180b2a92971159c3976}{graded\+\_\+linalg\+::pair\+\_\+to\+\_\+index\+\_\+map}} (const vec$<$ std\+::pair$<$ index, index $>$$>$ \&index\+\_\+pairs)
+\begin{DoxyCompactList}\small\item\em This function is used to delete rows in a L\+OC sparse matrix. It creates a map which maps the old indices to the new indices. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\void \mbox{\hyperlink{sparse__matrix_8hpp_a145d269acf4e3bfbd6ad13b42088c782}{graded\+\_\+linalg\+::apply\+\_\+transformation}} (vec$<$ index $>$ \&target, const std\+::unordered\+\_\+map$<$ index, index $>$ \&index\+Map, const bool \&needs\+No\+Deletion=false)
+\begin{DoxyCompactList}\small\item\em Parallelized function to apply a transformation to a vector of indices. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\void \mbox{\hyperlink{sparse__matrix_8hpp_ae359b98f57254c50b67b1349f7d52bef}{graded\+\_\+linalg\+::apply\+\_\+transformation}} (vec$<$ index $>$ \&target, const vec$<$ index $>$ \&index\+\_\+vector)
+\begin{DoxyCompactList}\small\item\em Apply a transformation given by a vector to a vector of indices. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\void \mbox{\hyperlink{sparse__matrix_8hpp_a12252ad71c371e0aa5fe1c6ceb9444dd}{graded\+\_\+linalg\+::transform\+\_\+matrix}} (array$<$ index $>$ \&S, const std\+::unordered\+\_\+map$<$ index, index $>$ \&index\+Map, const bool \&needs\+No\+Deletion)
+\begin{DoxyCompactList}\small\item\em Parallelised function to change a sparse matrix by applying the index\+Map to each entry. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\void \mbox{\hyperlink{sparse__matrix_8hpp_a35e1831d8a73a805f3f63ee49eb3ed0c}{graded\+\_\+linalg\+::transform\+\_\+matrix}} (array$<$ index $>$ \&S, const vec$<$ index $>$ \&index\+\_\+vector)
+\begin{DoxyCompactList}\small\item\em Parallelised function to change a sparse matrix by applying the index\+Map to each entry. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\void \mbox{\hyperlink{sparse__matrix_8hpp_aa369d414c86784678f754f02409f2787}{graded\+\_\+linalg\+::convert\+\_\+mod\+\_\+2}} (vec$<$ index $>$ \&v)
+\begin{DoxyCompactList}\small\item\em For a vector of integers, removes any even number of consecutive multiples. If the vector is sorted this is mod 2 reduction. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\bool \mbox{\hyperlink{sparse__matrix_8hpp_abbcf3691a72d090875a498ad60acb970}{graded\+\_\+linalg\+::is\+\_\+sorted}} (vec$<$ index $>$ \&v)
+\begin{DoxyCompactList}\small\item\em Checks if the entries of the vectors are strictly increasing. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\Sparse\+Matrix$<$ index $>$ \mbox{\hyperlink{sparse__matrix_8hpp_a6874046c2542102939ef8973f9c8bbe9}{graded\+\_\+linalg\+::multiply\+\_\+transpose}} (Sparse\+Matrix$<$ index $>$ \&M, Sparse\+Matrix$<$ index $>$ \&N)
+\begin{DoxyCompactList}\small\item\em Assumes that M is already transposed, then multiplies as before. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\Sparse\+Matrix$<$ index $>$ \mbox{\hyperlink{sparse__matrix_8hpp_a8145b6e17839573d33be5885b1085c14}{graded\+\_\+linalg\+::multiply}} (Sparse\+Matrix$<$ index $>$ \&M, Sparse\+Matrix$<$ index $>$ \&N)
+\begin{DoxyCompactList}\small\item\em Computes the transpose of M, then multiplies the columns. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\void \mbox{\hyperlink{sparse__matrix_8hpp_a26f25bc0920551936c535879305f5abb}{graded\+\_\+linalg\+::simultaneous\+\_\+row\+\_\+reduction}} (std\+::unordered\+\_\+map$<$ index, Sparse\+Matrix$<$ index $>$$>$ \&N\+\_\+map, vec$<$ index $>$ \&blocks, bitset \&support)
+\begin{DoxyCompactList}\small\item\em If all matrices N\+\_\+map\mbox{[}blocks\+\_\+to\+\_\+reduce\mbox{]} contain exactly one row, then this performs row reduction with these rows for entries after \char`\"{}support\char`\"{}. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename index $>$ }\\void \mbox{\hyperlink{sparse__matrix_8hpp_aac15224ad376362e6380e3682fda607f}{graded\+\_\+linalg\+::simultaneous\+\_\+row\+\_\+reduction\+\_\+on\+\_\+submatrix}} (std\+::unordered\+\_\+map$<$ index, Sparse\+Matrix$<$ index $>$$>$ \&N\+\_\+map, vec$<$ index $>$ \&blocks, bitset \&support, Sparse\+Matrix$<$ index $>$ \&A)
+\begin{DoxyCompactList}\small\item\em If all matrices N\+\_\+map\mbox{[}blocks\+\_\+to\+\_\+reduce\mbox{]} contain exactly one row, then this performs row reduction with these rows for entries after \char`\"{}support\char`\"{}. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Jan Jendrysiak 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+0.\+1 
+\end{DoxyVersion}
+\begin{DoxyDate}{Date}
+2025-\/03-\/13
+\end{DoxyDate}
+\begin{DoxyCopyright}{Copyright}
+2025 TU Graz This file is part of the A\+I\+DA library. You can redistribute it and/or modify it under the terms of the G\+NU Lesser General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. 
+\end{DoxyCopyright}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{sparse__matrix_8hpp_a145d269acf4e3bfbd6ad13b42088c782}\label{sparse__matrix_8hpp_a145d269acf4e3bfbd6ad13b42088c782}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!apply\_transformation@{apply\_transformation}}
+\index{apply\_transformation@{apply\_transformation}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{apply\_transformation()}{apply\_transformation()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void graded\+\_\+linalg\+::apply\+\_\+transformation (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{target,  }\item[{const std\+::unordered\+\_\+map$<$ index, index $>$ \&}]{index\+Map,  }\item[{const bool \&}]{needs\+No\+Deletion = {\ttfamily false} }\end{DoxyParamCaption})}
+
+
+
+Parallelized function to apply a transformation to a vector of indices. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em target} & \\
+\hline
+{\em index\+Map} & \\
+\hline
+{\em needs\+No\+Deletion} & If the target vector only contains indices which are in the index\+Map, this can be set to true. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sparse__matrix_8hpp_ae359b98f57254c50b67b1349f7d52bef}\label{sparse__matrix_8hpp_ae359b98f57254c50b67b1349f7d52bef}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!apply\_transformation@{apply\_transformation}}
+\index{apply\_transformation@{apply\_transformation}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{apply\_transformation()}{apply\_transformation()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void graded\+\_\+linalg\+::apply\+\_\+transformation (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{target,  }\item[{const vec$<$ index $>$ \&}]{index\+\_\+vector }\end{DoxyParamCaption})}
+
+
+
+Apply a transformation given by a vector to a vector of indices. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em target} & \\
+\hline
+{\em index\+\_\+vector} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sparse__matrix_8hpp_aa369d414c86784678f754f02409f2787}\label{sparse__matrix_8hpp_aa369d414c86784678f754f02409f2787}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!convert\_mod\_2@{convert\_mod\_2}}
+\index{convert\_mod\_2@{convert\_mod\_2}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{convert\_mod\_2()}{convert\_mod\_2()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void graded\+\_\+linalg\+::convert\+\_\+mod\+\_\+2 (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{v }\end{DoxyParamCaption})}
+
+
+
+For a vector of integers, removes any even number of consecutive multiples. If the vector is sorted this is mod 2 reduction. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em v} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sparse__matrix_8hpp_a20084c62dd4cf9db372070f1badb987d}\label{sparse__matrix_8hpp_a20084c62dd4cf9db372070f1badb987d}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!erase\_from\_sorted\_vector@{erase\_from\_sorted\_vector}}
+\index{erase\_from\_sorted\_vector@{erase\_from\_sorted\_vector}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{erase\_from\_sorted\_vector()}{erase\_from\_sorted\_vector()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void graded\+\_\+linalg\+::erase\+\_\+from\+\_\+sorted\+\_\+vector (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{v,  }\item[{index}]{i }\end{DoxyParamCaption})}
+
+
+
+Tries to delete i from v. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em v} & \\
+\hline
+{\em i} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sparse__matrix_8hpp_ab94a6e3de8eacac62af61d6343a16c5d}\label{sparse__matrix_8hpp_ab94a6e3de8eacac62af61d6343a16c5d}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!erase\_from\_sorted\_vector\_bool@{erase\_from\_sorted\_vector\_bool}}
+\index{erase\_from\_sorted\_vector\_bool@{erase\_from\_sorted\_vector\_bool}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{erase\_from\_sorted\_vector\_bool()}{erase\_from\_sorted\_vector\_bool()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+bool graded\+\_\+linalg\+::erase\+\_\+from\+\_\+sorted\+\_\+vector\+\_\+bool (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{v,  }\item[{index}]{i }\end{DoxyParamCaption})}
+
+
+
+Erases i from v and returns true if i was found and erased. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em v} & \\
+\hline
+{\em i} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true 
+
+false 
+\end{DoxyReturn}
+\mbox{\Hypertarget{sparse__matrix_8hpp_abbcf3691a72d090875a498ad60acb970}\label{sparse__matrix_8hpp_abbcf3691a72d090875a498ad60acb970}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!is\_sorted@{is\_sorted}}
+\index{is\_sorted@{is\_sorted}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{is\_sorted()}{is\_sorted()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+bool graded\+\_\+linalg\+::is\+\_\+sorted (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{v }\end{DoxyParamCaption})}
+
+
+
+Checks if the entries of the vectors are strictly increasing. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em v} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true 
+
+false 
+\end{DoxyReturn}
+\mbox{\Hypertarget{sparse__matrix_8hpp_a8145b6e17839573d33be5885b1085c14}\label{sparse__matrix_8hpp_a8145b6e17839573d33be5885b1085c14}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!multiply@{multiply}}
+\index{multiply@{multiply}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{multiply()}{multiply()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+Sparse\+Matrix$<$index$>$ graded\+\_\+linalg\+::multiply (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$ \&}]{M,  }\item[{\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$ \&}]{N }\end{DoxyParamCaption})}
+
+
+
+Computes the transpose of M, then multiplies the columns. 
+
+\mbox{\Hypertarget{sparse__matrix_8hpp_a6874046c2542102939ef8973f9c8bbe9}\label{sparse__matrix_8hpp_a6874046c2542102939ef8973f9c8bbe9}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!multiply\_transpose@{multiply\_transpose}}
+\index{multiply\_transpose@{multiply\_transpose}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{multiply\_transpose()}{multiply\_transpose()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+Sparse\+Matrix$<$index$>$ graded\+\_\+linalg\+::multiply\+\_\+transpose (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$ \&}]{M,  }\item[{\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$ \&}]{N }\end{DoxyParamCaption})}
+
+
+
+Assumes that M is already transposed, then multiplies as before. 
+
+\mbox{\Hypertarget{sparse__matrix_8hpp_add43ed61bcc82180b2a92971159c3976}\label{sparse__matrix_8hpp_add43ed61bcc82180b2a92971159c3976}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!pair\_to\_index\_map@{pair\_to\_index\_map}}
+\index{pair\_to\_index\_map@{pair\_to\_index\_map}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{pair\_to\_index\_map()}{pair\_to\_index\_map()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+std\+::unordered\+\_\+map$<$ std\+::pair$<$index,index$>$, index, pair\+\_\+hash$<$index$>$ $>$ graded\+\_\+linalg\+::pair\+\_\+to\+\_\+index\+\_\+map (\begin{DoxyParamCaption}\item[{const vec$<$ std\+::pair$<$ index, index $>$$>$ \&}]{index\+\_\+pairs }\end{DoxyParamCaption})}
+
+
+
+This function is used to delete rows in a L\+OC sparse matrix. It creates a map which maps the old indices to the new indices. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em indices} & Holds the indices of the rows which should stay in the matrix. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::unordered\+\_\+map$<$index, index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{sparse__matrix_8hpp_aa099e9ed6582da6526c73b2c1a79c3f7}\label{sparse__matrix_8hpp_aa099e9ed6582da6526c73b2c1a79c3f7}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!shiftIndicesMap@{shiftIndicesMap}}
+\index{shiftIndicesMap@{shiftIndicesMap}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{shiftIndicesMap()}{shiftIndicesMap()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+std\+::unordered\+\_\+map$<$index, index$>$ graded\+\_\+linalg\+::shift\+Indices\+Map (\begin{DoxyParamCaption}\item[{const vec$<$ index $>$ \&}]{indices }\end{DoxyParamCaption})}
+
+
+
+This function is used to delete rows in a L\+OC sparse matrix. It creates a map which maps the old indices to the new indices. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em indices} & Holds the indices of the rows which should stay in the matrix. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::unordered\+\_\+map$<$index, index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{sparse__matrix_8hpp_a26f25bc0920551936c535879305f5abb}\label{sparse__matrix_8hpp_a26f25bc0920551936c535879305f5abb}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!simultaneous\_row\_reduction@{simultaneous\_row\_reduction}}
+\index{simultaneous\_row\_reduction@{simultaneous\_row\_reduction}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{simultaneous\_row\_reduction()}{simultaneous\_row\_reduction()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void graded\+\_\+linalg\+::simultaneous\+\_\+row\+\_\+reduction (\begin{DoxyParamCaption}\item[{std\+::unordered\+\_\+map$<$ index, \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$$>$ \&}]{N\+\_\+map,  }\item[{vec$<$ index $>$ \&}]{blocks,  }\item[{bitset \&}]{support }\end{DoxyParamCaption})}
+
+
+
+If all matrices N\+\_\+map\mbox{[}blocks\+\_\+to\+\_\+reduce\mbox{]} contain exactly one row, then this performs row reduction with these rows for entries after \char`\"{}support\char`\"{}. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+{\em D\+E\+R\+I\+V\+ED} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em N\+\_\+map} & \\
+\hline
+{\em blocks} & \\
+\hline
+{\em support} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sparse__matrix_8hpp_aac15224ad376362e6380e3682fda607f}\label{sparse__matrix_8hpp_aac15224ad376362e6380e3682fda607f}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!simultaneous\_row\_reduction\_on\_submatrix@{simultaneous\_row\_reduction\_on\_submatrix}}
+\index{simultaneous\_row\_reduction\_on\_submatrix@{simultaneous\_row\_reduction\_on\_submatrix}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{simultaneous\_row\_reduction\_on\_submatrix()}{simultaneous\_row\_reduction\_on\_submatrix()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void graded\+\_\+linalg\+::simultaneous\+\_\+row\+\_\+reduction\+\_\+on\+\_\+submatrix (\begin{DoxyParamCaption}\item[{std\+::unordered\+\_\+map$<$ index, \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$$>$ \&}]{N\+\_\+map,  }\item[{vec$<$ index $>$ \&}]{blocks,  }\item[{bitset \&}]{support,  }\item[{\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$ \&}]{A }\end{DoxyParamCaption})}
+
+
+
+If all matrices N\+\_\+map\mbox{[}blocks\+\_\+to\+\_\+reduce\mbox{]} contain exactly one row, then this performs row reduction with these rows for entries after \char`\"{}support\char`\"{}. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+{\em D\+E\+R\+I\+V\+ED} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em N\+\_\+map} & \\
+\hline
+{\em blocks} & \\
+\hline
+{\em support} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sparse__matrix_8hpp_a12252ad71c371e0aa5fe1c6ceb9444dd}\label{sparse__matrix_8hpp_a12252ad71c371e0aa5fe1c6ceb9444dd}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!transform\_matrix@{transform\_matrix}}
+\index{transform\_matrix@{transform\_matrix}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{transform\_matrix()}{transform\_matrix()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void graded\+\_\+linalg\+::transform\+\_\+matrix (\begin{DoxyParamCaption}\item[{array$<$ index $>$ \&}]{S,  }\item[{const std\+::unordered\+\_\+map$<$ index, index $>$ \&}]{index\+Map,  }\item[{const bool \&}]{needs\+No\+Deletion }\end{DoxyParamCaption})}
+
+
+
+Parallelised function to change a sparse matrix by applying the index\+Map to each entry. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em S} & \\
+\hline
+{\em index\+Map} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sparse__matrix_8hpp_a35e1831d8a73a805f3f63ee49eb3ed0c}\label{sparse__matrix_8hpp_a35e1831d8a73a805f3f63ee49eb3ed0c}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!transform\_matrix@{transform\_matrix}}
+\index{transform\_matrix@{transform\_matrix}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{transform\_matrix()}{transform\_matrix()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void graded\+\_\+linalg\+::transform\+\_\+matrix (\begin{DoxyParamCaption}\item[{array$<$ index $>$ \&}]{S,  }\item[{const vec$<$ index $>$ \&}]{index\+\_\+vector }\end{DoxyParamCaption})}
+
+
+
+Parallelised function to change a sparse matrix by applying the index\+Map to each entry. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em S} & \\
+\hline
+{\em index\+Map} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sparse__matrix_8hpp_adb40694818a236e4e461ee96831d0b5b}\label{sparse__matrix_8hpp_adb40694818a236e4e461ee96831d0b5b}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!vec\_restriction@{vec\_restriction}}
+\index{vec\_restriction@{vec\_restriction}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{vec\_restriction()}{vec\_restriction()}}
+{\footnotesize\ttfamily template$<$typename index , typename T $>$ \\
+vec$<$T$>$ graded\+\_\+linalg\+::vec\+\_\+restriction (\begin{DoxyParamCaption}\item[{vec$<$ T $>$ \&}]{target,  }\item[{vec$<$ index $>$ \&}]{mask }\end{DoxyParamCaption})}
+
+
+
+Returns a copy of the target vector with the entries at the indices given in the mask. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+{\em T} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em target} & \\
+\hline
+{\em mask} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+vec$<$\+T$>$ ~\newline
+ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{sparse__matrix_8hpp_ad837b092bd1f7070976df445d2a57028}\label{sparse__matrix_8hpp_ad837b092bd1f7070976df445d2a57028}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!vectorXORMulti@{vectorXORMulti}}
+\index{vectorXORMulti@{vectorXORMulti}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{vectorXORMulti()}{vectorXORMulti()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+vec$<$index$>$ graded\+\_\+linalg\+::vector\+X\+O\+R\+Multi (\begin{DoxyParamCaption}\item[{const vec$<$ vec$<$ index $>$$>$ \&}]{matrix,  }\item[{const bitset \&}]{mask }\end{DoxyParamCaption})}
+
+
+
+Computes A$\ast$b over F\+\_\+2. Only somewhat fast if A is sparse. Returns the xor of all vectors whose indices are in the mask, generalizing the approach of Michaels \char`\"{}+\char`\"{} operator. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em mask} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+vec$<$index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{sparse__matrix_8hpp_a125baaa1160e0dff47eee00a85aa543b}\label{sparse__matrix_8hpp_a125baaa1160e0dff47eee00a85aa543b}} 
+\index{sparse\_matrix.hpp@{sparse\_matrix.hpp}!vectorXORMulti@{vectorXORMulti}}
+\index{vectorXORMulti@{vectorXORMulti}!sparse\_matrix.hpp@{sparse\_matrix.hpp}}
+\doxysubsubsection{\texorpdfstring{vectorXORMulti()}{vectorXORMulti()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+vec$<$index$>$ graded\+\_\+linalg\+::vector\+X\+O\+R\+Multi (\begin{DoxyParamCaption}\item[{const vec$<$ vec$<$ index $>$$>$ \&}]{matrix,  }\item[{const vec$<$ index $>$ \&}]{mask }\end{DoxyParamCaption})}
+
+
+
+Attention\+: This might be slower then just counting parallelized! Returns the xor of all vectors whose indices are in the mask, generalizing the approach of add\+\_\+to/ + operator. In essence this computes the product of the matrix with the column vector given by the mask over G\+F(2) 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em matrix} & \\
+\hline
+{\em mask} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+vec$<$index$>$ 
+\end{DoxyReturn}

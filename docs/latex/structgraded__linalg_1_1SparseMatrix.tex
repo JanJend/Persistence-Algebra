@@ -1,0 +1,646 @@
+\hypertarget{structgraded__linalg_1_1SparseMatrix}{}\doxysection{graded\+\_\+linalg\+::Sparse\+Matrix$<$ index $>$ Struct Template Reference}
+\label{structgraded__linalg_1_1SparseMatrix}\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+
+
+Every column is stored as a list of non-\/zero entries.  
+
+
+
+
+{\ttfamily \#include $<$sparse\+\_\+matrix.\+hpp$>$}
+
+
+
+Inheritance diagram for graded\+\_\+linalg\+::Sparse\+Matrix$<$ index $>$\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{structgraded__linalg_1_1SparseMatrix__inherit__graph}
+\end{center}
+\end{figure}
+
+
+Collaboration diagram for graded\+\_\+linalg\+::Sparse\+Matrix$<$ index $>$\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=233pt]{structgraded__linalg_1_1SparseMatrix__coll__graph}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a2c67e709f74f27839f7440db70c76d4c}\label{structgraded__linalg_1_1SparseMatrix_a2c67e709f74f27839f7440db70c76d4c}} 
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \& {\bfseries operator=} (\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \&\&other)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a7545b24c2663e7aff22066db51194249}\label{structgraded__linalg_1_1SparseMatrix_a7545b24c2663e7aff22066db51194249}} 
+void {\bfseries sort\+\_\+column} (index i)
+\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_ad795ec05f02a6d219995be045f881973}{compute\+\_\+revrows}} ()
+\begin{DoxyCompactList}\small\item\em Computes all rows from column data in reverse order. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a391220b8d2a84bea2bd338cfd8fa88f6}{compute\+\_\+rows\+\_\+forward}} ()
+\begin{DoxyCompactList}\small\item\em Compute all rows in forward order. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a6c954da068b29e784a81f6abd198070c}{compute\+\_\+rows\+\_\+forward}} (const vec$<$ index $>$ \&row\+\_\+indices, const vec$<$ index $>$ \&col\+\_\+indices)
+\begin{DoxyCompactList}\small\item\em Computes all rows in forward order given a list of row indices which can appear shifted by the col\+\_\+indices. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a8dc885863813f52ae464cb44fb4d3005}{compute\+\_\+rows\+\_\+forward}} (const vec$<$ index $>$ \&row\+\_\+indices)
+\begin{DoxyCompactList}\small\item\em Computes all rows in forward order given a list of row indices which can appear without shift. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_ac58ed4d22e07450fe4a34a700c535672}{compute\+\_\+rows\+\_\+forward\+\_\+map}} (const vec$<$ index $>$ \&row\+\_\+map)
+\begin{DoxyCompactList}\small\item\em Computes all rows in forward order given a map from entries to row indices as a vector. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a894e2acfc02bfd009ddbec245ad76b61}{compute\+\_\+rows\+\_\+forward\+\_\+map}} (const vec$<$ index $>$ \&row\+\_\+map, index size)
+\begin{DoxyCompactList}\small\item\em Computes all rows in forward order given a map from entries to row indices as a vector. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a62317918b6f5b88cc43afd4b49ebb77c}{compute\+\_\+columns\+\_\+from\+\_\+rows}} ()
+\begin{DoxyCompactList}\small\item\em Computes the columns from the rows if the rows contain only 0..num\+\_\+cols . \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_ac1b5c7b2e75cb4de637afbc78853ad69}{compute\+\_\+columns\+\_\+from\+\_\+rows}} (vec$<$ index $>$ \&col\+\_\+indices, vec$<$ index $>$ \&row\+\_\+indices)
+\begin{DoxyCompactList}\small\item\em Computes the columns from the rows if the rows contain only indices in col\+\_\+indices. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_aa57551700ff88dcc5ebe1bfa6fb83b8a}{compute\+\_\+columns\+\_\+from\+\_\+rows}} (vec$<$ index $>$ \&row\+\_\+indices)
+\begin{DoxyCompactList}\small\item\em Computes the columns from the rows if the rows contain only 0..num\+\_\+cols . \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a694062c6af80582c582105ae4bbd6353}{compute\+\_\+normalisation}} (const vec$<$ index $>$ \&row\+\_\+indices)
+\begin{DoxyCompactList}\small\item\em If the entries of data are not from 1..n, but lie in row\+\_\+indices, then this function normalises those entries back to 1..n. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a69a1e16141b1ea6e1f6055ff2708af37}\label{structgraded__linalg_1_1SparseMatrix_a69a1e16141b1ea6e1f6055ff2708af37}} 
+void {\bfseries compute\+\_\+normalisation\+\_\+with\+\_\+pivots} (const vec$<$ index $>$ \&row\+\_\+indices)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a86d89463ac2d0cc3823756b81caa3ee0}\label{structgraded__linalg_1_1SparseMatrix_a86d89463ac2d0cc3823756b81caa3ee0}} 
+void {\bfseries transform\+\_\+data} (const std\+::unordered\+\_\+map$<$ index, index $>$ \&index\+Map)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_aff713467f6ddc8a97e87c4d1e38e34c4}\label{structgraded__linalg_1_1SparseMatrix_aff713467f6ddc8a97e87c4d1e38e34c4}} 
+void {\bfseries transform\+\_\+data} (const vec$<$ index $>$ \&index\+\_\+vector)
+\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a4a26f44940daa9a39e5bbfe73fee0a62}{print\+\_\+rows}} ()
+\begin{DoxyCompactList}\small\item\em Prints the \+\_\+row list. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a23e2b5b3707fb78e85bc842b9749d6da}{compute\+\_\+row}} (index i, vec$<$ index $>$ \&row)
+\begin{DoxyCompactList}\small\item\em Computes a row from column data in reverse order. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_ae94600f17b7ee9b1c4b334187f24aa29}{get\+\_\+row\+\_\+copy}} (index i, vec$<$ index $>$ \&row)
+\begin{DoxyCompactList}\small\item\em Copy a row from \+\_\+rows. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a5a6bdbcd242d43cd87f42b3e5fb5cb9a}\label{structgraded__linalg_1_1SparseMatrix_a5a6bdbcd242d43cd87f42b3e5fb5cb9a}} 
+{\bfseries Sparse\+Matrix} (index m)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a6167f4dd1ca28b18f6431a970da5e51f}\label{structgraded__linalg_1_1SparseMatrix_a6167f4dd1ca28b18f6431a970da5e51f}} 
+{\bfseries Sparse\+Matrix} (index m, index n)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a378ffadc6503318789ee41c4116fee6e}\label{structgraded__linalg_1_1SparseMatrix_a378ffadc6503318789ee41c4116fee6e}} 
+{\bfseries Sparse\+Matrix} (const \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \&other)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a17b3d2f89e9b5a7afe60c2aff4200437}\label{structgraded__linalg_1_1SparseMatrix_a17b3d2f89e9b5a7afe60c2aff4200437}} 
+{\bfseries Sparse\+Matrix} (index m, index n, const array$<$ index $>$ \&data)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a3d13d4a1f4ff1bb71aef32b3c10da8de}\label{structgraded__linalg_1_1SparseMatrix_a3d13d4a1f4ff1bb71aef32b3c10da8de}} 
+{\bfseries Sparse\+Matrix} (index m, index n, const std\+::string \&type, const index percent=-\/1)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a7c01a8d47770e8b1b78d2ef8347dccbb}\label{structgraded__linalg_1_1SparseMatrix_a7c01a8d47770e8b1b78d2ef8347dccbb}} 
+{\bfseries Sparse\+Matrix} (index n, vec$<$ index $>$ indicator)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a08b3ac5d29f8ba89a3c15662dd66d32e}\label{structgraded__linalg_1_1SparseMatrix_a08b3ac5d29f8ba89a3c15662dd66d32e}} 
+void {\bfseries fast\+\_\+row\+\_\+op} (index i, index j)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a99099e511a69848bce8cd028887cb42a}\label{structgraded__linalg_1_1SparseMatrix_a99099e511a69848bce8cd028887cb42a}} 
+void {\bfseries row\+\_\+op\+\_\+with\+\_\+update} (index i, index j)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a344d45cb2c43e16f687f8db8c62c07bf}\label{structgraded__linalg_1_1SparseMatrix_a344d45cb2c43e16f687f8db8c62c07bf}} 
+void {\bfseries fast\+\_\+rev\+\_\+row\+\_\+op} (index i, index j)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_aa714012f6b57f557b2d3d9f61885fe97}\label{structgraded__linalg_1_1SparseMatrix_aa714012f6b57f557b2d3d9f61885fe97}} 
+void {\bfseries row\+\_\+op\+\_\+on\+\_\+cols} (index i, index j)
+\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a5c9156bf537a3b76371d32894d094733}{delete\+\_\+last\+\_\+entries}} ()
+\begin{DoxyCompactList}\small\item\em Deletes the last entry of each column. This is used in the cokernel computation. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a15560b014113731d3bb716646321c151}{cull\+\_\+columns}} (index \&threshold, bool from\+\_\+end=true)
+\begin{DoxyCompactList}\small\item\em Deletes either the last threshold rows of the matrix or everything after index threshold. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a3bc6eb065c6c8440e13124db64581622}{restricted\+\_\+domain\+\_\+copy}} (vec$<$ index $>$ \&col\+Indices) const
+\begin{DoxyCompactList}\small\item\em Returns a copy with only the columns at the indices given in col\+Indices. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_ac5dfbc49e26f0d6862b9de624909faed}{transposed\+\_\+copy}} () const
+\begin{DoxyCompactList}\small\item\em Returns the transpose. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename smaller\+\_\+index $>$ }\\void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a1edd044ce59f829d8ba3c41fa996199a}{column\+\_\+reduction\+\_\+triangular\+\_\+with\+\_\+memory\+\_\+int}} (\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ smaller\+\_\+index $>$ \&performed\+\_\+ops, vec$<$ smaller\+\_\+index $>$ \&zero\+\_\+cols)
+\begin{DoxyCompactList}\small\item\em Brings Matrix in {\itshape non}-\/completely reduced Column Echelon Form and returns the performed operations. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename smaller\+\_\+index $>$ }\\\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ smaller\+\_\+index $>$ \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a3e4e0e43e021112feccbf571ef4702cf}{get\+\_\+kernel\+\_\+int}} ()
+\begin{DoxyCompactList}\small\item\em ! Compute num\+\_\+cols ! Computes the Kernel of the matrix by column-\/reduction. Warning\+: Changes the matrix! \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a7e28f3a33e5a317326bca748d15a51a2}{co\+Kernel}} (bool is\+Reduced=false, vec$<$ index $>$ $\ast$basis\+Lift=nullptr)
+\begin{DoxyCompactList}\small\item\em Computes the cokernel of a sparse matrix over F\+\_\+2 by column reducing the matrix first Notice that the result must be a cokernel to the non-\/reduced matrix, too, so we can also use a copy instead, if we want to keep the original matrix. Careful, this is not working right now, because it uses another column\+\_\+reduction algorithm. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_aa051f0b75084acef44efdb9d2e411c97}{co\+Kernel\+\_\+without\+\_\+prelim}} (vec$<$ index $>$ \&quotient\+Basis, vec$<$ index $>$ \&row\+\_\+indices)
+\begin{DoxyCompactList}\small\item\em Assumes that matrix is reduced and a basislift is computed Computes the cokernel of a sparse matrix over F\+\_\+2. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a2e1fe5f46b89d93542c4b812d188b1a0}{co\+Kernel\+\_\+transposed\+\_\+without\+\_\+prelim}} (vec$<$ index $>$ \&basislift)
+\begin{DoxyCompactList}\small\item\em Assumes that matrix is reduced and a basislift was computed Computes the transpose of a cokernel of a sparse matrix over F\+\_\+2. \end{DoxyCompactList}\item 
+long \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_acc977eaf3d1a658c7dc62ef76406be8c}{number\+\_\+of\+\_\+entries}} ()
+\begin{DoxyCompactList}\small\item\em Returns the number of entries in the matrix. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$ \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_ae57942698869ebb89ecfbd2de435cb6c}{transformed\+\_\+restricted\+\_\+copy}} (const \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&B, vec$<$ index $>$ \&col\+\_\+indices)
+\begin{DoxyCompactList}\small\item\em Returns the columns indexed by col\+\_\+indices, but transformed by a right-\/multiplication with B. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_addefe6f3e1fe08e8a3b62451ff4cbcbe}{multiply\+\_\+dense}} (\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&D)
+\begin{DoxyCompactList}\small\item\em Multiplies from the right with a dense matrix. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a3574b3b82fbcdc7dec5a1cd2d32a4038}{multiply\+\_\+id\+\_\+triangular}} (\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&D)
+\begin{DoxyCompactList}\small\item\em Multiplies with D + ID if D is on one side of the diagonal. Not well optimised. T\+O-\/\+DO\+: In practice D will often have at most one entry per column so we should probably add single vectors iteratively to reduce unnecessary copying. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a2e53893082b7e62a1d439f106c9c35c8}{multiply\+\_\+dense\+\_\+with\+\_\+e\+\_\+check}} (\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&D, vec$<$ bitset $>$ \&e)
+\begin{DoxyCompactList}\small\item\em Multiplies from the right with a square dense matrix, but checks if nothing needs to be done. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_ad2809d864c4462a1cff88c065d0906e0}{multiply\+\_\+dense\+\_\+with\+\_\+e\+\_\+check}} (\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&D, vec$<$ bitset $>$ \&e\+\_\+vec, const bitset \&col\+\_\+indices)
+\begin{DoxyCompactList}\small\item\em Multiplies the columns given by col\+\_\+indices with a square dense matrix. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a061ecf5fe3256c86a7988f97bee29423}\label{structgraded__linalg_1_1SparseMatrix_a061ecf5fe3256c86a7988f97bee29423}} 
+vec$<$ index $>$ {\bfseries multiply\+\_\+with\+\_\+sparse\+\_\+vector} (vec$<$ index $>$ \&v)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_add45e10b86e2d807a548a7ee19938e0d}\label{structgraded__linalg_1_1SparseMatrix_add45e10b86e2d807a548a7ee19938e0d}} 
+vec$<$ index $>$ {\bfseries multiply\+\_\+with\+\_\+dense\+\_\+vector} (bitset \&v)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a84f9f6f9cff3b58b4937a4974abf0a5a}\label{structgraded__linalg_1_1SparseMatrix_a84f9f6f9cff3b58b4937a4974abf0a5a}} 
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$ {\bfseries multiply\+\_\+right} (\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$ \&N)
+\item 
+bool \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_a587753d9f9897a72d54a8fadbe5596fa}{reduce\+\_\+fully}} (\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \&N, bool is\+\_\+diagonal=false)
+\begin{DoxyCompactList}\small\item\em Reduces N as much as possible using column reduction to get a quotient space representation. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix_aa47b34db25fd33f8b92adc698ca5219a}{reduce\+\_\+fully}} (vec$<$ index $>$ \&N)
+\begin{DoxyCompactList}\small\item\em Reduces N as much as possible using column reduction to get a quotient space representation. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_aa55520eacb9db7356c5e33144989ede4}\label{structgraded__linalg_1_1SparseMatrix_aa55520eacb9db7356c5e33144989ede4}} 
+vec$<$ vec$<$ index $>$ $>$ {\bfseries \+\_\+rows}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a70a612a388c368e8c7cd20d522f966cb}\label{structgraded__linalg_1_1SparseMatrix_a70a612a388c368e8c7cd20d522f966cb}} 
+bool {\bfseries rows\+\_\+computed}
+\end{DoxyCompactItemize}
+\doxysubsection*{Additional Inherited Members}
+
+
+\doxysubsection{Detailed Description}
+\subsubsection*{template$<$typename index$>$\newline
+struct graded\+\_\+linalg\+::\+Sparse\+Matrix$<$ index $>$}
+
+Every column is stored as a list of non-\/zero entries. 
+
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a7e28f3a33e5a317326bca748d15a51a2}\label{structgraded__linalg_1_1SparseMatrix_a7e28f3a33e5a317326bca748d15a51a2}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!coKernel@{coKernel}}
+\index{coKernel@{coKernel}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{coKernel()}{coKernel()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::co\+Kernel (\begin{DoxyParamCaption}\item[{bool}]{is\+Reduced = {\ttfamily false},  }\item[{vec$<$ index $>$ $\ast$}]{basis\+Lift = {\ttfamily nullptr} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes the cokernel of a sparse matrix over F\+\_\+2 by column reducing the matrix first Notice that the result must be a cokernel to the non-\/reduced matrix, too, so we can also use a copy instead, if we want to keep the original matrix. Careful, this is not working right now, because it uses another column\+\_\+reduction algorithm. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em S} & \\
+\hline
+{\em is\+Reduced} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+sparse\+Matrix 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a2e1fe5f46b89d93542c4b812d188b1a0}\label{structgraded__linalg_1_1SparseMatrix_a2e1fe5f46b89d93542c4b812d188b1a0}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!coKernel\_transposed\_without\_prelim@{coKernel\_transposed\_without\_prelim}}
+\index{coKernel\_transposed\_without\_prelim@{coKernel\_transposed\_without\_prelim}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{coKernel\_transposed\_without\_prelim()}{coKernel\_transposed\_without\_prelim()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::co\+Kernel\+\_\+transposed\+\_\+without\+\_\+prelim (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{basislift }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Assumes that matrix is reduced and a basislift was computed Computes the transpose of a cokernel of a sparse matrix over F\+\_\+2. 
+
+\begin{DoxyReturn}{Returns}
+sparse\+Matrix 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_aa051f0b75084acef44efdb9d2e411c97}\label{structgraded__linalg_1_1SparseMatrix_aa051f0b75084acef44efdb9d2e411c97}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!coKernel\_without\_prelim@{coKernel\_without\_prelim}}
+\index{coKernel\_without\_prelim@{coKernel\_without\_prelim}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{coKernel\_without\_prelim()}{coKernel\_without\_prelim()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::co\+Kernel\+\_\+without\+\_\+prelim (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{quotient\+Basis,  }\item[{vec$<$ index $>$ \&}]{row\+\_\+indices }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Assumes that matrix is reduced and a basislift is computed Computes the cokernel of a sparse matrix over F\+\_\+2. 
+
+\begin{DoxyReturn}{Returns}
+sparse\+Matrix 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a1edd044ce59f829d8ba3c41fa996199a}\label{structgraded__linalg_1_1SparseMatrix_a1edd044ce59f829d8ba3c41fa996199a}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!column\_reduction\_triangular\_with\_memory\_int@{column\_reduction\_triangular\_with\_memory\_int}}
+\index{column\_reduction\_triangular\_with\_memory\_int@{column\_reduction\_triangular\_with\_memory\_int}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{column\_reduction\_triangular\_with\_memory\_int()}{column\_reduction\_triangular\_with\_memory\_int()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+template$<$typename smaller\+\_\+index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::column\+\_\+reduction\+\_\+triangular\+\_\+with\+\_\+memory\+\_\+int (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ smaller\+\_\+index $>$ \&}]{performed\+\_\+ops,  }\item[{vec$<$ smaller\+\_\+index $>$ \&}]{zero\+\_\+cols }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Brings Matrix in {\itshape non}-\/completely reduced Column Echelon Form and returns the performed operations. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em performed\+\_\+ops} & Applies all column operations to this matrix. \\
+\hline
+{\em zero\+\_\+cols} & Stores the indices of the columns which are completely zero. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a62317918b6f5b88cc43afd4b49ebb77c}\label{structgraded__linalg_1_1SparseMatrix_a62317918b6f5b88cc43afd4b49ebb77c}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!compute\_columns\_from\_rows@{compute\_columns\_from\_rows}}
+\index{compute\_columns\_from\_rows@{compute\_columns\_from\_rows}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_columns\_from\_rows()}{compute\_columns\_from\_rows()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::compute\+\_\+columns\+\_\+from\+\_\+rows (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes the columns from the rows if the rows contain only 0..num\+\_\+cols . 
+
+
+\begin{DoxyParams}{Parameters}
+{\em col\+\_\+indices} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_ac1b5c7b2e75cb4de637afbc78853ad69}\label{structgraded__linalg_1_1SparseMatrix_ac1b5c7b2e75cb4de637afbc78853ad69}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!compute\_columns\_from\_rows@{compute\_columns\_from\_rows}}
+\index{compute\_columns\_from\_rows@{compute\_columns\_from\_rows}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_columns\_from\_rows()}{compute\_columns\_from\_rows()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::compute\+\_\+columns\+\_\+from\+\_\+rows (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{col\+\_\+indices,  }\item[{vec$<$ index $>$ \&}]{row\+\_\+indices }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes the columns from the rows if the rows contain only indices in col\+\_\+indices. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em col\+\_\+indices} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_aa57551700ff88dcc5ebe1bfa6fb83b8a}\label{structgraded__linalg_1_1SparseMatrix_aa57551700ff88dcc5ebe1bfa6fb83b8a}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!compute\_columns\_from\_rows@{compute\_columns\_from\_rows}}
+\index{compute\_columns\_from\_rows@{compute\_columns\_from\_rows}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_columns\_from\_rows()}{compute\_columns\_from\_rows()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::compute\+\_\+columns\+\_\+from\+\_\+rows (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{row\+\_\+indices }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes the columns from the rows if the rows contain only 0..num\+\_\+cols . 
+
+
+\begin{DoxyParams}{Parameters}
+{\em col\+\_\+indices} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a694062c6af80582c582105ae4bbd6353}\label{structgraded__linalg_1_1SparseMatrix_a694062c6af80582c582105ae4bbd6353}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!compute\_normalisation@{compute\_normalisation}}
+\index{compute\_normalisation@{compute\_normalisation}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_normalisation()}{compute\_normalisation()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::compute\+\_\+normalisation (\begin{DoxyParamCaption}\item[{const vec$<$ index $>$ \&}]{row\+\_\+indices }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+If the entries of data are not from 1..n, but lie in row\+\_\+indices, then this function normalises those entries back to 1..n. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em col\+\_\+indices} & \\
+\hline
+{\em row\+\_\+indices} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_ad795ec05f02a6d219995be045f881973}\label{structgraded__linalg_1_1SparseMatrix_ad795ec05f02a6d219995be045f881973}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!compute\_revrows@{compute\_revrows}}
+\index{compute\_revrows@{compute\_revrows}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_revrows()}{compute\_revrows()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::compute\+\_\+revrows (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes all rows from column data in reverse order. 
+
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a23e2b5b3707fb78e85bc842b9749d6da}\label{structgraded__linalg_1_1SparseMatrix_a23e2b5b3707fb78e85bc842b9749d6da}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!compute\_row@{compute\_row}}
+\index{compute\_row@{compute\_row}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_row()}{compute\_row()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::compute\+\_\+row (\begin{DoxyParamCaption}\item[{index}]{i,  }\item[{vec$<$ index $>$ \&}]{row }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes a row from column data in reverse order. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em i} & \\
+\hline
+{\em row} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a391220b8d2a84bea2bd338cfd8fa88f6}\label{structgraded__linalg_1_1SparseMatrix_a391220b8d2a84bea2bd338cfd8fa88f6}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!compute\_rows\_forward@{compute\_rows\_forward}}
+\index{compute\_rows\_forward@{compute\_rows\_forward}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_rows\_forward()}{compute\_rows\_forward()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::compute\+\_\+rows\+\_\+forward (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Compute all rows in forward order. 
+
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a8dc885863813f52ae464cb44fb4d3005}\label{structgraded__linalg_1_1SparseMatrix_a8dc885863813f52ae464cb44fb4d3005}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!compute\_rows\_forward@{compute\_rows\_forward}}
+\index{compute\_rows\_forward@{compute\_rows\_forward}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_rows\_forward()}{compute\_rows\_forward()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::compute\+\_\+rows\+\_\+forward (\begin{DoxyParamCaption}\item[{const vec$<$ index $>$ \&}]{row\+\_\+indices }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes all rows in forward order given a list of row indices which can appear without shift. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em row\+\_\+indices} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a6c954da068b29e784a81f6abd198070c}\label{structgraded__linalg_1_1SparseMatrix_a6c954da068b29e784a81f6abd198070c}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!compute\_rows\_forward@{compute\_rows\_forward}}
+\index{compute\_rows\_forward@{compute\_rows\_forward}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_rows\_forward()}{compute\_rows\_forward()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::compute\+\_\+rows\+\_\+forward (\begin{DoxyParamCaption}\item[{const vec$<$ index $>$ \&}]{row\+\_\+indices,  }\item[{const vec$<$ index $>$ \&}]{col\+\_\+indices }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes all rows in forward order given a list of row indices which can appear shifted by the col\+\_\+indices. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em row\+\_\+indices} & \\
+\hline
+{\em col\+\_\+indices} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_ac58ed4d22e07450fe4a34a700c535672}\label{structgraded__linalg_1_1SparseMatrix_ac58ed4d22e07450fe4a34a700c535672}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!compute\_rows\_forward\_map@{compute\_rows\_forward\_map}}
+\index{compute\_rows\_forward\_map@{compute\_rows\_forward\_map}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_rows\_forward\_map()}{compute\_rows\_forward\_map()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::compute\+\_\+rows\+\_\+forward\+\_\+map (\begin{DoxyParamCaption}\item[{const vec$<$ index $>$ \&}]{row\+\_\+map }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes all rows in forward order given a map from entries to row indices as a vector. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em row\+\_\+indices} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a894e2acfc02bfd009ddbec245ad76b61}\label{structgraded__linalg_1_1SparseMatrix_a894e2acfc02bfd009ddbec245ad76b61}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!compute\_rows\_forward\_map@{compute\_rows\_forward\_map}}
+\index{compute\_rows\_forward\_map@{compute\_rows\_forward\_map}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_rows\_forward\_map()}{compute\_rows\_forward\_map()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::compute\+\_\+rows\+\_\+forward\+\_\+map (\begin{DoxyParamCaption}\item[{const vec$<$ index $>$ \&}]{row\+\_\+map,  }\item[{index}]{size }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes all rows in forward order given a map from entries to row indices as a vector. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em row\+\_\+indices} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a15560b014113731d3bb716646321c151}\label{structgraded__linalg_1_1SparseMatrix_a15560b014113731d3bb716646321c151}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!cull\_columns@{cull\_columns}}
+\index{cull\_columns@{cull\_columns}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{cull\_columns()}{cull\_columns()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::cull\+\_\+columns (\begin{DoxyParamCaption}\item[{index \&}]{threshold,  }\item[{bool}]{from\+\_\+end = {\ttfamily true} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Deletes either the last threshold rows of the matrix or everything after index threshold. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em threshold} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a5c9156bf537a3b76371d32894d094733}\label{structgraded__linalg_1_1SparseMatrix_a5c9156bf537a3b76371d32894d094733}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!delete\_last\_entries@{delete\_last\_entries}}
+\index{delete\_last\_entries@{delete\_last\_entries}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{delete\_last\_entries()}{delete\_last\_entries()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::delete\+\_\+last\+\_\+entries (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Deletes the last entry of each column. This is used in the cokernel computation. 
+
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a3e4e0e43e021112feccbf571ef4702cf}\label{structgraded__linalg_1_1SparseMatrix_a3e4e0e43e021112feccbf571ef4702cf}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!get\_kernel\_int@{get\_kernel\_int}}
+\index{get\_kernel\_int@{get\_kernel\_int}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{get\_kernel\_int()}{get\_kernel\_int()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+template$<$typename smaller\+\_\+index $>$ \\
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$smaller\+\_\+index$>$ \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::get\+\_\+kernel\+\_\+int (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+! Compute num\+\_\+cols ! Computes the Kernel of the matrix by column-\/reduction. Warning\+: Changes the matrix! 
+
+\begin{DoxyReturn}{Returns}
+D\+E\+R\+I\+V\+ED 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_ae94600f17b7ee9b1c4b334187f24aa29}\label{structgraded__linalg_1_1SparseMatrix_ae94600f17b7ee9b1c4b334187f24aa29}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!get\_row\_copy@{get\_row\_copy}}
+\index{get\_row\_copy@{get\_row\_copy}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{get\_row\_copy()}{get\_row\_copy()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::get\+\_\+row\+\_\+copy (\begin{DoxyParamCaption}\item[{index}]{i,  }\item[{vec$<$ index $>$ \&}]{row }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Copy a row from \+\_\+rows. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em i} & \\
+\hline
+{\em row} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_addefe6f3e1fe08e8a3b62451ff4cbcbe}\label{structgraded__linalg_1_1SparseMatrix_addefe6f3e1fe08e8a3b62451ff4cbcbe}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!multiply\_dense@{multiply\_dense}}
+\index{multiply\_dense@{multiply\_dense}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{multiply\_dense()}{multiply\_dense()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::multiply\+\_\+dense (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&}]{D }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Multiplies from the right with a dense matrix. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em D} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a2e53893082b7e62a1d439f106c9c35c8}\label{structgraded__linalg_1_1SparseMatrix_a2e53893082b7e62a1d439f106c9c35c8}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!multiply\_dense\_with\_e\_check@{multiply\_dense\_with\_e\_check}}
+\index{multiply\_dense\_with\_e\_check@{multiply\_dense\_with\_e\_check}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{multiply\_dense\_with\_e\_check()}{multiply\_dense\_with\_e\_check()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::multiply\+\_\+dense\+\_\+with\+\_\+e\+\_\+check (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&}]{D,  }\item[{vec$<$ bitset $>$ \&}]{e }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Multiplies from the right with a square dense matrix, but checks if nothing needs to be done. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em D} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_ad2809d864c4462a1cff88c065d0906e0}\label{structgraded__linalg_1_1SparseMatrix_ad2809d864c4462a1cff88c065d0906e0}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!multiply\_dense\_with\_e\_check@{multiply\_dense\_with\_e\_check}}
+\index{multiply\_dense\_with\_e\_check@{multiply\_dense\_with\_e\_check}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{multiply\_dense\_with\_e\_check()}{multiply\_dense\_with\_e\_check()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::multiply\+\_\+dense\+\_\+with\+\_\+e\+\_\+check (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&}]{D,  }\item[{vec$<$ bitset $>$ \&}]{e\+\_\+vec,  }\item[{const bitset \&}]{col\+\_\+indices }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Multiplies the columns given by col\+\_\+indices with a square dense matrix. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em D} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a3574b3b82fbcdc7dec5a1cd2d32a4038}\label{structgraded__linalg_1_1SparseMatrix_a3574b3b82fbcdc7dec5a1cd2d32a4038}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!multiply\_id\_triangular@{multiply\_id\_triangular}}
+\index{multiply\_id\_triangular@{multiply\_id\_triangular}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{multiply\_id\_triangular()}{multiply\_id\_triangular()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::multiply\+\_\+id\+\_\+triangular (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&}]{D }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Multiplies with D + ID if D is on one side of the diagonal. Not well optimised. T\+O-\/\+DO\+: In practice D will often have at most one entry per column so we should probably add single vectors iteratively to reduce unnecessary copying. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em D} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_acc977eaf3d1a658c7dc62ef76406be8c}\label{structgraded__linalg_1_1SparseMatrix_acc977eaf3d1a658c7dc62ef76406be8c}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!number\_of\_entries@{number\_of\_entries}}
+\index{number\_of\_entries@{number\_of\_entries}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{number\_of\_entries()}{number\_of\_entries()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+long \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::number\+\_\+of\+\_\+entries (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns the number of entries in the matrix. 
+
+\begin{DoxyReturn}{Returns}
+long 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a4a26f44940daa9a39e5bbfe73fee0a62}\label{structgraded__linalg_1_1SparseMatrix_a4a26f44940daa9a39e5bbfe73fee0a62}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!print\_rows@{print\_rows}}
+\index{print\_rows@{print\_rows}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{print\_rows()}{print\_rows()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::print\+\_\+rows (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Prints the \+\_\+row list. 
+
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a587753d9f9897a72d54a8fadbe5596fa}\label{structgraded__linalg_1_1SparseMatrix_a587753d9f9897a72d54a8fadbe5596fa}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!reduce\_fully@{reduce\_fully}}
+\index{reduce\_fully@{reduce\_fully}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{reduce\_fully()}{reduce\_fully()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+bool \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::reduce\+\_\+fully (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$ \&}]{N,  }\item[{bool}]{is\+\_\+diagonal = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Reduces N as much as possible using column reduction to get a quotient space representation. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em N} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_aa47b34db25fd33f8b92adc698ca5219a}\label{structgraded__linalg_1_1SparseMatrix_aa47b34db25fd33f8b92adc698ca5219a}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!reduce\_fully@{reduce\_fully}}
+\index{reduce\_fully@{reduce\_fully}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{reduce\_fully()}{reduce\_fully()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::reduce\+\_\+fully (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{N }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Reduces N as much as possible using column reduction to get a quotient space representation. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em N} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_a3bc6eb065c6c8440e13124db64581622}\label{structgraded__linalg_1_1SparseMatrix_a3bc6eb065c6c8440e13124db64581622}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!restricted\_domain\_copy@{restricted\_domain\_copy}}
+\index{restricted\_domain\_copy@{restricted\_domain\_copy}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{restricted\_domain\_copy()}{restricted\_domain\_copy()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::restricted\+\_\+domain\+\_\+copy (\begin{DoxyParamCaption}\item[{vec$<$ index $>$ \&}]{col\+Indices }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns a copy with only the columns at the indices given in col\+Indices. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em col\+Indices} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+sparse\+Matrix 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_ae57942698869ebb89ecfbd2de435cb6c}\label{structgraded__linalg_1_1SparseMatrix_ae57942698869ebb89ecfbd2de435cb6c}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!transformed\_restricted\_copy@{transformed\_restricted\_copy}}
+\index{transformed\_restricted\_copy@{transformed\_restricted\_copy}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{transformed\_restricted\_copy()}{transformed\_restricted\_copy()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$index$>$ \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::transformed\+\_\+restricted\+\_\+copy (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&}]{B,  }\item[{vec$<$ index $>$ \&}]{col\+\_\+indices }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns the columns indexed by col\+\_\+indices, but transformed by a right-\/multiplication with B. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em B} & \\
+\hline
+{\em col\+\_\+indices} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1SparseMatrix_ac5dfbc49e26f0d6862b9de624909faed}\label{structgraded__linalg_1_1SparseMatrix_ac5dfbc49e26f0d6862b9de624909faed}} 
+\index{graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}!transposed\_copy@{transposed\_copy}}
+\index{transposed\_copy@{transposed\_copy}!graded\_linalg::SparseMatrix$<$ index $>$@{graded\_linalg::SparseMatrix$<$ index $>$}}
+\doxysubsubsection{\texorpdfstring{transposed\_copy()}{transposed\_copy()}}
+{\footnotesize\ttfamily template$<$typename index $>$ \\
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}} \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{graded\+\_\+linalg\+::\+Sparse\+Matrix}}$<$ index $>$\+::transposed\+\_\+copy (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns the transpose. 
+
+\begin{DoxyReturn}{Returns}
+sparse\+Matrix 
+\end{DoxyReturn}
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+Persistence-\/\+Algebra/include/grlina/\mbox{\hyperlink{sparse__matrix_8hpp}{sparse\+\_\+matrix.\+hpp}}\end{DoxyCompactItemize}

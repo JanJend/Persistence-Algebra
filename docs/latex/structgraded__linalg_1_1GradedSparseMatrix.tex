@@ -1,0 +1,394 @@
+\hypertarget{structgraded__linalg_1_1GradedSparseMatrix}{}\doxysection{graded\+\_\+linalg\+::Graded\+Sparse\+Matrix$<$ D, index $>$ Struct Template Reference}
+\label{structgraded__linalg_1_1GradedSparseMatrix}\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+
+
+A graded matrix with generic degree-\/type.  
+
+
+
+
+{\ttfamily \#include $<$graded\+\_\+matrix.\+hpp$>$}
+
+
+
+Inheritance diagram for graded\+\_\+linalg\+::Graded\+Sparse\+Matrix$<$ D, index $>$\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=237pt]{structgraded__linalg_1_1GradedSparseMatrix__inherit__graph}
+\end{center}
+\end{figure}
+
+
+Collaboration diagram for graded\+\_\+linalg\+::Graded\+Sparse\+Matrix$<$ D, index $>$\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=237pt]{structgraded__linalg_1_1GradedSparseMatrix__coll__graph}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a146d8273c73ab191c3c8918db8370bab}\label{structgraded__linalg_1_1GradedSparseMatrix_a146d8273c73ab191c3c8918db8370bab}} 
+{\bfseries Graded\+Sparse\+Matrix} (index m, index n)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a29425be2f2deccdfe1fbda51b712859b}\label{structgraded__linalg_1_1GradedSparseMatrix_a29425be2f2deccdfe1fbda51b712859b}} 
+{\bfseries Graded\+Sparse\+Matrix} (index m, index n, vec$<$ D $>$ c\+\_\+degrees, vec$<$ D $>$ r\+\_\+degrees)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a36c971c338aaa01e74a93a95c5426d38}\label{structgraded__linalg_1_1GradedSparseMatrix_a36c971c338aaa01e74a93a95c5426d38}} 
+{\bfseries Graded\+Sparse\+Matrix} (std\+::istream \&file\+\_\+stream, bool lex\+\_\+sort=false, bool compute\+\_\+batches=false)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_aa884f88577f18c6261413225f9642b2c}\label{structgraded__linalg_1_1GradedSparseMatrix_aa884f88577f18c6261413225f9642b2c}} 
+{\bfseries Graded\+Sparse\+Matrix} (const std\+::string \&filepath, bool lex\+\_\+sort=false, bool compute\+\_\+batches=false)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a7247c54aa6af2676e4cb822e6d1442ac}\label{structgraded__linalg_1_1GradedSparseMatrix_a7247c54aa6af2676e4cb822e6d1442ac}} 
+bool \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_a7247c54aa6af2676e4cb822e6d1442ac}{is\+\_\+graded\+\_\+matrix}} (bool output=false) const
+\begin{DoxyCompactList}\small\item\em Checks if the matrix is actually graded. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_a0027cb97ffd09e50808dc9ee2ef0c69f}{make\+\_\+graded}} ()
+\begin{DoxyCompactList}\small\item\em Deletes all entries which violate the gradedness condition. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_aca19f2c69bc43920d146d56b997c13e0}{compute\+\_\+num\+\_\+rows\+\_\+from\+\_\+degres}} ()
+\begin{DoxyCompactList}\small\item\em Infer the number of rows from the list of row degrees. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename Out\+Stream $>$ }\\void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_abc0ac084d152a4797666f3a93f51fd98}{to\+\_\+stream}} (Out\+Stream \&out, bool header=true)
+\begin{DoxyCompactList}\small\item\em Prints the content in scc format to a stream. Partially from M\+P\+P\+\_\+\+U\+T\+I\+LS print\+\_\+in\+\_\+rivet\+\_\+format in Graded\+\_\+matrix.\+h. \end{DoxyCompactList}\item 
+std\+::pair$<$ \mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$, vec$<$ index $>$ $>$ \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_a9145b29a2070e748fc71af24e35a8c6a}{map\+\_\+at\+\_\+degree\+\_\+pair}} (D d, bool shifted=false) const
+\begin{DoxyCompactList}\small\item\em computes the linear map induced at a single degree by cutting all columns and rows of a higher degree. First output is the matrix, second is a list of generators. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$ index $>$ \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_ae2ba5bdbf2b94be200970b55f593ae70}{map\+\_\+at\+\_\+degree}} (D d, vec$<$ index $>$ \&local\+\_\+admissible\+\_\+columns) const
+\begin{DoxyCompactList}\small\item\em computes the linear map induced at a single degree by cutting all columns of higher degrees. \end{DoxyCompactList}\item 
+vec$<$ index $>$ \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_ac21a90fb687d5ee6727d22edb3869115}{admissible\+\_\+row\+\_\+indices}} (D d)
+\begin{DoxyCompactList}\small\item\em Returns all row indices whose degree is smaller or equal to d. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a49868e7935622e2724c352746ed29775}\label{structgraded__linalg_1_1GradedSparseMatrix_a49868e7935622e2724c352746ed29775}} 
+bool {\bfseries is\+\_\+admissible\+\_\+column\+\_\+operation} (index i, index j) const
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a4b5393e5938672bf6ecd05e9562a53b8}\label{structgraded__linalg_1_1GradedSparseMatrix_a4b5393e5938672bf6ecd05e9562a53b8}} 
+bool {\bfseries is\+\_\+admissible\+\_\+column\+\_\+operation} (index i, const D d) const
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a153cd5c1537fa05142c3420944898d3b}\label{structgraded__linalg_1_1GradedSparseMatrix_a153cd5c1537fa05142c3420944898d3b}} 
+bool {\bfseries is\+\_\+admissible\+\_\+row\+\_\+operation} (index i, index j) const
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a7ce9a6760f0f5ab7eba5a84d9d314533}\label{structgraded__linalg_1_1GradedSparseMatrix_a7ce9a6760f0f5ab7eba5a84d9d314533}} 
+bool {\bfseries is\+\_\+admissible\+\_\+row\+\_\+operation} (index i, D d) const
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a61208ad2e746455be9743e630b55f779}\label{structgraded__linalg_1_1GradedSparseMatrix_a61208ad2e746455be9743e630b55f779}} 
+bool {\bfseries is\+\_\+admissible\+\_\+row\+\_\+operation} (D d, index i) const
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_aabe20d8996994875a61725d6c6057505}\label{structgraded__linalg_1_1GradedSparseMatrix_aabe20d8996994875a61725d6c6057505}} 
+bool {\bfseries is\+\_\+strictly\+\_\+admissible\+\_\+column\+\_\+operation} (index i, index j) const
+\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_a5c99bd5a66a68bcc427352569449ea05}{precompute\+\_\+admissible}} ()
+\begin{DoxyCompactList}\small\item\em Stores the admissible column and row operations when we expect to use these multiple times. \end{DoxyCompactList}\item 
+vec$<$ D $>$ \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_a2f667452cc171552cc829259fbb73bb1}{discrete\+\_\+support}} ()
+\begin{DoxyCompactList}\small\item\em Returns a vector containing the degrees of the columns and rows. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_aae10d0afc89ef333dc1f97018529a329}{print\+\_\+graded}} (bool suppress\+\_\+description=false)
+\begin{DoxyCompactList}\small\item\em Prints the matrix as well as the column and row degrees. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_a97e54c320fb2490b822c1cfd3e20c543}{compute\+\_\+col\+\_\+batches}} (bool get\+\_\+statistics=false)
+\begin{DoxyCompactList}\small\item\em groups the columns by degree. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_a8803322973e7c3d2f11b90d25628b186}{get\+\_\+k\+\_\+statistics}} ()
+\begin{DoxyCompactList}\small\item\em Count the number of repeating degrees. Assumes the degree lists to be sorted. \end{DoxyCompactList}\item 
+array$<$ index $>$ \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_a1e2b72c61f17c9b05dfb3e6fa0ff4ff2}{get\+\_\+column\+\_\+graph}} ()
+\begin{DoxyCompactList}\small\item\em Returns a list of directed edges of the Hasse Diagram of the induced partial order on the columns. \end{DoxyCompactList}\item 
+array$<$ index $>$ \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_aa26765df95ef83371955dcab57d6f179}{get\+\_\+row\+\_\+graph}} ()
+\begin{DoxyCompactList}\small\item\em Returns a list of directed edges of the Hasse Diagram of the induced partial order on the rows. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_af5fd76fe44ee4898d48a79a97ed6cfd1}\label{structgraded__linalg_1_1GradedSparseMatrix_af5fd76fe44ee4898d48a79a97ed6cfd1}} 
+array$<$ index $>$ {\bfseries get\+\_\+support\+\_\+graph} ()
+\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_ab880bb2eef96d05121e2c7799024a6c4}{sort\+\_\+columns\+\_\+lexicographically\+\_\+with\+\_\+pointers}} ()
+\begin{DoxyCompactList}\small\item\em Sorts the columns lexicographically by degree, using a pointer which points two both the column degrees and the data. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_ae25da2e41dc83a2242f05ed4348fe00b}{sort\+\_\+columns\+\_\+lexicographically}} ()
+\begin{DoxyCompactList}\small\item\em Sorts the columns lexicographically by degree, saves the permutation used to do so and applies it to the data. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_aa278e426c175ab767901a905bd7d82f9}{sort\+\_\+rows\+\_\+lexicographically}} ()
+\begin{DoxyCompactList}\small\item\em Sorts the rows lexicographically by degree, then transforming the data accordingly. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix_ada6c0a2cb6f11f2e6255c375d2f48bf0}{print\+\_\+degrees}} ()
+\begin{DoxyCompactList}\small\item\em Outputs the lists of generators and relations. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a9b5eb6bcfb4937b9cc7d9c7a97fee227}\label{structgraded__linalg_1_1GradedSparseMatrix_a9b5eb6bcfb4937b9cc7d9c7a97fee227}} 
+vec$<$ D $>$ {\bfseries col\+\_\+degrees}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a3b042a861b6d562a003e4ac4342232dd}\label{structgraded__linalg_1_1GradedSparseMatrix_a3b042a861b6d562a003e4ac4342232dd}} 
+vec$<$ D $>$ {\bfseries row\+\_\+degrees}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_ad002fc881480af3f0b0f0876d150f5dc}\label{structgraded__linalg_1_1GradedSparseMatrix_ad002fc881480af3f0b0f0876d150f5dc}} 
+vec$<$ vec$<$ index $>$ $>$ {\bfseries col\+\_\+batches}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_abd3553c98ff848ffd673b76191b75ea8}\label{structgraded__linalg_1_1GradedSparseMatrix_abd3553c98ff848ffd673b76191b75ea8}} 
+array$<$ index $>$ {\bfseries admissible\+\_\+col}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a614c996fe0f8f4b9f6cf078af9ddf57b}\label{structgraded__linalg_1_1GradedSparseMatrix_a614c996fe0f8f4b9f6cf078af9ddf57b}} 
+array$<$ index $>$ {\bfseries admissible\+\_\+col\+\_\+strict\+\_\+dual}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a662c7f830d54da39226869397706feb2}\label{structgraded__linalg_1_1GradedSparseMatrix_a662c7f830d54da39226869397706feb2}} 
+array$<$ index $>$ {\bfseries admissible\+\_\+row}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_acded93b4b85c48493684691d4ce4c69c}\label{structgraded__linalg_1_1GradedSparseMatrix_acded93b4b85c48493684691d4ce4c69c}} 
+array$<$ index $>$ {\bfseries admissible\+\_\+row\+\_\+dual}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a5942d77a64580ef7522deafacc6cf0a7}\label{structgraded__linalg_1_1GradedSparseMatrix_a5942d77a64580ef7522deafacc6cf0a7}} 
+vec$<$ index $>$ {\bfseries rel\+\_\+k} = vec$<$index$>$(100, 0)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a55a75c147bd728da5f2bbcfc573a6e1e}\label{structgraded__linalg_1_1GradedSparseMatrix_a55a75c147bd728da5f2bbcfc573a6e1e}} 
+vec$<$ index $>$ {\bfseries gen\+\_\+k} = vec$<$index$>$(100, 0)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a6e8ee7b67e144ce28312eeb09b2166b6}\label{structgraded__linalg_1_1GradedSparseMatrix_a6e8ee7b67e144ce28312eeb09b2166b6}} 
+index {\bfseries k\+\_\+max} = 1
+\end{DoxyCompactItemize}
+\doxysubsection*{Additional Inherited Members}
+
+
+\doxysubsection{Detailed Description}
+\subsubsection*{template$<$typename D, typename index$>$\newline
+struct graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix$<$ D, index $>$}
+
+A graded matrix with generic degree-\/type. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em D} & \\
+\hline
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_ac21a90fb687d5ee6727d22edb3869115}\label{structgraded__linalg_1_1GradedSparseMatrix_ac21a90fb687d5ee6727d22edb3869115}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!admissible\_row\_indices@{admissible\_row\_indices}}
+\index{admissible\_row\_indices@{admissible\_row\_indices}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{admissible\_row\_indices()}{admissible\_row\_indices()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+vec$<$index$>$ \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::admissible\+\_\+row\+\_\+indices (\begin{DoxyParamCaption}\item[{D}]{d }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns all row indices whose degree is smaller or equal to d. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em d} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+vec$<$index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a97e54c320fb2490b822c1cfd3e20c543}\label{structgraded__linalg_1_1GradedSparseMatrix_a97e54c320fb2490b822c1cfd3e20c543}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!compute\_col\_batches@{compute\_col\_batches}}
+\index{compute\_col\_batches@{compute\_col\_batches}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_col\_batches()}{compute\_col\_batches()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::compute\+\_\+col\+\_\+batches (\begin{DoxyParamCaption}\item[{bool}]{get\+\_\+statistics = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+groups the columns by degree. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em get\+\_\+statistics} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_aca19f2c69bc43920d146d56b997c13e0}\label{structgraded__linalg_1_1GradedSparseMatrix_aca19f2c69bc43920d146d56b997c13e0}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!compute\_num\_rows\_from\_degres@{compute\_num\_rows\_from\_degres}}
+\index{compute\_num\_rows\_from\_degres@{compute\_num\_rows\_from\_degres}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{compute\_num\_rows\_from\_degres()}{compute\_num\_rows\_from\_degres()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::compute\+\_\+num\+\_\+rows\+\_\+from\+\_\+degres (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Infer the number of rows from the list of row degrees. 
+
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a2f667452cc171552cc829259fbb73bb1}\label{structgraded__linalg_1_1GradedSparseMatrix_a2f667452cc171552cc829259fbb73bb1}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!discrete\_support@{discrete\_support}}
+\index{discrete\_support@{discrete\_support}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{discrete\_support()}{discrete\_support()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+vec$<$D$>$ \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::discrete\+\_\+support (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns a vector containing the degrees of the columns and rows. 
+
+\begin{DoxyReturn}{Returns}
+degree\+\_\+list 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a1e2b72c61f17c9b05dfb3e6fa0ff4ff2}\label{structgraded__linalg_1_1GradedSparseMatrix_a1e2b72c61f17c9b05dfb3e6fa0ff4ff2}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!get\_column\_graph@{get\_column\_graph}}
+\index{get\_column\_graph@{get\_column\_graph}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{get\_column\_graph()}{get\_column\_graph()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+array$<$index$>$ \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::get\+\_\+column\+\_\+graph (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns a list of directed edges of the Hasse Diagram of the induced partial order on the columns. 
+
+\begin{DoxyReturn}{Returns}
+array$<$index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a8803322973e7c3d2f11b90d25628b186}\label{structgraded__linalg_1_1GradedSparseMatrix_a8803322973e7c3d2f11b90d25628b186}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!get\_k\_statistics@{get\_k\_statistics}}
+\index{get\_k\_statistics@{get\_k\_statistics}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{get\_k\_statistics()}{get\_k\_statistics()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::get\+\_\+k\+\_\+statistics (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Count the number of repeating degrees. Assumes the degree lists to be sorted. 
+
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_aa26765df95ef83371955dcab57d6f179}\label{structgraded__linalg_1_1GradedSparseMatrix_aa26765df95ef83371955dcab57d6f179}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!get\_row\_graph@{get\_row\_graph}}
+\index{get\_row\_graph@{get\_row\_graph}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{get\_row\_graph()}{get\_row\_graph()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+array$<$index$>$ \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::get\+\_\+row\+\_\+graph (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns a list of directed edges of the Hasse Diagram of the induced partial order on the rows. 
+
+\begin{DoxyReturn}{Returns}
+array$<$index$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a0027cb97ffd09e50808dc9ee2ef0c69f}\label{structgraded__linalg_1_1GradedSparseMatrix_a0027cb97ffd09e50808dc9ee2ef0c69f}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!make\_graded@{make\_graded}}
+\index{make\_graded@{make\_graded}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{make\_graded()}{make\_graded()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::make\+\_\+graded (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Deletes all entries which violate the gradedness condition. 
+
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_ae2ba5bdbf2b94be200970b55f593ae70}\label{structgraded__linalg_1_1GradedSparseMatrix_ae2ba5bdbf2b94be200970b55f593ae70}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!map\_at\_degree@{map\_at\_degree}}
+\index{map\_at\_degree@{map\_at\_degree}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{map\_at\_degree()}{map\_at\_degree()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$index$>$ \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::map\+\_\+at\+\_\+degree (\begin{DoxyParamCaption}\item[{D}]{d,  }\item[{vec$<$ index $>$ \&}]{local\+\_\+admissible\+\_\+columns }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+computes the linear map induced at a single degree by cutting all columns of higher degrees. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em d} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::pair$<$\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}, vec$<$index$>$$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a9145b29a2070e748fc71af24e35a8c6a}\label{structgraded__linalg_1_1GradedSparseMatrix_a9145b29a2070e748fc71af24e35a8c6a}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!map\_at\_degree\_pair@{map\_at\_degree\_pair}}
+\index{map\_at\_degree\_pair@{map\_at\_degree\_pair}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{map\_at\_degree\_pair()}{map\_at\_degree\_pair()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+std\+::pair$<$\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}$<$index$>$, vec$<$index$>$ $>$ \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::map\+\_\+at\+\_\+degree\+\_\+pair (\begin{DoxyParamCaption}\item[{D}]{d,  }\item[{bool}]{shifted = {\ttfamily false} }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+computes the linear map induced at a single degree by cutting all columns and rows of a higher degree. First output is the matrix, second is a list of generators. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em d} & \\
+\hline
+{\em shifted} & if true then this reshifts to normalise the entries \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+std\+::pair$<$\mbox{\hyperlink{structgraded__linalg_1_1SparseMatrix}{Sparse\+Matrix}}, vec$<$index$>$$>$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_a5c99bd5a66a68bcc427352569449ea05}\label{structgraded__linalg_1_1GradedSparseMatrix_a5c99bd5a66a68bcc427352569449ea05}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!precompute\_admissible@{precompute\_admissible}}
+\index{precompute\_admissible@{precompute\_admissible}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{precompute\_admissible()}{precompute\_admissible()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::precompute\+\_\+admissible (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Stores the admissible column and row operations when we expect to use these multiple times. 
+
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_ada6c0a2cb6f11f2e6255c375d2f48bf0}\label{structgraded__linalg_1_1GradedSparseMatrix_ada6c0a2cb6f11f2e6255c375d2f48bf0}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!print\_degrees@{print\_degrees}}
+\index{print\_degrees@{print\_degrees}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{print\_degrees()}{print\_degrees()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::print\+\_\+degrees (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Outputs the lists of generators and relations. 
+
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_aae10d0afc89ef333dc1f97018529a329}\label{structgraded__linalg_1_1GradedSparseMatrix_aae10d0afc89ef333dc1f97018529a329}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!print\_graded@{print\_graded}}
+\index{print\_graded@{print\_graded}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{print\_graded()}{print\_graded()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::print\+\_\+graded (\begin{DoxyParamCaption}\item[{bool}]{suppress\+\_\+description = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Prints the matrix as well as the column and row degrees. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em suppress\+\_\+description} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_ae25da2e41dc83a2242f05ed4348fe00b}\label{structgraded__linalg_1_1GradedSparseMatrix_ae25da2e41dc83a2242f05ed4348fe00b}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!sort\_columns\_lexicographically@{sort\_columns\_lexicographically}}
+\index{sort\_columns\_lexicographically@{sort\_columns\_lexicographically}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{sort\_columns\_lexicographically()}{sort\_columns\_lexicographically()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::sort\+\_\+columns\+\_\+lexicographically (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Sorts the columns lexicographically by degree, saves the permutation used to do so and applies it to the data. 
+
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_ab880bb2eef96d05121e2c7799024a6c4}\label{structgraded__linalg_1_1GradedSparseMatrix_ab880bb2eef96d05121e2c7799024a6c4}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!sort\_columns\_lexicographically\_with\_pointers@{sort\_columns\_lexicographically\_with\_pointers}}
+\index{sort\_columns\_lexicographically\_with\_pointers@{sort\_columns\_lexicographically\_with\_pointers}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{sort\_columns\_lexicographically\_with\_pointers()}{sort\_columns\_lexicographically\_with\_pointers()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::sort\+\_\+columns\+\_\+lexicographically\+\_\+with\+\_\+pointers (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Sorts the columns lexicographically by degree, using a pointer which points two both the column degrees and the data. 
+
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_aa278e426c175ab767901a905bd7d82f9}\label{structgraded__linalg_1_1GradedSparseMatrix_aa278e426c175ab767901a905bd7d82f9}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!sort\_rows\_lexicographically@{sort\_rows\_lexicographically}}
+\index{sort\_rows\_lexicographically@{sort\_rows\_lexicographically}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{sort\_rows\_lexicographically()}{sort\_rows\_lexicographically()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::sort\+\_\+rows\+\_\+lexicographically (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Sorts the rows lexicographically by degree, then transforming the data accordingly. 
+
+\mbox{\Hypertarget{structgraded__linalg_1_1GradedSparseMatrix_abc0ac084d152a4797666f3a93f51fd98}\label{structgraded__linalg_1_1GradedSparseMatrix_abc0ac084d152a4797666f3a93f51fd98}} 
+\index{graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}!to\_stream@{to\_stream}}
+\index{to\_stream@{to\_stream}!graded\_linalg::GradedSparseMatrix$<$ D, index $>$@{graded\_linalg::GradedSparseMatrix$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{to\_stream()}{to\_stream()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+template$<$typename Out\+Stream $>$ \\
+void \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{graded\+\_\+linalg\+::\+Graded\+Sparse\+Matrix}}$<$ D, index $>$\+::to\+\_\+stream (\begin{DoxyParamCaption}\item[{Out\+Stream \&}]{out,  }\item[{bool}]{header = {\ttfamily true} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Prints the content in scc format to a stream. Partially from M\+P\+P\+\_\+\+U\+T\+I\+LS print\+\_\+in\+\_\+rivet\+\_\+format in Graded\+\_\+matrix.\+h. 
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+Persistence-\/\+Algebra/include/grlina/\mbox{\hyperlink{graded__matrix_8hpp}{graded\+\_\+matrix.\+hpp}}\end{DoxyCompactItemize}

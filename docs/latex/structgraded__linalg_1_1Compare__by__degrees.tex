@@ -1,0 +1,66 @@
+\hypertarget{structgraded__linalg_1_1Compare__by__degrees}{}\doxysection{graded\+\_\+linalg\+::Compare\+\_\+by\+\_\+degrees$<$ D, index $>$ Struct Template Reference}
+\label{structgraded__linalg_1_1Compare__by__degrees}\index{graded\_linalg::Compare\_by\_degrees$<$ D, index $>$@{graded\_linalg::Compare\_by\_degrees$<$ D, index $>$}}
+
+
+Compares two graded matrices by their degrees.  
+
+
+
+
+{\ttfamily \#include $<$graded\+\_\+matrix.\+hpp$>$}
+
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1Compare__by__degrees_a26b5ebee3ddd6aae36ecdde5626f002c}\label{structgraded__linalg_1_1Compare__by__degrees_a26b5ebee3ddd6aae36ecdde5626f002c}} 
+bool {\bfseries operator()} (const \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{Graded\+Sparse\+Matrix}}$<$ D, index $>$ \&a, const \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{Graded\+Sparse\+Matrix}}$<$ D, index $>$ \&b) const
+\end{DoxyCompactItemize}
+\doxysubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static int \mbox{\hyperlink{structgraded__linalg_1_1Compare__by__degrees_af23719b756829af2738363262f89cd1f}{compare\+\_\+three\+\_\+way}} (const \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{Graded\+Sparse\+Matrix}}$<$ D, index $>$ \&a, const \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{Graded\+Sparse\+Matrix}}$<$ D, index $>$ \&b)
+\begin{DoxyCompactList}\small\item\em -\/1 if a$<$b, 0 if a=b, 1 if a$>$b \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\subsubsection*{template$<$typename D, typename index$>$\newline
+struct graded\+\_\+linalg\+::\+Compare\+\_\+by\+\_\+degrees$<$ D, index $>$}
+
+Compares two graded matrices by their degrees. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em D} & \\
+\hline
+{\em index} & \\
+\hline
+\end{DoxyTemplParams}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{structgraded__linalg_1_1Compare__by__degrees_af23719b756829af2738363262f89cd1f}\label{structgraded__linalg_1_1Compare__by__degrees_af23719b756829af2738363262f89cd1f}} 
+\index{graded\_linalg::Compare\_by\_degrees$<$ D, index $>$@{graded\_linalg::Compare\_by\_degrees$<$ D, index $>$}!compare\_three\_way@{compare\_three\_way}}
+\index{compare\_three\_way@{compare\_three\_way}!graded\_linalg::Compare\_by\_degrees$<$ D, index $>$@{graded\_linalg::Compare\_by\_degrees$<$ D, index $>$}}
+\doxysubsubsection{\texorpdfstring{compare\_three\_way()}{compare\_three\_way()}}
+{\footnotesize\ttfamily template$<$typename D , typename index $>$ \\
+static int \mbox{\hyperlink{structgraded__linalg_1_1Compare__by__degrees}{graded\+\_\+linalg\+::\+Compare\+\_\+by\+\_\+degrees}}$<$ D, index $>$\+::compare\+\_\+three\+\_\+way (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{Graded\+Sparse\+Matrix}}$<$ D, index $>$ \&}]{a,  }\item[{const \mbox{\hyperlink{structgraded__linalg_1_1GradedSparseMatrix}{Graded\+Sparse\+Matrix}}$<$ D, index $>$ \&}]{b }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}
+
+
+
+-\/1 if a$<$b, 0 if a=b, 1 if a$>$b 
+
+
+\begin{DoxyParams}{Parameters}
+{\em a} & \\
+\hline
+{\em b} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+int 
+\end{DoxyReturn}
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+Persistence-\/\+Algebra/include/grlina/\mbox{\hyperlink{graded__matrix_8hpp}{graded\+\_\+matrix.\+hpp}}\end{DoxyCompactItemize}

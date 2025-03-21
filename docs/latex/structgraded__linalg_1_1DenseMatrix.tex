@@ -1,0 +1,216 @@
+\hypertarget{structgraded__linalg_1_1DenseMatrix}{}\doxysection{graded\+\_\+linalg\+::Dense\+Matrix Struct Reference}
+\label{structgraded__linalg_1_1DenseMatrix}\index{graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}}
+
+
+Inheritance diagram for graded\+\_\+linalg\+::Dense\+Matrix\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=234pt]{structgraded__linalg_1_1DenseMatrix__inherit__graph}
+\end{center}
+\end{figure}
+
+
+Collaboration diagram for graded\+\_\+linalg\+::Dense\+Matrix\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=234pt]{structgraded__linalg_1_1DenseMatrix__coll__graph}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix_aa13228145190e783fc5702a9c60b98a8}{cull\+\_\+columns}} (int i)
+\begin{DoxyCompactList}\small\item\em Deletes the last i rows of the matrix. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_a8e2cb639f0d03bde7247970aad998c40}\label{structgraded__linalg_1_1DenseMatrix_a8e2cb639f0d03bde7247970aad998c40}} 
+{\bfseries Dense\+Matrix} (int m, int n)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_abdf9fd93d2a1b2ab0a39ce51a7087d20}\label{structgraded__linalg_1_1DenseMatrix_abdf9fd93d2a1b2ab0a39ce51a7087d20}} 
+{\bfseries Dense\+Matrix} (const vec$<$ bitset $>$ \&data)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_a4b4b28e2d0da2370fe2b4f3fc3954618}\label{structgraded__linalg_1_1DenseMatrix_a4b4b28e2d0da2370fe2b4f3fc3954618}} 
+{\bfseries Dense\+Matrix} (const \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&other)
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_a3fc781d51c1d55dd8c45b55947f37f3a}\label{structgraded__linalg_1_1DenseMatrix_a3fc781d51c1d55dd8c45b55947f37f3a}} 
+{\bfseries Dense\+Matrix} (int m, const std\+::string \&type)
+\item 
+\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix_a779e1b8b9131f393e789d52301976433}{Dense\+Matrix}} (std\+::ifstream \&file)
+\begin{DoxyCompactList}\small\item\em Construct a new Dense Matrix object from an ifstream if it has the bitsets as 1-\/0-\/strings. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix_aea0e196e822e1bfb4c9e7af7c83f8e55}{Dense\+Matrix}} (const boost\+::dynamic\+\_\+bitset$<$$>$ \&i\+\_\+pivots)
+\begin{DoxyCompactList}\small\item\em Construct a new Dense Matrix consisting of only elementary basis vectors. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix_a4212d26f80298f4af002858f884c725c}{Dense\+Matrix}} (const bitset \&pivots\+\_\+, std\+::vector$<$ std\+::pair$<$ int, int $>$$>$ \&positions, int filler)
+\begin{DoxyCompactList}\small\item\em Construct a Dense Matrix in reduced form from a set of pivots\+\_\+ and a number. The binary representation of this number fills the spots in the reduced matrix which are not necessarilly zero. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix_ac3326b57be3760d61ecb32d91a5102ff}{add\+Outside\+Row}} (int i, const boost\+::dynamic\+\_\+bitset$<$$>$ \&bitset)
+\begin{DoxyCompactList}\small\item\em Add this bitset to the i-\/th column. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix_ad1284344a8194f40487ae45a9fb47ae1}{col\+Reduce}} (bool complete=false)
+\begin{DoxyCompactList}\small\item\em This is a second algorithm to reduce column-\/wise. It finds a lower triangular reduced form of the matrix involving swaps. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix_ad19222c95338387a1545fbffd68e7d14}{serialize}} (std\+::ofstream \&file) const
+\begin{DoxyCompactList}\small\item\em Writes the matrix to an ofstream by converting it to a string. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix_a905e6e00580beec7891a8eba067c7947}{multiply\+\_\+right}} (\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&other)
+\begin{DoxyCompactList}\small\item\em Computes this$\ast$other. Maybe a bit slow. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix_a93011fd320a1568bc53eb5610c0cf7ce}{transposed\+\_\+copy}} ()
+\begin{DoxyCompactList}\small\item\em Returns a transpose of the matrix. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_ab3a3cb1cd3702f70eb6af36be7b7c522}\label{structgraded__linalg_1_1DenseMatrix_ab3a3cb1cd3702f70eb6af36be7b7c522}} 
+bool {\bfseries row\+Reduced} = false
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_a907d90ce2c97cc25fbed2511beecb81c}\label{structgraded__linalg_1_1DenseMatrix_a907d90ce2c97cc25fbed2511beecb81c}} 
+bool {\bfseries complete\+Row\+Reduced} = false
+\item 
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_a33a6e28a15eb3ca72b88c209524a7323}\label{structgraded__linalg_1_1DenseMatrix_a33a6e28a15eb3ca72b88c209524a7323}} 
+boost\+::dynamic\+\_\+bitset {\bfseries pivot\+\_\+vector}
+\end{DoxyCompactItemize}
+\doxysubsection*{Additional Inherited Members}
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_a779e1b8b9131f393e789d52301976433}\label{structgraded__linalg_1_1DenseMatrix_a779e1b8b9131f393e789d52301976433}} 
+\index{graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}!DenseMatrix@{DenseMatrix}}
+\index{DenseMatrix@{DenseMatrix}!graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}}
+\doxysubsubsection{\texorpdfstring{DenseMatrix()}{DenseMatrix()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily graded\+\_\+linalg\+::\+Dense\+Matrix\+::\+Dense\+Matrix (\begin{DoxyParamCaption}\item[{std\+::ifstream \&}]{file }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Construct a new Dense Matrix object from an ifstream if it has the bitsets as 1-\/0-\/strings. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em file} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_aea0e196e822e1bfb4c9e7af7c83f8e55}\label{structgraded__linalg_1_1DenseMatrix_aea0e196e822e1bfb4c9e7af7c83f8e55}} 
+\index{graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}!DenseMatrix@{DenseMatrix}}
+\index{DenseMatrix@{DenseMatrix}!graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}}
+\doxysubsubsection{\texorpdfstring{DenseMatrix()}{DenseMatrix()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily graded\+\_\+linalg\+::\+Dense\+Matrix\+::\+Dense\+Matrix (\begin{DoxyParamCaption}\item[{const boost\+::dynamic\+\_\+bitset$<$$>$ \&}]{i\+\_\+pivots }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Construct a new Dense Matrix consisting of only elementary basis vectors. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em i\+\_\+pivots} & Marks the elementary basis vectors that are to be included in the matrix. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_a4212d26f80298f4af002858f884c725c}\label{structgraded__linalg_1_1DenseMatrix_a4212d26f80298f4af002858f884c725c}} 
+\index{graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}!DenseMatrix@{DenseMatrix}}
+\index{DenseMatrix@{DenseMatrix}!graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}}
+\doxysubsubsection{\texorpdfstring{DenseMatrix()}{DenseMatrix()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily graded\+\_\+linalg\+::\+Dense\+Matrix\+::\+Dense\+Matrix (\begin{DoxyParamCaption}\item[{const bitset \&}]{pivots\+\_\+,  }\item[{std\+::vector$<$ std\+::pair$<$ int, int $>$$>$ \&}]{positions,  }\item[{int}]{filler }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Construct a Dense Matrix in reduced form from a set of pivots\+\_\+ and a number. The binary representation of this number fills the spots in the reduced matrix which are not necessarilly zero. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pivots\+\_\+} & \\
+\hline
+{\em positions} & \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_ac3326b57be3760d61ecb32d91a5102ff}\label{structgraded__linalg_1_1DenseMatrix_ac3326b57be3760d61ecb32d91a5102ff}} 
+\index{graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}!addOutsideRow@{addOutsideRow}}
+\index{addOutsideRow@{addOutsideRow}!graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}}
+\doxysubsubsection{\texorpdfstring{addOutsideRow()}{addOutsideRow()}}
+{\footnotesize\ttfamily void graded\+\_\+linalg\+::\+Dense\+Matrix\+::add\+Outside\+Row (\begin{DoxyParamCaption}\item[{int}]{i,  }\item[{const boost\+::dynamic\+\_\+bitset$<$$>$ \&}]{bitset }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Add this bitset to the i-\/th column. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em i} & \\
+\hline
+{\em bitset} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_ad1284344a8194f40487ae45a9fb47ae1}\label{structgraded__linalg_1_1DenseMatrix_ad1284344a8194f40487ae45a9fb47ae1}} 
+\index{graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}!colReduce@{colReduce}}
+\index{colReduce@{colReduce}!graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}}
+\doxysubsubsection{\texorpdfstring{colReduce()}{colReduce()}}
+{\footnotesize\ttfamily void graded\+\_\+linalg\+::\+Dense\+Matrix\+::col\+Reduce (\begin{DoxyParamCaption}\item[{bool}]{complete = {\ttfamily false} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+This is a second algorithm to reduce column-\/wise. It finds a lower triangular reduced form of the matrix involving swaps. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em complete} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_aa13228145190e783fc5702a9c60b98a8}\label{structgraded__linalg_1_1DenseMatrix_aa13228145190e783fc5702a9c60b98a8}} 
+\index{graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}!cull\_columns@{cull\_columns}}
+\index{cull\_columns@{cull\_columns}!graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}}
+\doxysubsubsection{\texorpdfstring{cull\_columns()}{cull\_columns()}}
+{\footnotesize\ttfamily void graded\+\_\+linalg\+::\+Dense\+Matrix\+::cull\+\_\+columns (\begin{DoxyParamCaption}\item[{int}]{i }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Deletes the last i rows of the matrix. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em i} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_a905e6e00580beec7891a8eba067c7947}\label{structgraded__linalg_1_1DenseMatrix_a905e6e00580beec7891a8eba067c7947}} 
+\index{graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}!multiply\_right@{multiply\_right}}
+\index{multiply\_right@{multiply\_right}!graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}}
+\doxysubsubsection{\texorpdfstring{multiply\_right()}{multiply\_right()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} graded\+\_\+linalg\+::\+Dense\+Matrix\+::multiply\+\_\+right (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} \&}]{other }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Computes this$\ast$other. Maybe a bit slow. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em other} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_ad19222c95338387a1545fbffd68e7d14}\label{structgraded__linalg_1_1DenseMatrix_ad19222c95338387a1545fbffd68e7d14}} 
+\index{graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}!serialize@{serialize}}
+\index{serialize@{serialize}!graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}}
+\doxysubsubsection{\texorpdfstring{serialize()}{serialize()}}
+{\footnotesize\ttfamily void graded\+\_\+linalg\+::\+Dense\+Matrix\+::serialize (\begin{DoxyParamCaption}\item[{std\+::ofstream \&}]{file }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Writes the matrix to an ofstream by converting it to a string. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em file} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structgraded__linalg_1_1DenseMatrix_a93011fd320a1568bc53eb5610c0cf7ce}\label{structgraded__linalg_1_1DenseMatrix_a93011fd320a1568bc53eb5610c0cf7ce}} 
+\index{graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}!transposed\_copy@{transposed\_copy}}
+\index{transposed\_copy@{transposed\_copy}!graded\_linalg::DenseMatrix@{graded\_linalg::DenseMatrix}}
+\doxysubsubsection{\texorpdfstring{transposed\_copy()}{transposed\_copy()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} graded\+\_\+linalg\+::\+Dense\+Matrix\+::transposed\+\_\+copy (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Returns a transpose of the matrix. 
+
+\begin{DoxyReturn}{Returns}
+\mbox{\hyperlink{structgraded__linalg_1_1DenseMatrix}{Dense\+Matrix}} 
+\end{DoxyReturn}
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+Persistence-\/\+Algebra/include/grlina/\mbox{\hyperlink{dense__matrix_8hpp}{dense\+\_\+matrix.\+hpp}}\end{DoxyCompactItemize}
