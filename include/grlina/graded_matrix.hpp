@@ -954,7 +954,7 @@ bool hom_quotient_zero( const Hom_space_temp<index>& full_space,
 
     auto B_row_index_map = shiftIndicesMap(B_admissible_rows);
 
-        for(index i = 0; i < full_space.first.num_cols; i++){
+        for(index i = 0; i < full_space.first.get_num_cols(); i++){
             const vec<index>& current_map = full_space.first.data[i];
             auto& index_pairs = full_space.second; // This is a pair (i,j) where i is the column index, j, the row index, and it is sorted first by i, then by j.
             SparseMatrix<index> Q_basislift_C = SparseMatrix<index>(0,0);
@@ -983,6 +983,7 @@ bool hom_quotient_zero( const Hom_space_temp<index>& full_space,
                     }
                 }
             }
+            // How many rows does this matrix have?
             Q_basislift_C.compute_num_cols();
             // Now we have the restriction to the basislift_C, we need to compose with the coKer_B map.
             //TO-DO: Compute the rows of coKer_B beforehand and then multiply to avoid transposition.

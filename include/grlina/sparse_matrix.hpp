@@ -748,14 +748,13 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     template< typename smaller_index>
     void column_reduction_triangular_with_memory_int(SparseMatrix<smaller_index>& performed_ops, vec<smaller_index>& zero_cols) {
         for(index j=0; j < this->num_cols; j++) {
-            vec<index>& curr = this->data[j];
-            index p = vlast_entry_index(curr);
+            index p = this->col_last(j);
             while( p >= 0) {
                 if(this->pivots.count(p)) {
                     index i = this->pivots[p];
                     this->col_op(i, j);
                     performed_ops.col_op(i, j);
-                    auto new_p = vlast_entry_index(curr);
+                    auto new_p = this->col_last(j);
                     assert( new_p < p);
                     p = new_p;
                 } else {
@@ -952,9 +951,9 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param D 
      */
     void multiply_dense(DenseMatrix& D){
-        assert(this->num_cols == D.num_rows);
+        assert(this->num_cols == D.get_num_rows());
         auto copy = this->data;
-        for(index i = 0; i < D.num_cols; i++){
+        for(index i = 0; i < D.get_num_cols(); i++){
             this->data[i] = vectorXORMulti(copy, D.data[i]);
         }    
     }
@@ -968,8 +967,8 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param D 
      */
     void multiply_id_triangular(DenseMatrix& D){
-        assert(this->num_cols == D.num_rows);
-        for(index i = 0; i < D.num_cols; i++){
+        assert(this->num_cols == D.get_num_rows());
+        for(index i = 0; i < D.get_num_cols(); i++){
             if(D.data[i].any()){
                 this->add_to_col(i, vectorXORMulti(this->data, D.data[i]));
             }
@@ -999,7 +998,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param D 
      */
     void multiply_dense_with_e_check(DenseMatrix& D, vec<bitset>& e_vec, const bitset& col_indices){
-        assert(col_indices.count() == D.num_rows);
+        assert(col_indices.count() == D.get_num_rows());
         // D.print();
         // this->print();
         array<index> copy;
@@ -1046,7 +1045,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
                     col_ops.push_back(this->pivots[*it]);
                 }
             }
-            add_to(vectorXORMulti(this->data, col_ops), N.data[i]);
+            Column_traits<vec<index>, index>::add_to(vectorXORMulti(this->data, col_ops), N.data[i]);
         }
         return N.is_zero();
     }
@@ -1065,7 +1064,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
                 col_ops.push_back(this->pivots[j]);
             }
         }
-        add_to(vectorXORMulti(this->data, col_ops), N);
+        Column_traits<vec<index>, index>::add_to(vectorXORMulti(this->data, col_ops), N);
     }
 
     //destructor
@@ -1084,7 +1083,7 @@ template <typename index>
 SparseMatrix<index> multiply_transpose(SparseMatrix<index>& M, SparseMatrix<index>& N){
   SparseMatrix<index> result(N.get_num_cols(), M.get_num_rows());
   result.data.resize(result.get_num_cols());
-  assert(M.get_num_rows() == N.get_num_rows());
+  // assert(M.get_num_rows() == N.get_num_rows()); Sometimes we dont know.
   for(index i = 0; i < N.get_num_cols(); i++){
     for(index j = 0; j < M.get_num_cols(); j++){
       if(Column_traits<vec<index>, index>::scalar_product(M.data[j], N.data[i])){ 
@@ -1173,7 +1172,7 @@ void simultaneous_row_reduction_on_submatrix(std::unordered_map<index, SparseMat
                     } else {
                         vec<index>& row_c = N_map[c]._rows[0];
                         if(std::find(row_c.begin(), row_c.end(), p) != row_c.end()){
-                            add_to(row_b, row_c);
+                            Column_traits<vec<index>, index>::add_to(row_b, row_c);
                             A.fast_rev_row_op(b, c);
                         }
                     }

@@ -116,9 +116,10 @@ class MatrixUtil{
     protected:
     index num_cols;
     index num_rows;
-    std::unordered_map<index,index> pivots; // for the reduction algorithm
+    
 
     public:
+    std::unordered_map<index,index> pivots; // for the reduction algorithm
     vec<COLUMN> data; //stores the columns of the matrix
 
     index get_num_rows() const {return num_rows;};
@@ -448,13 +449,12 @@ class MatrixUtil{
     void column_reduction_triangular(index threshold, bool delete_zero_columns = false) {
         pivots.clear();
         for(index j=0; j < this->num_cols; j++) {
-            COLUMN& curr = data[j];
-            index p = col_last(curr);
+            index p = col_last(j);
             while( p >= threshold) {
                 if(pivots.count(p)) {
                     index i = pivots[p];
                     col_op(i, j);
-                    auto new_p = col_last(curr);
+                    auto new_p = col_last(j);
                     assert( new_p < p);
                     p = new_p;
                 } else {
@@ -553,14 +553,13 @@ class MatrixUtil{
      */
     void column_reduction_triangular_with_memory(DERIVED& performed_ops) {
         for(index j=0; j < this->num_cols; j++) {
-            COLUMN& curr = this->data[j];
-            index p = col_last(curr);
+            index p = col_last(j);
             while( p >= 0) {
                 if(pivots.count(p)) {
                     index i = pivots[p];
                     col_op(i, j);
                     performed_ops.col_op(i, j);
-                    auto new_p = col_last(curr);
+                    auto new_p = col_last(j);
                     assert( new_p < p);
                     p = new_p;
                 } else {
@@ -811,7 +810,7 @@ class MatrixUtil{
         }
 
 
-        index p = col_last(c);
+        index p = CT::last_entry_index(c);
         while(p >= 0 || (!complete_reduce)) {
             if( this->pivots.count(p) ) {
                 index i = pivots[p];
@@ -823,7 +822,7 @@ class MatrixUtil{
                         CT::set_entry(solution, i);
                     }
                 }
-                auto p_new = col_last(c);
+                auto p_new = CT::last_entry_index(c);
                 assert(p_new < p);
                 p = p_new;
             } else {
@@ -1247,7 +1246,7 @@ bitset simultaneous_column_reduction(std::unordered_map<index, DERIVED>& N_map,
         vec<index>& blocks_to_reduce, vec<index>& all_blocks, bitset& support){
     
     
-    index num_cols = N_map[all_blocks[0]].num_cols;
+    index num_cols = N_map[all_blocks[0]].get_num_cols();
     assert(support.size() == num_cols);
     bitset non_zero_cols = bitset(num_cols, false);
 
@@ -1289,7 +1288,7 @@ template <typename index, typename DERIVED>
 bitset simultaneous_column_reduction_full_support(std::unordered_map<index, DERIVED>& N_map, 
         vec<index>& blocks_to_reduce, vec<index>& all_blocks){
     
-    index num_cols = N_map[all_blocks[0]].num_cols;
+    index num_cols = N_map[all_blocks[0]].get_num_cols();
     bitset non_zero_cols = bitset(num_cols, false);
 
     for(index col = 0; col < num_cols; col++){
