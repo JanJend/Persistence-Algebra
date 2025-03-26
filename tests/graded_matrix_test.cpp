@@ -105,7 +105,57 @@ void functionality_demo() {
 
 }
 
+void test_grid(){
+    // Create a 4x5 matrix with float degrees
+    const size_t num_rows = 4;
+    const size_t num_cols = 5;
+
+    // Initialize an R2GradedSparseMatrix with the specified dimensions
+    R2GradedSparseMatrix<int> M(num_cols, num_rows);
+    
+    M.col_degrees = {
+        {1.5 , 2}, {2, 1.7}, {2, 2}, {3, 3}, {3, 3}  // Example column degrees
+    };
+
+    M.row_degrees = {
+        {2, 0}, {1.5 , 1.7}, {0, 2}, { 1.5 , 3}  // Example row degrees
+    };
+
+    M.data = {
+        {1, 2}, {0, 1}, {0, 1, 2}, {0, 1, 3}, {0, 2, 3}  // Example data
+    };
+
+    M.print_graded();
+
+    std::cout << "Sorting lexicographically" << std::endl;
+    M.sort_columns_lexicographically();
+    M.sort_rows_lexicographically();
+
+    M.print_graded();
+
+    M.compute_grid_representation(false);
+
+    M.print_grid();
+
+    M.print_grid_representation();
+
+    M.initialise_grid_scheduler();
+    // Additional checks could be added here to verify kernel correctness
+    std::cout << "The priority queue has size " << M.grid_scheduler.size() << std::endl;
+
+}
+
+void test_kernel(){
+    R2GradedSparseMatrix<int> matrix(2, 1);
+    matrix.col_degrees = {{1.3, 5}, {4, 1.7}};
+    matrix.row_degrees = {{1, 1}};
+    matrix.data = {{0}, {0}};
+    matrix.print_graded();
+    auto K = matrix.graded_kernel();
+    K.print_graded();
+}
+
 int main() {
-    functionality_demo();
+    test_kernel();
     return 0;
 }

@@ -47,8 +47,9 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     vec<D> col_degrees;
     vec<D> row_degrees;
 
-    vec<vec<index>> col_batches;
+    
 
+    // Unclear if we really need the following:
 
     // admissible_col[i] stores to what column i can be added
     array<index> admissible_col;
@@ -61,6 +62,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
 
     // This is only relevant for AIDA
+    vec<vec<index>> col_batches;
     vec<index> rel_k = vec<index>(100, 0);
 	vec<index> gen_k= vec<index>(100, 0);
     index k_max = 1;
@@ -616,6 +618,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             reverse[permutation[i]] = i;
         }
         this->transform_data(reverse);
+        this->sort_data();
     }
 
     /**
@@ -635,7 +638,21 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             }
     }
 
-    
+
+
+    GradedSparseMatrix graded_kernel();
+
+    /**
+     * @brief Computes the presentation of the module given by the image of a map A^n(-alpha)->coker(this) 
+     * which is an isomorphism at alpha.
+     * 
+     * @param alpha 
+     * @return GradedSparseMatrix 
+     */
+    GradedSparseMatrix get_module_generated_at (D& alpha){
+
+        // TO-DO: Need kernel method first.
+    }
 
 
 }; // GradedSparseMatrix
@@ -839,7 +856,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index, index> > > block_hom_space_
     }
 
     // If M, N present the modules, then the following computes Hom(M,N), i.e. pairs of matrices st. QM = NP.
-    K = S.get_kernel();
+    K = S.kernel();
     // To see how much the following reduces K: index K_size = K.data.size();
     // Now we need to delete the entries of K which correspond to the row-operations.
     K.cull_columns(row_op_threshold, false);

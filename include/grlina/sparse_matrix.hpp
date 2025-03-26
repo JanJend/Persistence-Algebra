@@ -398,10 +398,26 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         return *this;
     }
 
+    /**
+     * @brief Sorts the entries of a column
+     * 
+     * @param i 
+     */
     void sort_column(index i){
         std::sort(this->data[i].begin(), this->data[i].end());
     }
     
+    /**
+     * @brief Sorts all columns
+     * 
+     */
+    void sort_data(){
+        assert(this->num_cols == this->data.size());
+        for(index i = 0; i < this->num_cols; i++){
+            sort_column(i);
+        }
+    }
+
     /**
      * @brief Computes all rows from column data in reverse order.
      * 

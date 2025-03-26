@@ -18,9 +18,10 @@
 #ifndef R2GRADED_MATRIX_HPP
 #define R2GRADED_MATRIX_HPP
 
+#include <grlina/graded_matrix.hpp>
+#include <grlina/grid_scheduler.hpp>
 #include <iostream>
 #include <vector>
-#include <grlina/graded_matrix.hpp>
 #include <chrono>
 #include <string>
 #include <fstream>
@@ -73,7 +74,17 @@ struct Degree_traits<r2degree> {
         }
     }
 
+    static bool colex_order(const r2degree& a, const r2degree& b) {
+        if (a.second != b.second) {
+            return a.second < b.second;
+        } else {
+            return a.first < b.first;
+        }
+    }
+
     static std::function<bool(const r2degree&, const r2degree&)> lex_lambda;
+
+    static std::function<bool(const r2degree&, const r2degree&)> colex_lambda;
 
     static vec<double> position(const r2degree& a)  {
         return {a.first, a.second};
@@ -117,88 +128,12 @@ std::function<bool(const r2degree&, const r2degree&)> Degree_traits<r2degree>::l
 };
 
 /**
- * @brief Michael Kerbers Grid_scheduler class from mpfree for fast kernel computation.
- * 
+ * @brief Lambda function to compare colexicographically for sorting.
+ */
+std::function<bool(const r2degree&, const r2degree&)> Degree_traits<r2degree>::colex_lambda = [](const r2degree& a, const r2degree& b) {
+    return Degree_traits<r2degree>::colex_order(a, b);
+};
 
-template <typename index>
-class Grid_scheduler {
-
-    public:
-  
-      std::priority_queue< pair<index>, vec<pair<index>>, Sort_grades> grades;
-  
-      std::map< pair<index> , pair<index> > index_range;
-  
-      pair<index> curr_grade;
-  
-      Grid_scheduler() {}
-  
-      // It is assumed that columns with the same grade appear in M consecutively
-      template<typename GradedMatrix>
-        Grid_scheduler(GradedMatrix& M) {
-  
-        //std::cout << "Grid scheduler with matrix having " << M.num_grades_x << " x-grades and " << M.num_grades_y << " y-grades" << std::endl;
-        
-        index_pair last_pair=std::make_pair(-1,-1);
-        index curr_start=-1;
-        for(int i=0;i<M.get_num_cols();i++) {
-      index curr_x=M.grades[i].index_at[0];
-      index curr_y=M.grades[i].index_at[1];
-      assert(curr_x<M.num_grades_x);
-      assert(curr_y<M.num_grades_y);
-      if(curr_x!=last_pair.first || curr_y !=last_pair.second) {
-        // New grade
-        if(curr_start!=-1) {
-          index_range[last_pair]=std::make_pair(curr_start,i);
-        }
-        curr_start=i;
-        last_pair = std::make_pair(curr_x,curr_y);
-        grades.push(last_pair);
-      }
-        }
-        if(curr_start!=-1) {
-      index_range[last_pair]=std::make_pair(curr_start,M.get_num_cols());
-        }
-        curr_grade=std::make_pair(-1,-1);
-        
-      }
-  
-      int size() {
-        return grades.size();
-      }
-  
-      bool at_end() {
-        return grades.empty();
-      }
-  
-      index_pair next_grade() {
-        index_pair result = grades.top();
-        grades.pop();
-        while(!grades.empty() && grades.top()==result) {
-      grades.pop();
-        }
-        curr_grade=result;
-        return result;
-      }
-  
-      index_pair index_range_at(index x, index y) {
-        auto find_grade = index_range.find(std::make_pair(x,y));
-        if(find_grade==index_range.end()) {
-      return std::make_pair(0,0);
-        }
-        return find_grade->second;
-      }
-  
-      void notify(index x,index y) {
-        //std::cout << "Got notified about " << x << " " << y << std::endl;
-        if(curr_grade.first!=x || curr_grade.second!=y) {
-      grades.push(std::make_pair(x,y));
-        }
-      }
-      
-    };
-
-*\
 
 
 /**
@@ -208,6 +143,25 @@ class Grid_scheduler {
  */
 template <typename index>
 struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
+
+    // For kernel computation we will need to compute a grid, i.e. a function Z^2 -> R^2, 
+    // such that all degrees of columsn and rows are in the image of this function.
+
+    vec<double> x_grid;
+    vec<double> y_grid;
+
+    std::unordered_map<double, index> x_to_index;
+    std::unordered_map<double, index> y_to_index;
+
+    vec<pair<index>> z2_col_degrees;
+    vec<pair<index>> z2_row_degrees;
+
+    // This is also used in kernel computation
+    typedef std::priority_queue<index,std::vector<index>,std::greater<index>> PQ;
+
+    Grid_scheduler<index> grid_scheduler;
+    std::vector<PQ> pq_row;
+
 
     R2GradedSparseMatrix() : GradedSparseMatrix<r2degree, index>() {}
     R2GradedSparseMatrix(index m, index n) : GradedSparseMatrix<r2degree, index>(m, n) {}
@@ -235,7 +189,178 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         : GradedSparseMatrix<r2degree, index>(file_stream, lex_sort, compute_batches) {
     } // Constructor from ifstream
 
-    
+    /**
+     * @brief Sets up the grid scheduler for kernel computation
+     * 
+     */
+    void initialise_grid_scheduler() {
+        this->grid_scheduler = Grid_scheduler<index>(*this);
+    }
+
+    /**
+     * @brief Sorts the row degrees, stores the permutation used and transforms the entries of the sparse col vectors accordingly.
+     * 
+     */
+    void sort_rows_colexicographically() {
+        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->row_degrees, Degree_traits<r2degree>::colex_lambda);
+        vec<index> reverse = vec<index>(permutation.size());
+        for (index i = 0; i < permutation.size(); ++i) {
+            reverse[permutation[i]] = i;
+        }
+        this->transform_data(reverse);
+    }
+
+    /**
+     * @brief Sorts the column degrees, stores the permutation used and then reorders the date with the same permutation.
+     * 
+     */
+    void sort_columns_colexicographically() {
+        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda);
+        array<index> new_data = array<index>(this->data.size());
+        for(index i = 0; i < this->data.size(); i++) {
+            new_data[i] = this->data[permutation[i]];
+        }
+        this->data = new_data;
+    }
+
+
+    /**
+     * @brief Stores all appearing unique x and y values of column and row degrees 
+     * in an ordered way in the x_grid and y_grid vectors ordered. 
+     * 
+     */
+    void compute_grid_representation(bool sort_lexicographically = false) {
+
+        if(sort_lexicographically) {
+            this->sort_columns_lexicographically();
+            this->sort_rows_lexicographically();
+        }
+
+        x_grid.clear();
+        y_grid.clear();
+        z2_col_degrees.clear();
+        z2_row_degrees.clear();
+
+        x_to_index.clear();
+        y_to_index.clear();
+
+        // Reserve space to avoid repeated reallocation
+        x_grid.reserve(this->get_num_cols() + this->get_num_rows());
+        y_grid.reserve(this->get_num_cols() + this->get_num_rows());
+        z2_col_degrees.reserve(this->get_num_cols());
+        z2_row_degrees.reserve(this->get_num_rows());
+
+        
+        auto itc = this->col_degrees.begin();
+        auto itr = this->row_degrees.begin();
+
+        double last_x = -1;
+        
+        // Store all unique x values
+        while(itc != this->col_degrees.end() || itr != this->row_degrees.end()) {
+            if(itc == this->col_degrees.end() ){
+  
+                if(itr->first != last_x) {
+                    x_grid.push_back(itr->first);
+                    last_x = itr->first;
+                }
+                itr++;
+
+            } else if(itr == this->row_degrees.end()) {
+
+                if(itc->first != last_x) {
+                    x_grid.push_back(itc->first);
+                    last_x = itc->first;
+                }
+                itc++;
+
+            } else if (itc->first < itr->first) {
+                if (itc->first != last_x) {
+                    x_grid.push_back(itc->first);
+                    last_x = itc->first;
+                }
+                ++itc;
+            } else if (itr->first < itc->first) {
+                if (itr->first != last_x) {
+                    x_grid.push_back(itr->first);
+                    last_x = itr->first;
+                }
+                ++itr;
+            } else { // Both values are equal
+                if (itc->first != last_x) {
+                    x_grid.push_back(itc->first);
+                    last_x = itc->first;
+                }
+                ++itc;
+                ++itr;
+            }
+        }
+
+        // Store all unique y values
+        std::vector<double> temp_y;
+        temp_y.reserve( this->get_num_cols() + this->get_num_rows() );
+
+        for (const auto& pair : this->col_degrees) {
+            temp_y.push_back(pair.second);
+        }
+        for (const auto& pair :this-> row_degrees) {
+            temp_y.push_back(pair.second);
+        }
+
+        // Sort and remove duplicates
+        std::sort(temp_y.begin(), temp_y.end());
+        temp_y.erase(std::unique(temp_y.begin(), temp_y.end()), temp_y.end());
+
+        // Store in y_grid
+        y_grid = std::move(temp_y);
+
+        for(index i = 0; i < x_grid.size(); i++) {
+            x_to_index[x_grid[i]] = i;
+        }
+
+        for(index i = 0; i < y_grid.size(); i++) {
+            y_to_index[y_grid[i]] = i;
+        }
+        
+        // Compute Z^2 representation of degrees
+
+        for (const auto& pair : this->col_degrees) {
+            z2_col_degrees.emplace_back(x_to_index[pair.first], y_to_index[pair.second]);
+        }
+
+        for (const auto& pair : this->row_degrees) {
+            z2_row_degrees.emplace_back(x_to_index[pair.first], y_to_index[pair.second]);
+        }
+
+    }
+
+    void print_grid(){
+        std::cout << "x_grid: ";
+        for (const auto& x : x_grid) {
+            std::cout << x << " ";
+        }
+        std::cout << std::endl;
+
+        std::cout << "y_grid: ";
+        for (const auto& y : y_grid) {
+            std::cout << y << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    void print_grid_representation(){
+        std::cout << "Z^2 Column Degrees: ";
+        for (const auto& pair : z2_col_degrees) {
+            std::cout << "(" << pair.first << ", " << pair.second << ") ";
+        }
+        std::cout << std::endl;
+
+        std::cout << "Z^2 Row Degrees: ";
+        for (const auto& pair : z2_row_degrees) {
+            std::cout << "(" << pair.first << ", " << pair.second << ") ";
+        }
+        std::cout << std::endl;
+    }
 
     /**
      * @brief Writes the R^2 graded matrix to an output stream.
@@ -272,12 +397,110 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
     }
 
     /**
-     * @brief Returns a basis for the kernel of a 2d graded matrix. 
+     * @brief used in graded_kernel
+     * 
+     */
+    void kernel_column_reduction(index i, pair<index>& curr_gr, SparseMatrix<index>& column_operations, bool store_col_ops=false, bool notify_pq=false){
+
+        index p = this->col_last(i);
+        
+        // Reduction loop
+        while (p != -1 && this->pivots[p] != -1 && this->pivots[p] < i) {
+            index k = this->pivots[p];  // Get the pivot 'k'
+            this->col_op(k, i);
+            if (store_col_ops) {
+                column_operations.col_op(k, i);
+            }
+            p = this->col_last(i);
+        }
+
+
+        if (notify_pq && p != -1 && this->pivots[p] > i) {
+            index j = this->pivots[p];  
+            index gr_y_index = this->z2_col_degrees[j].second;  
+
+            this->pq_row[gr_y_index].push(j);
+            index gr_x_index = curr_gr.first;  
+            this->grid_scheduler.notify(gr_x_index, gr_y_index);
+        }
+
+        if (p != -1 && (this->pivots[p] == -1 || this->pivots[p] > i)) {
+            this->pivots[p] = i;
+        }
+    }
+    
+
+    /**
+     * @brief Returns a basis for the kernel of a 2d graded matrix as another 2d graded matrix.
      * Assumes that the columns are sorted lexicographically.
      * 
      * @return SparseMatrix<index> 
      */
-    R2GradedSparseMatrix r2kernel() {
+    R2GradedSparseMatrix graded_kernel() {
+        this->compute_grid_representation();
+        this->initialise_grid_scheduler();
+        pq_row.resize(this->y_grid.size());
+        // "slave" matrix in mpfree
+        SparseMatrix<index> col_operations = SparseMatrix<index>(this->get_num_cols(), this->get_num_cols(), "Identity");
+
+        std::vector<r2degree> new_degrees; // Basis for the free module which is part of the kernel
+        std::vector<std::vector<index>> new_cols; // representing the matrix given by the kernel
+        
+        std::vector<bool> indices_in_kernel(this->get_num_cols(), false);
+
+        // Initialize grid scheduler for processing degrees in order
+        Grid_scheduler<index>& grid = this->grid_scheduler;
+
+        while (!grid.at_end()) {
+
+            auto new_degree = grid.next_grade();
+            index x = new_degree.first;
+            index y = new_degree.second;
+
+            auto& pq = this->pq_row[y];  // Priority queue for row reduction
+            auto range_xy = grid.index_range_at(x, y);
+
+            index start_xy = range_xy.first;
+            index end_xy = range_xy.second;
+            assert(start_xy <= end_xy);
+
+            // Add indices in the range to the priority queue
+            for (index i = start_xy; i < end_xy; ++i) {
+                pq.push(i);
+            }
+
+            while (!pq.empty()) {
+                index i = pq.top();
+
+                // Remove duplicates
+                while (!pq.empty() && i == pq.top()) {
+                    pq.pop();
+                }
+
+                assert(z2_col_degrees[i].first <= x);
+                assert(z2_col_degrees[i].second == y);
+
+                // Reduce the column and check if it's part of the kernel
+                kernel_column_reduction(i, new_degree, col_operations, true, true);
+
+                if (!indices_in_kernel[i] && this->is_zero(i)) {
+                    std::vector<index> col = col_operations.get_col(i);
+                    new_cols.push_back(std::move(col));
+                    new_degrees.emplace_back(this->x_grid[x], this->y_grid[y]);
+                    indices_in_kernel[i] = true;
+                    // what is this for?
+                    this->data[i].clear();
+                    col_operations.data[i].clear();
+                }
+            }
+        }
+
+        // Build the resulting kernel matrix
+        R2GradedSparseMatrix<index> result(new_cols.size(), this->get_num_cols());
+        result.data = std::move(new_cols);
+        result.col_degrees = std::move(new_degrees);
+        result.row_degrees = this->col_degrees;
+        return result;
 
     }
 

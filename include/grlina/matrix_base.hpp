@@ -249,6 +249,11 @@ class MatrixUtil{
         std::swap(data[i], data[j]);
     };
 
+
+    COLUMN get_col(index i){
+        return data[i];
+    }
+
     /**
      * @brief Adds column i to column j. 
      */
