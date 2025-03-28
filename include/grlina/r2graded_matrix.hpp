@@ -1,7 +1,7 @@
 /**
  * @file r2graded_matrix.hpp
  * @author Jan Jendrysiak
- * @brief 
+ * @brief The Kernel computation is adapted from MPfree (Michael Kerber)
  * @version 0.1
  * @date 2025-03-13
  * 
@@ -164,8 +164,14 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
 
 
     R2GradedSparseMatrix() : GradedSparseMatrix<r2degree, index>() {}
-    R2GradedSparseMatrix(index m, index n) : GradedSparseMatrix<r2degree, index>(m, n) {}
+
+    private:
+    R2GradedSparseMatrix( SparseMatrix<index>&& other) :  GradedSparseMatrix<r2degree, index>(std::move(other)) {}
     
+
+    public:
+    R2GradedSparseMatrix(index m, index n) : GradedSparseMatrix<r2degree, index>(m, n) {}
+    R2GradedSparseMatrix(index n, vec<index> indicator) : GradedSparseMatrix<r2degree, index>(n, indicator) {} 
 
     /**
      * @brief Constructs an R^2 graded matrix from an scc or firep data file.
@@ -190,6 +196,24 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
     } // Constructor from ifstream
 
     /**
+     * @brief Overwrites restricted_domain_copy from SparseMatrix to also copy the degrees.
+     * 
+     * @param colIndices 
+     * @return R2GradedSparseMatrix 
+     */
+    R2GradedSparseMatrix restricted_domain_copy(vec<index>& colIndices) const {
+        R2GradedSparseMatrix result( this->SparseMatrix<index>::restricted_domain_copy(colIndices) );
+        result.col_degrees = vec<r2degree>(colIndices.size());
+        for(index i = 0; i < colIndices.size(); i++){
+            result.col_degrees[i] = this->col_degrees[colIndices[i]];
+        }
+        result.row_degrees = this->row_degrees;
+
+        return result;
+    }
+
+
+    /**
      * @brief Sets up the grid scheduler for kernel computation
      * 
      */
@@ -208,6 +232,18 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
             reverse[permutation[i]] = i;
         }
         this->transform_data(reverse);
+        this->sort_data();
+    }
+
+    vec<index> sort_rows_colexicographically_with_output() {
+        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->row_degrees, Degree_traits<r2degree>::colex_lambda);
+        vec<index> reverse = vec<index>(permutation.size());
+        for (index i = 0; i < permutation.size(); ++i) {
+            reverse[permutation[i]] = i;
+        }
+        this->transform_data(reverse);
+        this->sort_data();
+        return permutation;
     }
 
     /**
@@ -223,19 +259,108 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         this->data = new_data;
     }
 
+    vec<index> sort_columns_colexicographically_with_output() {
+        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda);
+        array<index> new_data = array<index>(this->data.size());
+        for(index i = 0; i < this->data.size(); i++) {
+            new_data[i] = this->data[permutation[i]];
+        }
+        this->data = new_data;
+        return permutation;
+    }
+
+    /**
+     * @brief Given a vector v where v[i] indicates that we want the second row to be moved to position v[i],
+     * applies this permutation to the rows/data and the row degrees.
+     * 
+     * @param permutation 
+     */
+    void permute_rows_graded(const vec<index>& permutation) {
+        assert(permutation.size() == this->num_rows);
+        this->transform_data(permutation);
+        this->sort_data();
+        vec<r2degree> new_row_degrees(this->num_rows);
+        for(index i = 0; i < permutation.size(); i++) {
+            new_row_degrees[permutation[i]] = this->row_degrees[i];
+        }
+        this->row_degrees = new_row_degrees;
+    }
+
+    private:
+
+    template <typename T>
+    void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
+                            const std::vector<std::pair<T, T>>& vec2,
+                            std::vector<T>& out,
+                            bool useFirst = true) {
+        auto it1 = vec1.begin();
+        auto it2 = vec2.begin();
+        T last_x = T(); // Default initialize last_x
+        
+        while (it1 != vec1.end() || it2 != vec2.end()) {
+            T value;
+
+            if (it1 == vec1.end()) {
+                value = useFirst ? it2->first : it2->second;
+                if (value != last_x) {
+                    out.push_back(value);
+                    last_x = value;
+                }
+                ++it2;
+            } 
+            else if (it2 == vec2.end()) {
+                value = useFirst ? it1->first : it1->second;
+                if (value != last_x) {
+                    out.push_back(value);
+                    last_x = value;
+                }
+                ++it1;
+            } 
+            else {
+                T val1 = useFirst ? it1->first : it1->second;
+                T val2 = useFirst ? it2->first : it2->second;
+
+                if (val1 < val2) {
+                    if (val1 != last_x) {
+                        out.push_back(val1);
+                        last_x = val1;
+                    }
+                    ++it1;
+                } 
+                else if (val2 < val1) {
+                    if (val2 != last_x) {
+                        out.push_back(val2);
+                        last_x = val2;
+                    }
+                    ++it2;
+                } 
+                else { // Both values are equal
+                    if (val1 != last_x) {
+                        out.push_back(val1);
+                        last_x = val1;
+                    }
+                    ++it1;
+                    ++it2;
+                }
+            }
+        }
+    }
+
+    public:
 
     /**
      * @brief Stores all appearing unique x and y values of column and row degrees 
      * in an ordered way in the x_grid and y_grid vectors ordered. 
+     * After applying the function, the columns are ordered co(!)lexicographically and the permutation used is returned.
      * 
      */
-    void compute_grid_representation(bool sort_lexicographically = false) {
+    vec<index> compute_grid_representation() {
 
-        if(sort_lexicographically) {
-            this->sort_columns_lexicographically();
-            this->sort_rows_lexicographically();
-        }
-
+        auto column_degrees_lex = this->col_degrees;
+        auto row_degrees_lex = this->row_degrees;
+        std::sort(column_degrees_lex.begin(), column_degrees_lex.end(), Degree_traits<r2degree>::lex_lambda);
+        std::sort(row_degrees_lex.begin(), row_degrees_lex.end(), Degree_traits<r2degree>::lex_lambda);
+   
         x_grid.clear();
         y_grid.clear();
         z2_col_degrees.clear();
@@ -249,70 +374,18 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         y_grid.reserve(this->get_num_cols() + this->get_num_rows());
         z2_col_degrees.reserve(this->get_num_cols());
         z2_row_degrees.reserve(this->get_num_rows());
-
         
-        auto itc = this->col_degrees.begin();
-        auto itr = this->row_degrees.begin();
+        auto itc = column_degrees_lex.begin();
+        auto itr = row_degrees_lex.begin();
 
         double last_x = -1;
-        
         // Store all unique x values
-        while(itc != this->col_degrees.end() || itr != this->row_degrees.end()) {
-            if(itc == this->col_degrees.end() ){
-  
-                if(itr->first != last_x) {
-                    x_grid.push_back(itr->first);
-                    last_x = itr->first;
-                }
-                itr++;
+        merge_unique_elements<double>(column_degrees_lex, row_degrees_lex, x_grid, true);
 
-            } else if(itr == this->row_degrees.end()) {
-
-                if(itc->first != last_x) {
-                    x_grid.push_back(itc->first);
-                    last_x = itc->first;
-                }
-                itc++;
-
-            } else if (itc->first < itr->first) {
-                if (itc->first != last_x) {
-                    x_grid.push_back(itc->first);
-                    last_x = itc->first;
-                }
-                ++itc;
-            } else if (itr->first < itc->first) {
-                if (itr->first != last_x) {
-                    x_grid.push_back(itr->first);
-                    last_x = itr->first;
-                }
-                ++itr;
-            } else { // Both values are equal
-                if (itc->first != last_x) {
-                    x_grid.push_back(itc->first);
-                    last_x = itc->first;
-                }
-                ++itc;
-                ++itr;
-            }
-        }
-
-        // Store all unique y values
-        std::vector<double> temp_y;
-        temp_y.reserve( this->get_num_cols() + this->get_num_rows() );
-
-        for (const auto& pair : this->col_degrees) {
-            temp_y.push_back(pair.second);
-        }
-        for (const auto& pair :this-> row_degrees) {
-            temp_y.push_back(pair.second);
-        }
-
-        // Sort and remove duplicates
-        std::sort(temp_y.begin(), temp_y.end());
-        temp_y.erase(std::unique(temp_y.begin(), temp_y.end()), temp_y.end());
-
-        // Store in y_grid
-        y_grid = std::move(temp_y);
+        auto rows_degrees_colex = this->row_degrees;
+        std::sort(rows_degrees_colex.begin(), rows_degrees_colex.end(), Degree_traits<r2degree>::colex_lambda);
+        vec<index> column_permutation = this->sort_columns_colexicographically_with_output();
+        merge_unique_elements<double>(this->col_degrees, rows_degrees_colex, y_grid, false);
 
         for(index i = 0; i < x_grid.size(); i++) {
             x_to_index[x_grid[i]] = i;
@@ -331,7 +404,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         for (const auto& pair : this->row_degrees) {
             z2_row_degrees.emplace_back(x_to_index[pair.first], y_to_index[pair.second]);
         }
-
+        
+        return column_permutation;
     }
 
     void print_grid(){
@@ -397,7 +471,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
     }
 
     /**
-     * @brief used in graded_kernel
+     * @brief used in graded_kernel. Adapted from MPfree
      * 
      */
     void kernel_column_reduction(index i, pair<index>& curr_gr, SparseMatrix<index>& column_operations, bool store_col_ops=false, bool notify_pq=false){
@@ -405,26 +479,29 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         index p = this->col_last(i);
         
         // Reduction loop
-        while (p != -1 && this->pivots[p] != -1 && this->pivots[p] < i) {
-            index k = this->pivots[p];  // Get the pivot 'k'
-            this->col_op(k, i);
-            if (store_col_ops) {
-                column_operations.col_op(k, i);
+        while (p != -1 && this->pivots.count(p)) {
+            index k = this->pivots[p];
+            if( k < i){
+              // Get the pivot 'k'
+                this->col_op(k, i);
+                if (store_col_ops) {
+                    column_operations.col_op(k, i);
+                }
+                p = this->col_last(i);
+            } else if (notify_pq) {
+                index gr_y_index = this->z2_col_degrees[k].second;  
+
+                this->pq_row[gr_y_index].push(k);
+                index gr_x_index = curr_gr.first;  
+                this->grid_scheduler.notify(gr_x_index, gr_y_index);
+                break;
+            } else {
+                break;
             }
-            p = this->col_last(i);
         }
 
-
-        if (notify_pq && p != -1 && this->pivots[p] > i) {
-            index j = this->pivots[p];  
-            index gr_y_index = this->z2_col_degrees[j].second;  
-
-            this->pq_row[gr_y_index].push(j);
-            index gr_x_index = curr_gr.first;  
-            this->grid_scheduler.notify(gr_x_index, gr_y_index);
-        }
-
-        if (p != -1 && (this->pivots[p] == -1 || this->pivots[p] > i)) {
+        // If the column was not reduced to zero, we need to update the pivot (in any case, right?)
+        if (p != -1 ) {
             this->pivots[p] = i;
         }
     }
@@ -433,14 +510,18 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
     /**
      * @brief Returns a basis for the kernel of a 2d graded matrix as another 2d graded matrix.
      * Assumes that the columns are sorted lexicographically.
+     * Adapted from MPfree.
      * 
      * @return SparseMatrix<index> 
      */
     R2GradedSparseMatrix graded_kernel() {
-        this->compute_grid_representation();
+
+        vec<index> column_permutation = this->compute_grid_representation();
         this->initialise_grid_scheduler();
+        
+
         pq_row.resize(this->y_grid.size());
-        // "slave" matrix in mpfree
+        // This is the "slave" matrix in mpfree
         SparseMatrix<index> col_operations = SparseMatrix<index>(this->get_num_cols(), this->get_num_cols(), "Identity");
 
         std::vector<r2degree> new_degrees; // Basis for the free module which is part of the kernel
@@ -500,17 +581,117 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         result.data = std::move(new_cols);
         result.col_degrees = std::move(new_degrees);
         result.row_degrees = this->col_degrees;
+    
+        result.permute_rows_graded(column_permutation);
         return result;
-
     }
 
+    /**
+     * @brief Computes a presentation for the submodule generated at the given degree.
+     * 
+     * @param alpha 
+     * @return R2GradedSparseMatrix 
+     */
+    R2GradedSparseMatrix submodule_generated_at (r2degree alpha) const {
+        // Find a list of generators which map to a basis:
+        vec<index> basis_lift = this->basislift_at(alpha);
+        // Construct the injective graded matrix which represents these generators pushed forward to alpha
+        R2GradedSparseMatrix<index> basis_injection = R2GradedSparseMatrix<index>(this->get_num_rows(), basis_lift);
+        basis_injection.row_degrees = this->row_degrees;
+        basis_injection.col_degrees = vec<r2degree>(basis_lift.size(), alpha);
+        // Append this presentation itself
+        basis_injection.append_matrix(*this);
+        basis_injection.col_degrees.insert(basis_injection.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
+        // A kernel of this map is the pullback of this presentation along the injection
+        R2GradedSparseMatrix<index> presentation = basis_injection.graded_kernel();
+        // To get the map to the basis, forget all the rows which correspong to relations
+        presentation.cull_columns(basis_lift.size(), false);
+        vec<index> minimal_relations = presentation.column_reduction_graded();
+        R2GradedSparseMatrix<index> minimal_presentation = presentation.restricted_domain_copy(minimal_relations);
+        return minimal_presentation;
+    }   
 
 
+    pair<r2degree> bounding_box(){
+        r2degree min = {std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
+        r2degree max = {std::numeric_limits<double>::min(), std::numeric_limits<double>::min()};
+
+        for (const auto& degree : this->col_degrees) {
+            min.first = std::min(min.first, degree.first);
+            min.second = std::min(min.second, degree.second);
+            max.first = std::max(max.first, degree.first);
+            max.second = std::max(max.second, degree.second);
+        }
+
+        for (const auto& degree : this->row_degrees) {
+            min.first = std::min(min.first, degree.first);
+            min.second = std::min(min.second, degree.second);
+            max.first = std::max(max.first, degree.first);
+            max.second = std::max(max.second, degree.second);
+        }
+
+        return {min, max};
+    }
 
 }; // R2GradedSparseMatrix
 
 
+template<typename index>
+struct R2Resolution {
 
+    R2GradedSparseMatrix<index> d1;
+    R2GradedSparseMatrix<index> d2;
+
+    R2Resolution(const R2GradedSparseMatrix<index>& d1, const R2GradedSparseMatrix<index>& d2) 
+        : d1(d1), d2(d2) {}
+    
+    R2Resolution(const R2GradedSparseMatrix<index>& d1) 
+        : d1(d1) {
+            auto d1_copy = d1;
+            d2 = d1_copy.graded_kernel();
+        }
+    
+    /**
+     * @brief Computes the dimension at any point in R^2
+     * 
+     * @param alpha 
+     * @return index 
+     */
+    index dim_at (r2degree alpha) const {
+        index num_chains_0 = d1.num_rows_before(alpha);
+        index num_chains_1 = d1.num_cols_before(alpha);
+        index num_chains_2 = d2.num_cols_before(alpha);
+        return num_chains_0 - num_chains_1 + num_chains_2;
+    }
+
+    /**
+     * @brief Computes the dimension at every point in the grid. Unoptimised. Not finished.
+     * 
+     * @return array<index> 
+     */
+    array<index> dimension_vector(bool sort = true) const {
+        if(sort){
+            d1.sort_rows_colexicographically();
+            d1.sort_columns_colexicographically();
+            d2.sort_rows_colexicographically();
+            d2.sort_columns_colexicographically();
+        }
+
+        vec<index> x_grid = d1.x_grid;
+        vec<index> y_grid = d1.y_grid;
+        index num_x = x_grid.size();
+        index num_y = y_grid.size();
+
+        auto itc1 = d1.row_degrees.begin();
+        auto itc2 = d2.row_degrees.begin();
+        auto itc3 = d2.col_degrees.begin();
+
+        for(index i = 0; i < num_y; i++){
+             //TO-DO finish.
+        }
+    }
+
+};
 
 } // namespace graded_linalg
 

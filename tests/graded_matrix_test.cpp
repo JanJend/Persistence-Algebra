@@ -105,6 +105,32 @@ void functionality_demo() {
 
 }
 
+void test_reordering(){
+    const size_t num_rows = 3;
+    const size_t num_cols = 3;
+    // Initialize an R2GradedSparseMatrix with the specified dimensions
+    R2GradedSparseMatrix<int> M(num_cols, num_rows);
+    
+    M.col_degrees = {
+        {2.5, 3}, {3, 2}, {2, 1}  // Example column degrees
+    };
+
+    M.row_degrees = {
+        {2, 1}, {1.5 , 1.7}, {2.5, 0}  // Example row degrees
+    };
+
+    M.data = {
+        {0, 1}, {0, 2}, {0} // Example data
+    };
+
+    assert(M.is_graded_matrix());
+    M.print_graded();
+    vec<int> permutation = M.sort_rows_lexicographically_with_output();
+    M.print_graded();
+    M.permute_rows_graded(permutation);
+    M.print_graded();
+}
+
 void test_grid(){
     // Create a 4x5 matrix with float degrees
     const size_t num_rows = 4;
@@ -133,7 +159,7 @@ void test_grid(){
 
     M.print_graded();
 
-    M.compute_grid_representation(false);
+    vec<int> permutation = M.compute_grid_representation();
 
     M.print_grid();
 
@@ -153,9 +179,62 @@ void test_kernel(){
     matrix.print_graded();
     auto K = matrix.graded_kernel();
     K.print_graded();
+
+    std::string path1 = "Persistence-Algebra/test_presentations/toy_example_1.scc";
+    std::string path2 = "Persistence-Algebra/test_presentations/full_rips_size_1_instance_5_min_pres.scc";
+    std::string path3 = "Persistence-Algebra/test_presentations/toy_example_2.scc";
+
+    vec<std::string> paths = {path1, path2, path3};
+    for(auto path : paths){
+        R2GradedSparseMatrix<int> matrix_from_file(path);
+        if(!matrix_from_file.is_graded_matrix()){
+            std::cerr << "Test Matrix is not a valid graded matrix. \n"  <<
+            "We're making it graded by deleting the violating entries." << std::endl;
+            matrix_from_file.make_graded();
+        }
+        matrix_from_file.print_graded();
+        auto matrix_copy = matrix_from_file;
+        auto K_real_data = matrix_copy.graded_kernel();
+        assert(K.is_graded_matrix());
+        std::cout << "The kernel is" << std::endl;
+        K_real_data.print_graded();
+        auto product = matrix_from_file.multiply_right(K_real_data);
+        if(!product.is_zero()){
+            std::cerr << "The product is not zero!" << std::endl;
+        }
+    }
+}
+
+void test_submodule_generated_at(){
+    std::filesystem::path current_path = std::filesystem::path(__FILE__).parent_path();
+    std::filesystem::path example_path = current_path / "../test_presentations/full_rips_size_1_instance_5_min_pres.scc";
+    std::filesystem::path example_path2 = current_path / "../test_presentations/toy_example_3.scc";
+    std::filesystem::path example_path3 = current_path / "../test_presentations/multi_cover_050_10_1_min_pres.scc";
+    
+    
+    R2GradedSparseMatrix<int> M(example_path3.string());
+
+    vec<r2degree> support = M.discrete_support();
+    r2degree average = {0, 0};
+    r2degree specific = {0.333631, -0.0675645};
+    for(auto d : support){
+        average.first += d.first;
+        average.second += d.second;
+    }
+    average.first /= 2*support.size();
+    average.second /= 2*support.size();
+    std::cout << "The half average degree is: " << average << std::endl;
+    vec<int> basislift = M.basislift_at(average);
+    auto M_induced_a = M.submodule_generated_at(average);
+    std::cout << "The dimension of the submodule generated at " << average << " is: "
+     << basislift.size() << " and the following generators map to a basis \n" << basislift << std::endl;
+
+    // assert(M_induced_a.get_num_rows() == dim_comparison);
+    // std::cout << "The submodule generated here is presented by: " << std::endl;
+    M_induced_a.print_graded();
 }
 
 int main() {
-    test_kernel();
+    test_submodule_generated_at();
     return 0;
 }

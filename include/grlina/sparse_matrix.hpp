@@ -318,7 +318,7 @@ void transform_matrix(array<index>& S, const std::unordered_map<index, index>& i
 }
 
 /**
- * @brief Parallelised function to change a sparse matrix by applying the indexMap to each entry.
+ * @brief Parallelised function to re-index a sparse matrix. An entry j is changed to index_vector[j].
  *
  * @param S
  * @param indexMap
@@ -591,6 +591,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         transform_matrix(this->data, indexMap, true);
     }
 
+
     void transform_data(const vec<index>& index_vector){
         transform_matrix(this->data, index_vector);
     }
@@ -702,7 +703,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * 
      * @param threshold 
      */
-    void cull_columns(index& threshold, bool from_end = true){
+    void cull_columns(const index& threshold, bool from_end = true){
         if(from_end){
             this->num_rows -= threshold;
         } else {
@@ -1097,7 +1098,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
  */
 template <typename index>
 SparseMatrix<index> multiply_transpose(SparseMatrix<index>& M, SparseMatrix<index>& N){
-  SparseMatrix<index> result(N.get_num_cols(), M.get_num_rows());
+  SparseMatrix<index> result(N.get_num_cols(), M.get_num_cols());
   result.data.resize(result.get_num_cols());
   // assert(M.get_num_rows() == N.get_num_rows()); Sometimes we dont know.
   for(index i = 0; i < N.get_num_cols(); i++){
