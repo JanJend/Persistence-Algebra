@@ -472,7 +472,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * 
      * @return degree_list 
      */
-    vec<D> discrete_support() {
+    vec<D> discrete_support() const {
         assert(this->col_degrees.size() == this->num_cols);
         assert(this->row_degrees.size() == this->num_rows);
         vec<D> result = col_degrees;
@@ -482,6 +482,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         result.erase(std::unique(result.begin(), result.end()), result.end());
         return result;
     }  
+
+   
 
     /**
      * @brief Counts the number of columns with degree smaller or equal to d.

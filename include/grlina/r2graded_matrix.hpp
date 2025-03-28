@@ -612,7 +612,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
     }   
 
 
-    pair<r2degree> bounding_box(){
+    pair<r2degree> bounding_box() const{
         r2degree min = {std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
         r2degree max = {std::numeric_limits<double>::min(), std::numeric_limits<double>::min()};
 
