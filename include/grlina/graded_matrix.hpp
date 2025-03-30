@@ -47,8 +47,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     vec<D> col_degrees;
     vec<D> row_degrees;
 
-    vec<vec<index>> col_batches;
-
+    // Unclear if we really need the following:
 
     // admissible_col[i] stores to what column i can be added
     array<index> admissible_col;
@@ -61,9 +60,19 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
 
     // This is only relevant for AIDA
+    vec<vec<index>> col_batches;
     vec<index> rel_k = vec<index>(100, 0);
 	vec<index> gen_k= vec<index>(100, 0);
     index k_max = 1;
+
+
+    protected:
+    GradedSparseMatrix(SparseMatrix<index>&& other) : SparseMatrix<index>(std::move(other)) {
+        this->col_degrees = vec<D>(other.get_num_cols());
+        this->row_degrees = vec<D>(other.get_num_rows());
+    } 
+
+    public:
 
     GradedSparseMatrix() : SparseMatrix<index>() {};
 
@@ -80,6 +89,34 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         : SparseMatrix<index>() {
         std::ifstream file = create_ifstream(filepath);
         this->parse_stream(file, lex_sort, compute_batches);
+    }
+
+    GradedSparseMatrix(index n, vec<index> indicator) 
+        : SparseMatrix<index>(n, indicator), col_degrees(vec<D>(indicator.size())), row_degrees(vec<D>(n)) {}
+
+    bool is_admissible_column_operation(index i, index j) const {
+        return Degree_traits<D>::smaller_equal( col_degrees[i], col_degrees[j]) && i != j;
+    }
+
+    bool is_admissible_column_operation(index i, const D d) const {
+        return Degree_traits<D>::smaller_equal( col_degrees[i], d);
+    }
+
+    bool is_admissible_row_operation(index i, index j) const {
+        assert(i != j);
+        return Degree_traits<D>::greater_equal( row_degrees[i], row_degrees[j] );
+    }
+
+    bool is_admissible_row_operation(index i, D d) const {
+        return Degree_traits<D>::greater_equal( row_degrees[i], d);
+    }
+
+    bool is_admissible_row_operation(D d, index i) const {
+        return Degree_traits<D>::greater_equal( d, row_degrees[i]);
+    }
+
+    bool is_strictly_admissible_column_operation(index i, index j) const {
+        return Degree_traits<D>::smaller( col_degrees[i], col_degrees[j]);
     }
 
     /**
@@ -285,6 +322,16 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->num_rows = this->row_degrees.size();
     }
 
+    void cull_columns(const index& threshold, bool from_end = true) {
+
+        SparseMatrix<index>::cull_columns(threshold, from_end); 
+
+        if (from_end) {
+            this->row_degrees.resize(this->num_rows - threshold);
+        } else {
+            this->row_degrees.resize(threshold);
+        }
+    }
 
     /**
      * @brief Prints the content in scc format to a stream. Partially from MPP_UTILS print_in_rivet_format in Graded_matrix.h
@@ -377,6 +424,10 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         return this->restricted_domain_copy(local_admissible_columns);
     }
 
+    
+
+    
+
     /**
      * @brief Returns all row indices whose degree is smaller or equal to d.
      * 
@@ -391,31 +442,6 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             }
         }
         return result;
-    }
-
-    bool is_admissible_column_operation(index i, index j) const {
-        return Degree_traits<D>::smaller_equal( col_degrees[i], col_degrees[j]) && i != j;
-    }
-
-    bool is_admissible_column_operation(index i, const D d) const {
-        return Degree_traits<D>::smaller_equal( col_degrees[i], d);
-    }
-
-    bool is_admissible_row_operation(index i, index j) const {
-        assert(i != j);
-        return Degree_traits<D>::greater_equal( row_degrees[i], row_degrees[j] );
-    }
-
-    bool is_admissible_row_operation(index i, D d) const {
-        return Degree_traits<D>::greater_equal( row_degrees[i], d);
-    }
-
-    bool is_admissible_row_operation(D d, index i) const {
-        return Degree_traits<D>::greater_equal( d, row_degrees[i]);
-    }
-
-    bool is_strictly_admissible_column_operation(index i, index j) const {
-        return Degree_traits<D>::smaller( col_degrees[i], col_degrees[j]);
     }
 
     /**
@@ -446,13 +472,50 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * 
      * @return degree_list 
      */
-    vec<D> discrete_support() {
+    vec<D> discrete_support() const {
         assert(this->col_degrees.size() == this->num_cols);
         assert(this->row_degrees.size() == this->num_rows);
         vec<D> result = col_degrees;
         result.insert(result.end(), row_degrees.begin(), row_degrees.end());
+        std::sort(result.begin(), result.end(), Degree_traits<D>::lex_lambda);
+        // Remove duplicates (works only after sorting)
+        result.erase(std::unique(result.begin(), result.end()), result.end());
         return result;
     }  
+
+   
+
+    /**
+     * @brief Counts the number of columns with degree smaller or equal to d.
+     * 
+     * @param d 
+     * @return index 
+     */
+    index num_cols_before (D d) {
+        index result = 0;
+        for(index i = 0; i < this->num_cols; i++){
+            if( Degree_traits<D>::smaller_equal(col_degrees[i], d) ){
+                result++;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @brief Counts the number of rows with degree smaller or equal to d.
+     * 
+     * @param d 
+     * @return index 
+     */
+    index num_rows_before (D d) {
+        index result = 0;
+        for(index i = 0; i < this->num_rows; i++){
+            if( Degree_traits<D>::smaller_equal(row_degrees[i], d) ){
+                result++;
+            }
+        }
+        return result;
+    }
 
     /**
      * @brief Prints the matrix as well as the column and row degrees.
@@ -604,7 +667,27 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     }
 
     /**
-     * @brief Sorts the rows lexicographically by degree, then transforming the data accordingly.
+     * @brief Sorts the columns lexicographically by degree, 
+     * saves the permutation used to do so, applies it also on the data and returns its inverse.
+     * 
+     * @return vec<index> 
+     */
+    vec<index> sort_columns_lexicographically_with_output() {
+        vec<index> permutation = sort_and_get_permutation<D, index>(this->col_degrees, Degree_traits<D>::lex_lambda);
+        array<index> new_data = array<index>(this->data.size());
+        for(index i = 0; i < this->data.size(); i++) {
+            new_data[i] = this->data[permutation[i]];
+        }
+        this->data = new_data;
+        vec<index> reverse = vec<index>(permutation.size());
+        for (int i = 0; i < permutation.size(); ++i) {
+            reverse[permutation[i]] = i;
+        }
+        return reverse;
+    }
+
+    /**
+     * @brief Sorts the rows lexicographically by degree, then transforms the data accordingly.
      * 
      */
     void sort_rows_lexicographically(){
@@ -616,6 +699,24 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             reverse[permutation[i]] = i;
         }
         this->transform_data(reverse);
+        this->sort_data();
+    }
+
+    /**
+     * @brief Sorts the rows lexicographically by degree, then transforms the data accordingly and returns the permutation used to sort.
+     * 
+     * @return vec<index> 
+     */
+    vec<index> sort_rows_lexicographically_with_output(){
+        vec<index> permutation = sort_and_get_permutation<D, index>(this->row_degrees, Degree_traits<D>::lex_lambda);
+        // Need inverse of permutation
+        vec<index> reverse = vec<index>(permutation.size());
+        for (int i = 0; i < permutation.size(); ++i) {
+            reverse[permutation[i]] = i;
+        }
+        this->transform_data(reverse);
+        this->sort_data();
+        return permutation;
     }
 
     /**
@@ -635,7 +736,64 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             }
     }
 
-    
+
+
+    GradedSparseMatrix graded_kernel();
+
+    /**
+     * @brief Computes a basis of coker_alpha and lifts it to a set of elements in the 0-chains given as a list of rows.
+     * 
+     * @param alpha 
+     * @return vec<index> 
+     */
+    vec<index> basislift_at (D alpha) const {
+        auto [B_alpha, rows_alpha] = this->map_at_degree_pair(alpha);
+        B_alpha.compute_normalisation(rows_alpha);
+        vec<index> basislift_to_rows_alpha = B_alpha.coKernel_basis();
+        vec<index> basis_lift = vec_restriction(rows_alpha, basislift_to_rows_alpha);
+        return basis_lift;
+    }
+
+    /**
+     * @brief Crude computation to get the dimension of the presented module at alpha.
+     * 
+     * @param alpha 
+     * @return index 
+     */
+    index dim_at(D alpha){
+        vec<index> basislift = this->basislift_at(alpha);
+        return basislift.size();
+    }
+
+    /**
+     * @brief Performs column reduction whenever grades make it possible.
+     * 
+     */
+    vec<index> column_reduction_graded(){ 
+        array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
+        vec<index> non_zero_columns;
+        for(index i = 0; i < this->num_cols; i++){
+            index p = this->col_last(i);
+            bool found = true;
+            while( p != -1 && multi_pivots[p].size() != 0 && found){
+                found = false;
+                for(index j : multi_pivots[p]){
+                    if( is_admissible_column_operation(j, i) ){
+                        this->col_op(j, i);
+                        found = true;
+                        p = this->col_last(i);
+                        break;
+                    }
+                }
+            }
+            if(p != -1){
+                multi_pivots[p].push_back(i);
+                non_zero_columns.push_back(i);
+            }
+        }
+
+        return non_zero_columns;
+    }
 
 
 }; // GradedSparseMatrix

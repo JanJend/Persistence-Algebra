@@ -222,7 +222,25 @@ class MatrixUtil{
         CT::set_entry(data[i], j);
     }
 
-    void cull_columns(index& threshold, bool from_end = true){};
+    /**
+     * @brief Deletes all rows after threshold or from end
+     * 
+     * @param threshold 
+     * @param from_end 
+     */
+    void cull_columns(const index& threshold, bool from_end = true){};
+
+    void delete_columns(const index& threshold, bool from_end = true){
+        assert(threshold <= this->get_num_cols());
+        assert(threshold >= 0);
+
+        if(from_end){
+            data.erase(data.end() - threshold, data.end());
+        } else {
+            data.erase(data.begin() + threshold, data.end());
+        }
+        this->compute_num_cols();
+    };
 
     public:
     /**
@@ -248,6 +266,11 @@ class MatrixUtil{
     void swap_cols(index i, index j) {
         std::swap(data[i], data[j]);
     };
+
+
+    COLUMN get_col(index i){
+        return data[i];
+    }
 
     /**
      * @brief Adds column i to column j. 
@@ -307,7 +330,12 @@ class MatrixUtil{
         }
     };
     
-
+    /**
+     * @brief Checks if the matrix is the zero matrix.
+     * 
+     * @return true 
+     * @return false 
+     */
     bool is_zero(){
         for(auto i = 0; i < this->num_cols; i++){
             if(!CT::is_zero(this->data[i])){
@@ -315,6 +343,21 @@ class MatrixUtil{
             }
         }
         return true;
+    }
+
+    /**
+     * @brief Returns the indices of the columns which are nonzero.
+     * 
+     * @return vec<index> 
+     */
+    vec<index> where_is_nonzero(){
+        vec<index> result;
+        for(auto i = 0; i < this->num_cols; i++){
+            if(!CT::is_zero(this->data[i])){
+                result.push_back(i);
+            }
+        }
+        return result;
     }
 
     /**
@@ -970,7 +1013,7 @@ class MatrixUtil{
      * 
      * @param other 
      */
-    void append_matrix(DERIVED& other) {
+    void append_matrix(const DERIVED& other) {
         assert(this->num_rows == other.num_rows);
         for(index i = 0; i < other.num_cols; i++) {
             this->data.push_back(other.data[i]);
