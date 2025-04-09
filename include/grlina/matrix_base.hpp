@@ -991,12 +991,14 @@ class MatrixUtil{
      * Can be computed faster even using column_reduction_with_memory using other as input, extending the getinverse function. (Could implement this).
      * 
      */
-    DERIVED divide_right(DERIVED& other) {
+    DERIVED divide_right(const DERIVED& other) const {
         DERIVED result = DERIVED(static_cast<DERIVED&>(*this));
         DERIVED other_copy(other);
         other_copy.column_gauss_jordan(result);
         return result;
     }
+
+    
 
     /**
      * @brief Computes this*other^{-1} without changing either matrix.
@@ -1022,7 +1024,7 @@ class MatrixUtil{
         this->num_cols += other.num_cols;
     }
 
-    protected:
+    public:
 
     /**
      * @brief Recursively finds a permutation of the column indices such that all diagonal elements are non-zero.
@@ -1063,7 +1065,7 @@ class MatrixUtil{
 
                 // If the minor is invertible, we can recursively find a permutation for the minor
                 if(minor_is_invertible){
-                    vec<int> minor_permutation = minor.rectify();
+                    vec<int> minor_permutation = minor.rectify_invertible();
                     for(index j = 0; j < this->num_cols; j++){
                         if(j < i){
                             permutation[j] = minor_permutation[j];
@@ -1393,13 +1395,13 @@ void simultaneous_align(std::unordered_map<index, DERIVED>& N_map, vec<index>& a
  */
 template <typename DERIVED>
 bool compare_col_space(DERIVED& A, DERIVED& B){
-    if(A.num_cols != B.num_cols){
+    if(A.get_num_cols() != B.get_num_cols()){
         return false;
     }
     DERIVED copy_A = DERIVED(A);
     DERIVED copy_B = DERIVED(B);
-    DERIVED A_inv = DERIVED(A.num_cols, "Identity");
-    DERIVED B_inv = DERIVED(B.num_cols, "Identity");
+    DERIVED A_inv = DERIVED(A.get_num_cols(), "Identity");
+    DERIVED B_inv = DERIVED(B.get_num_cols(), "Identity");
     copy_A.column_gauss_jordan(A_inv);
     copy_B.column_gauss_jordan(B_inv);
     

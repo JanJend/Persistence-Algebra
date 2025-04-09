@@ -19,186 +19,11 @@
 #define DENSE_MATRIX_HPP
 
 #include "grlina/matrix_base.hpp"
-#include <iostream>
-#include <vector>
-#include <fstream>
-#include <unordered_map>
+#include "grlina/bitset_algebra.hpp"
+
 
 namespace graded_linalg {
 
-
-struct BitsetHash {
-    unsigned long operator()(const boost::dynamic_bitset<>& bs) const {
-        // Safe to use to_ulong() if the bitset size is guaranteed to be <= 32
-        return bs.to_ulong();
-    }
-};
-
-/**
- * @brief asks if a < b in order of the entries (reverse of standard comparison)
- */
-bool compareBitsets(const boost::dynamic_bitset<>& a, const boost::dynamic_bitset<>& b) {
-    if (a.size() != b.size()) {
-        throw std::invalid_argument("Bitsets must be of the same size for comparison.");
-    }
-
-    for (std::size_t i = 0; i < a.size(); ++i) {
-        if (a.test(i) != b.test(i)) {
-            return a.test(i) < b.test(i);
-        }
-    }
-
-    return false; // The bitsets are equal
-}
-
-std::ostream& operator<< (std::ostream& ostr, const boost::dynamic_bitset<>& bs) {
-    for (int i = 0; i < bs.size(); i++){
-      ostr << bs[i] << " ";
-    }
-    return ostr;
-}
-
-
-/**
- * @brief prints the bitset from first to last entry
- * 
- * @param bs 
- */
-void print_bitset(const boost::dynamic_bitset<>& bs) {
-    std::cout << bs << std::endl;
-}
-
-/**
- * @brief prints the bitset from last to first entry
- * 
- * @param bs 
- */
-void print_bitset_reverse(const boost::dynamic_bitset<>& bs) {
-    for (int i = bs.size() - 1; i >= 0; --i) {
-        std::cout << bs[i] << " ";
-    }
-    std::cout << std::endl;
-}
-
-/**
- * @brief Converts a bitset to a string representation in reverse order
- * 
- * @param bs 
- * @return std::string 
- */
-std::string bitsetToString_alt(const boost::dynamic_bitset<>& bs) {
-    std::string result;
-    result.reserve(bs.size());
-    for (int i = bs.size() - 1; i >= 0; --i) {
-        result.push_back(bs.test(i) ? '1' : '0');
-    }
-    return result;
-}
-
-/**
- * @brief Converts a bitset to a string representation in forward order
- * 
- * @param bs 
- * @return std::string 
- */
-std::string bitsetToString(const boost::dynamic_bitset<>& bs) {
-    std::string result;
-    result.reserve(bs.size());
-    for (size_t i = 0; i < bs.size(); ++i) {
-        result.push_back(bs.test(i) ? '1' : '0');
-    }
-    return result;
-}
-
-/**
- * @brief Writes a dynamic_bitset to a file in reverse order
- * 
- * @param bs 
- * @param file 
- */
-void serializeDynamicBitset(const boost::dynamic_bitset<>& bs, std::ofstream& file) {
-    int length = bs.size();
-    file.write(reinterpret_cast<const char*>(&length), sizeof(length));
-    const auto& bs_data = bs.to_ulong();
-    file.write(reinterpret_cast<const char*>(&bs_data), sizeof(bs_data));
-}
-
-
-/**
- * @brief Reads a dynamic_bitset from a file in reverse order
- * 
- * @param file 
- * @return boost::dynamic_bitset<> 
- */
-boost::dynamic_bitset<> deserializeDynamicBitset(std::ifstream& file) {
-    int length;
-    file.read(reinterpret_cast<char*>(&length), sizeof(length));
-    unsigned long bs_data;
-    file.read(reinterpret_cast<char*>(&bs_data), sizeof(bs_data));
-    return bitset(length, bs_data);
-}
-
-
-vec<bitset> compute_standard_vectors(int k){
-    vec<bitset> result;
-    for (int i = 0; i < k; i++){
-        result.emplace_back(bitset(k, 0).set(i));
-    }
-    return result;
-}
-
-/**
- * @brief returns { 1, 11, 111, ... }
- * 
- * @param k 
- * @return 
- */
-vec<boost::dynamic_bitset<>> compute_sum_of_standard_vectors(int k){
-    auto result = vec<boost::dynamic_bitset<>>();
-    for (int i = 0; i < k; i++){
-        boost::dynamic_bitset<> bitset(i + 1);
-        bitset.set(); // Set all bits to 1
-        result.push_back(bitset);
-    }
-    return result;
-}
-
-/**
- * @brief Returns a copy of a with the 1-entries replaced by b.
- * 
- * @param a 
- * @param b 
- * @return bitset 
- */
-bitset glue(const bitset& a, const bitset& b){
-    bitset result = a;
-    assert(a.count() == b.size());
-    size_t counter = 0;
-    for(auto it = result.find_first(); it != bitset::npos; it = result.find_next(it)){
-        if(!b[counter]){
-            result.reset(it);
-        }
-        counter++;
-    }
-    return result;
-}
-
-/**
- * @brief Copies b onto the 1-entries of a.
- * 
- * @param a 
- * @param b 
- */
-void glue_to(bitset& a, const bitset& b){
-    assert(a.count() == b.size());
-    size_t counter = 0;
-    for(auto it = a.find_first(); it != bitset::npos; it = a.find_next(it)){
-        if(!b[counter]){
-            a.reset(it);
-        }
-        counter++;
-    }
-}
 
 struct DenseMatrix : public MatrixUtil<bitset, int, DenseMatrix>{
         
@@ -283,7 +108,7 @@ struct DenseMatrix : public MatrixUtil<bitset, int, DenseMatrix>{
 
     /**
      * @brief Construct a Dense Matrix in reduced form from a set of pivots_ and a number. 
-     * The binary representation of this number fills the spots in the reduced matrix which are not necessarilly zero.
+     * The binary representation of this number fills the spots in the reduced matrix which are not necessarily zero.
      * 
      * @param pivots_ 
      * @param positions 
@@ -386,7 +211,7 @@ struct DenseMatrix : public MatrixUtil<bitset, int, DenseMatrix>{
      * 
      * @param other 
      */
-    DenseMatrix multiply_right(DenseMatrix& other)  {
+    DenseMatrix multiply_right(const DenseMatrix& other) const  {
         assert(this->get_num_cols() == other.get_num_rows());
         DenseMatrix result(other.get_num_cols(), this->get_num_rows());
 
@@ -418,8 +243,72 @@ struct DenseMatrix : public MatrixUtil<bitset, int, DenseMatrix>{
         return result;
     }
 
+    DenseMatrix divide_left(DenseMatrix& other) const {
+        //TO-DO: Implement row-reduction for dense-matrices and use it here instead of applying column-reduction to get an inverse
+        DenseMatrix inverse = other.inverse_nocopy();
+        inverse.multiply_right(*this); // Unnecessary copy *and* multiplication
+        return inverse;
+    }
+
 }; // end of DenseMatrix
 
+
+std::vector<DenseMatrix > pivotsToEchelon(const boost::dynamic_bitset<> &pivots, std::vector<std::pair<int,int>> &positions ){
+    std::vector<DenseMatrix> reducedMatrices;
+    
+    size_t n = pivots.size();
+    size_t mul = positions.size();
+    size_t subsetCount = static_cast<size_t>(std::pow(2, mul));
+
+    for (size_t i = 0; i < subsetCount; ++i) {
+        reducedMatrices.emplace_back( DenseMatrix(pivots, positions, i) );
+    }
+    return reducedMatrices;
+}
+
+void pivotsToEchelon(std::vector<DenseMatrix>& result, const boost::dynamic_bitset<> &pivots, std::vector<std::pair<int,int>> &positions ){
+    
+    size_t n = pivots.size();
+    size_t mul = positions.size();
+    size_t subsetCount = static_cast<size_t>(std::pow(2, mul));
+
+    for (size_t i = 0; i < subsetCount; ++i) {
+        result.emplace_back( DenseMatrix(pivots, positions, i) );
+    }
+}
+
+
+
+
+// For a given bitset returns all non-set positions in a col-echelon matrix whose pivots are given by the input.
+std::vector<std::pair<int, int>> getEchelonPositions(const boost::dynamic_bitset<> &bitset) {
+    size_t countOnes = 0;
+    std::vector<std::pair<int, int>> positions;
+
+    for (boost::dynamic_bitset<>::size_type i = 0; i < bitset.size(); ++i) {
+        if (!bitset.test(i)) {
+            for (int j = 0; j < countOnes; j++){
+                positions.push_back(std::make_pair(j, i));
+            }
+        } else {
+            countOnes++;
+        }
+    }
+    return positions;
+}
+
+std::vector<DenseMatrix> all_proper_subspaces(int k){
+    vec<bitset> pivots;
+    vec<DenseMatrix> subspaces;
+    for (int i = 1; i < (1ULL << k) - 1; ++i) {
+        pivots.emplace_back(bitset(k, i));
+    }
+    for( bitset& b : pivots){
+        auto positions = getEchelonPositions(b);
+        pivotsToEchelon(subspaces, b, positions);
+    }
+    return subspaces;
+}
 
 
 // A pair of DenseMatrices - the two subspaces of a decomposition.

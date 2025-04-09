@@ -173,6 +173,10 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
     R2GradedSparseMatrix(index m, index n) : GradedSparseMatrix<r2degree, index>(m, n) {}
     R2GradedSparseMatrix(index n, vec<index> indicator) : GradedSparseMatrix<r2degree, index>(n, indicator) {} 
 
+    R2GradedSparseMatrix( const SparseMatrix<index>& other) : GradedSparseMatrix<r2degree, index>(other.get_num_cols(), other.get_num_rows()) {
+        this->data = other.data;
+    } // Copy constructor
+
     /**
      * @brief Constructs an R^2 graded matrix from an scc or firep data file.
      * 
@@ -611,6 +615,20 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         return minimal_presentation;
     }   
 
+    R2GradedSparseMatrix submodule_generated_by(R2GradedSparseMatrix& new_generators) const {
+        assert(this->get_num_rows() == new_generators.get_num_rows());
+        assert(this->row_degrees == new_generators.row_degrees);
+        index num_new_gens = new_generators.get_num_cols();
+        new_generators.append_matrix(*this);
+        new_generators.col_degrees.insert(new_generators.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
+        // A kernel of this map is the pullback of this presentation along the injection
+        R2GradedSparseMatrix<index> presentation = new_generators.graded_kernel();
+        // To get the map to the basis, forget all the rows which correspong to relations
+        presentation.cull_columns(num_new_gens, false);
+        vec<index> minimal_relations = presentation.column_reduction_graded();
+        R2GradedSparseMatrix<index> minimal_presentation = presentation.restricted_domain_copy(minimal_relations);
+        return minimal_presentation;
+    }
 
     pair<r2degree> bounding_box() const{
         r2degree min = {std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
@@ -642,6 +660,8 @@ struct R2Resolution {
     R2GradedSparseMatrix<index> d1;
     R2GradedSparseMatrix<index> d2;
 
+    R2Resolution() {}
+
     R2Resolution(const R2GradedSparseMatrix<index>& d1, const R2GradedSparseMatrix<index>& d2) 
         : d1(d1), d2(d2) {}
     
@@ -650,6 +670,8 @@ struct R2Resolution {
             auto d1_copy = d1;
             d2 = d1_copy.graded_kernel();
         }
+    
+    
     
     /**
      * @brief Computes the dimension at any point in R^2
@@ -662,6 +684,27 @@ struct R2Resolution {
         index num_chains_1 = d1.num_cols_before(alpha);
         index num_chains_2 = d2.num_cols_before(alpha);
         return num_chains_0 - num_chains_1 + num_chains_2;
+    }
+
+    /**
+     * @brief Only works for modules with all generators at a single degree
+     *  TO-DO: Log transform on the scale parameter. What to do on density?
+     * @return double 
+     */
+    double area () const {
+        auto [min, max] = d1.bounding_box();
+        double base_area = d1.get_num_rows()*(max.first - min.first) * (max.second - min.second);
+        for(const auto& degree : d1.col_degrees){
+            base_area -= (max.first - degree.first) * (max.second - degree.second);
+        }
+        for(const auto& degree : d2.col_degrees){
+            base_area += (max.first - degree.first) * (max.second - degree.second);
+        }
+        return base_area;
+    }
+
+    double slope () const {
+        return (d1.get_num_rows()/this->area());
     }
 
     /**
