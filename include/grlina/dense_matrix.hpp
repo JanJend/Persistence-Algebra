@@ -246,8 +246,8 @@ struct DenseMatrix : public MatrixUtil<bitset, int, DenseMatrix>{
     DenseMatrix divide_left(DenseMatrix& other) const {
         //TO-DO: Implement row-reduction for dense-matrices and use it here instead of applying column-reduction to get an inverse
         DenseMatrix inverse = other.inverse_nocopy();
-        inverse.multiply_right(*this); // Unnecessary copy *and* multiplication
-        return inverse;
+        DenseMatrix result = inverse.multiply_right(*this); // Unnecessary copy *and* multiplication
+        return result;
     }
 
 }; // end of DenseMatrix

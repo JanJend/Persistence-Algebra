@@ -662,12 +662,12 @@ class MatrixUtil{
             return false;
         }
         for(index i = 0; i< num_cols; i++){
-            if( CT::is_equal(data[i], other.data[i]) ){
+            if( !CT::is_equal(data[i], other.data[i]) ){
                 if(output){
                     std::cout << "Column " << i << " does not match.";
                     std::cout << "This: " << data[i] << "\n Other: " << other.data[i] << std::endl;
                 }
-            return false;
+                return false;
             }
         }
         return true;
