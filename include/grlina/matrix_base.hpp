@@ -375,8 +375,6 @@ class MatrixUtil{
         return true;
     }
 
-    
-
     /**
      * @brief Checks if the matrix is nonzero
      * 
@@ -384,12 +382,7 @@ class MatrixUtil{
      * @return false 
      */
     bool is_nonzero(){
-        for(auto i = 0; i < this->num_cols; i++){
-            if(!CT::is_zero(this->data[i])){
-                return false;
-            }
-        }
-        return false;
+        return !is_zero();
     }
 
     /**
@@ -399,12 +392,7 @@ class MatrixUtil{
      * @return false 
      */
     bool is_nonzero(bitset& col_indices){
-        for(auto i = col_indices.find_first(); i != bitset::npos ; i = col_indices.find_next(i)){
-            if(!CT::is_zero(this->data[i])){
-                return false;
-            }
-        }
-        return false;
+        return !is_zero(col_indices);
     }
    
     bool is_zero(index i){
@@ -684,7 +672,7 @@ class MatrixUtil{
     index equals_with_entry_check(MatrixUtil& other, bool output = false){
         
         for(index i = 0; i< num_cols; i++){
-            if( CT::is_equal (data[i], other.data[i]) ){
+            if( !CT::is_equal (data[i], other.data[i]) ){
                 if(output){
                     std::cout << "Column " << i << " does not match.";
                 }
