@@ -342,7 +342,7 @@ template <typename index>
 struct Column_traits<bitset, index> {
 
     static void add_to(bitset& v, bitset& w) {
-        assert(v.size() != w.size());
+        assert(v.size() == w.size());
         w ^= v;
     }
 
