@@ -146,16 +146,38 @@ class MatrixUtil{
 
     MatrixUtil(index m, index n, vec<COLUMN> d) : num_cols(m), num_rows(n), data(d) {}
 
-    // Copy assignment operator. 
-    MatrixUtil& operator=(MatrixUtil& other){
-        if (this != &other) {
-            data = other.data;
-            num_cols = other.num_cols;
-            num_rows = other.num_rows;
-        }
-        return *this;
-    }
 
+    protected:
+        MatrixUtil& assign(const MatrixUtil& other) {
+            if (this != &other) {
+                data = other.data;
+                num_cols = other.num_cols;
+                num_rows = other.num_rows;
+                pivots = other.pivots;
+            }
+            return *this;
+        }
+
+        MatrixUtil& assign(MatrixUtil&& other) {
+            if (this != &other) {
+                data = std::move(other.data);
+                num_cols = other.num_cols;
+                num_rows = other.num_rows;
+                pivots = std::move(other.pivots);
+            }
+            return *this;
+        }
+
+    public:
+        MatrixUtil& operator=(const MatrixUtil& other) {
+            return assign(other);
+        }
+
+        MatrixUtil& operator=(MatrixUtil&& other) {
+            return assign(std::move(other));
+        }
+
+        
 
     // Move constructor
     MatrixUtil(MatrixUtil&& other) noexcept : data(std::move(other.data)), num_cols(other.num_cols), num_rows(other.num_rows) {

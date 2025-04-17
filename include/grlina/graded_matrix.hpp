@@ -48,7 +48,6 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     vec<D> row_degrees;
 
     // Unclear if we really need the following:
-
     // admissible_col[i] stores to what column i can be added
     array<index> admissible_col;
     // I actually want to store the indices of the columns that can be added to i strictly, i.e. without the batch
@@ -58,7 +57,6 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     // Same here, but not strict.
     array<index> admissible_row_dual;
 
-
     // This is only relevant for AIDA
     vec<vec<index>> col_batches;
     vec<index> rel_k = vec<index>(100, 0);
@@ -67,14 +65,49 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
 
     protected:
-    GradedSparseMatrix(SparseMatrix<index>&& other) : SparseMatrix<index>(std::move(other)) {
-        this->col_degrees = vec<D>(other.get_num_cols());
-        this->row_degrees = vec<D>(other.get_num_rows());
-    } 
+        GradedSparseMatrix(SparseMatrix<index>&& other) : SparseMatrix<index>(std::move(other)) {
+            this->col_degrees = vec<D>(other.get_num_cols());
+            this->row_degrees = vec<D>(other.get_num_rows());
+        } 
+
+        GradedSparseMatrix& assign(const GradedSparseMatrix& other) {
+            SparseMatrix<index>::assign(other);
+            this->col_degrees = other.col_degrees;
+            this->row_degrees = other.row_degrees;
+            this->col_batches = other.col_batches;
+            this->k_max = other.k_max;
+            return *this;
+        }
+
+        GradedSparseMatrix& assign(GradedSparseMatrix&& other) {
+            SparseMatrix<index>::assign(std::move(other));
+            this->col_degrees = std::move(other.col_degrees);
+            this->row_degrees = std::move(other.row_degrees);
+            this->col_batches = std::move(other.col_batches);
+            this->k_max = other.k_max;
+            return *this;
+        }
+            
 
     public:
 
+    GradedSparseMatrix& operator= (const GradedSparseMatrix& other) {
+        if (this != &other)
+            assign(other);
+        return *this;
+    }
+
+    GradedSparseMatrix& operator= (GradedSparseMatrix&& other) {
+        if (this != &other)
+            assign(std::move(other));
+        return *this;
+    }
+
     GradedSparseMatrix() : SparseMatrix<index>() {};
+
+    GradedSparseMatrix(const GradedSparseMatrix& other) : SparseMatrix<index>(other), col_degrees(other.col_degrees), row_degrees(other.row_degrees), col_batches(other.col_batches), k_max(other.k_max) {}
+
+    GradedSparseMatrix(GradedSparseMatrix&& other) : SparseMatrix<index>(std::move(other)), col_degrees(std::move(other.col_degrees)), row_degrees(std::move(other.row_degrees)), col_batches(std::move(other.col_batches)), k_max(other.k_max) {}
 
     GradedSparseMatrix(index m, index n) : SparseMatrix<index>(m, n), col_degrees(vec<D>(m)), row_degrees(vec<D>(n)) {}
 
@@ -795,7 +828,70 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         return non_zero_columns;
     }
 
+    /**
+     * @brief Computes a minimal presentation from this presentation.
+     * 
+     */
+    void minimize(){
+        array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
+        vec<index> col_indices_to_remove;
+        vec<index> row_indices_to_remove;
+        for(index i = 0; i < this->num_cols; i++){
+            index p = this->col_last(i);
+            bool found = true;
+            while( p != -1 && multi_pivots[p].size() != 0 && found){
+                found = false;
+                for(index j : multi_pivots[p]){
+                    if( is_admissible_column_operation(j, i) ){
+                        this->col_op(j, i);
+                        found = true;
+                        p = this->col_last(i);
+                        break;
+                    }
+                }
+            }
+            if(p != -1){
+                multi_pivots[p].push_back(i);
+                // If after reduction the relation contains a generator of the same degree, 
+                // they form a pair which can be deleted.
+                if(this->col_degrees[i] == this->row_degrees[p]){
+                    col_indices_to_remove.push_back(i);
+                    row_indices_to_remove.push_back(p);
+                }
+            } else {
+                // Empty columns can also be removed
+                col_indices_to_remove.push_back(i);
+            }
+        }
+        this->delete_columns(col_indices_to_remove);
+        this->delete_rows(row_indices_to_remove);
+    }
 
+     /**
+     * @brief Appends the columns and column degrees of another graded matrix.
+     * 
+     * @param other 
+     */
+    void append_matrix(const GradedSparseMatrix& other) {
+        assert(this->num_rows == other.num_rows);
+        for(index i = 0; i < other.num_cols; i++) {
+            this->data.push_back(other.data[i]);
+            this->col_degrees.push_back(other.col_degrees[i]);
+        }
+        this->num_cols += other.num_cols;
+    }
+
+    /**
+     * @brief Computes a presentation for the quotient by a submodule. 
+     * The submodule is given by a graded matrix denoting a map from the generators of the submodule to the generators of this module.
+     * This method appends the input matrix to the current matrix and minimises it.
+     * 
+     * @param Y 
+     */
+    void quotient_by (GradedSparseMatrix<D, index>& Y) {
+        this->append_matrix(Y);
+        this->minimize();
+    }
 }; // GradedSparseMatrix
 
 

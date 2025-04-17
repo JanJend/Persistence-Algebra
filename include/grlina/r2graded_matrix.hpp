@@ -170,12 +170,33 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
     
 
     public:
+
+    R2GradedSparseMatrix& operator= (const R2GradedSparseMatrix& other) {
+        if (this != &other)
+            GradedSparseMatrix<r2degree, index>::assign(other);
+        return *this;
+    }
+
+    R2GradedSparseMatrix& operator= (R2GradedSparseMatrix&& other) {
+        if (this != &other)
+            GradedSparseMatrix<r2degree, index>::assign(std::move(other));
+        return *this;
+    }
+
     R2GradedSparseMatrix(index m, index n) : GradedSparseMatrix<r2degree, index>(m, n) {}
     R2GradedSparseMatrix(index n, vec<index> indicator) : GradedSparseMatrix<r2degree, index>(n, indicator) {} 
 
+    R2GradedSparseMatrix(const R2GradedSparseMatrix& other)
+        : GradedSparseMatrix<r2degree, index>(other) {
+    } // Copy constructor
+
+    R2GradedSparseMatrix(R2GradedSparseMatrix&& other)
+        : GradedSparseMatrix<r2degree, index>(std::move(other)) {
+    } // Move constructor
+
     R2GradedSparseMatrix( const SparseMatrix<index>& other) : GradedSparseMatrix<r2degree, index>(other.get_num_cols(), other.get_num_rows()) {
         this->data = other.data;
-    } // Copy constructor
+    } // Copy constructor from SparseMatrix
 
     /**
      * @brief Constructs an R^2 graded matrix from an scc or firep data file.
@@ -590,6 +611,9 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         return result;
     }
 
+
+
+
     /**
      * @brief Computes a presentation for the submodule generated at the given degree.
      * 
@@ -605,7 +629,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         basis_injection.col_degrees = vec<r2degree>(basis_lift.size(), alpha);
         // Append this presentation itself
         basis_injection.append_matrix(*this);
-        basis_injection.col_degrees.insert(basis_injection.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
+        // Obsolete if append_matrix works correctly: basis_injection.col_degrees.insert(basis_injection.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
         // A kernel of this map is the pullback of this presentation along the injection
         R2GradedSparseMatrix<index> presentation = basis_injection.graded_kernel();
         // To get the map to the basis, forget all the rows which correspong to relations
@@ -620,7 +644,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         assert(this->row_degrees == new_generators.row_degrees);
         index num_new_gens = new_generators.get_num_cols();
         new_generators.append_matrix(*this);
-        new_generators.col_degrees.insert(new_generators.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
+        // Obsolete if append_matrix works correctly: new_generators.col_degrees.insert(new_generators.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
         // A kernel of this map is the pullback of this presentation along the injection
         R2GradedSparseMatrix<index> presentation = new_generators.graded_kernel();
         // To get the map to the basis, forget all the rows which correspong to relations
