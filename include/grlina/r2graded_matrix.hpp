@@ -314,62 +314,69 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
     private:
 
     template <typename T>
-    void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
-                            const std::vector<std::pair<T, T>>& vec2,
-                            std::vector<T>& out,
-                            bool useFirst = true) {
-        auto it1 = vec1.begin();
-        auto it2 = vec2.begin();
-        T last_x = T(); // Default initialize last_x
-        
-        while (it1 != vec1.end() || it2 != vec2.end()) {
-            T value;
+void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
+                           const std::vector<std::pair<T, T>>& vec2,
+                           std::vector<T>& out,
+                           bool useFirst = true) {
+    auto it1 = vec1.begin();
+    auto it2 = vec2.begin();
+    T last_x = T();
+    bool has_last_x = false;
 
-            if (it1 == vec1.end()) {
-                value = useFirst ? it2->first : it2->second;
-                if (value != last_x) {
-                    out.push_back(value);
-                    last_x = value;
-                }
-                ++it2;
-            } 
-            else if (it2 == vec2.end()) {
-                value = useFirst ? it1->first : it1->second;
-                if (value != last_x) {
-                    out.push_back(value);
-                    last_x = value;
+    while (it1 != vec1.end() || it2 != vec2.end()) {
+        T value;
+
+        if (it1 == vec1.end()) {
+            value = useFirst ? it2->first : it2->second;
+            if (!has_last_x || value != last_x) {
+                out.push_back(value);
+                last_x = value;
+                has_last_x = true;
+            }
+            ++it2;
+        } 
+        else if (it2 == vec2.end()) {
+            value = useFirst ? it1->first : it1->second;
+            if (!has_last_x || value != last_x) {
+                out.push_back(value);
+                last_x = value;
+                has_last_x = true;
+            }
+            ++it1;
+        } 
+        else {
+            T val1 = useFirst ? it1->first : it1->second;
+            T val2 = useFirst ? it2->first : it2->second;
+
+            if (val1 < val2) {
+                if (!has_last_x || val1 != last_x) {
+                    out.push_back(val1);
+                    last_x = val1;
+                    has_last_x = true;
                 }
                 ++it1;
             } 
-            else {
-                T val1 = useFirst ? it1->first : it1->second;
-                T val2 = useFirst ? it2->first : it2->second;
-
-                if (val1 < val2) {
-                    if (val1 != last_x) {
-                        out.push_back(val1);
-                        last_x = val1;
-                    }
-                    ++it1;
-                } 
-                else if (val2 < val1) {
-                    if (val2 != last_x) {
-                        out.push_back(val2);
-                        last_x = val2;
-                    }
-                    ++it2;
-                } 
-                else { // Both values are equal
-                    if (val1 != last_x) {
-                        out.push_back(val1);
-                        last_x = val1;
-                    }
-                    ++it1;
-                    ++it2;
+            else if (val2 < val1) {
+                if (!has_last_x || val2 != last_x) {
+                    out.push_back(val2);
+                    last_x = val2;
+                    has_last_x = true;
                 }
+                ++it2;
+            } 
+            else {
+                if (!has_last_x || val1 != last_x) {
+                    out.push_back(val1);
+                    last_x = val1;
+                    has_last_x = true;
+                }
+                ++it1;
+                ++it2;
             }
         }
     }
+}
+
 
     public:
 
@@ -727,8 +734,41 @@ struct R2Resolution {
         return base_area;
     }
 
+
+    /**
+     * @brief Only works for modules with all generators at a single degree
+     *  TO-DO: Log transform on the scale parameter. What to do on density?
+     * @return double 
+     */
+    double area (const r2degree& bound) const {
+        auto [min, max] = d1.bounding_box();
+        max = bound;
+        double base_area = d1.get_num_rows()*(max.first - min.first) * (max.second - min.second);
+        for(const auto& degree : d1.col_degrees){
+            base_area -= (max.first - degree.first) * (max.second - degree.second);
+        }
+        for(const auto& degree : d2.col_degrees){
+            base_area += (max.first - degree.first) * (max.second - degree.second);
+        }
+        return base_area;
+    }
+
     double slope () const {
-        return (d1.get_num_rows()/this->area());
+        double area = this->area();
+        if(area == 0){
+            std::cerr << "Area is zero, slope will be infinite. Consider passing a bound." << std::endl;
+        }
+        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
+        return slope_value;
+    }
+
+    double slope (const r2degree& bound) const {
+        double area = this->area(bound);
+        if(area == 0){
+            std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
+        }
+        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
+        return slope_value;
     }
 
     /**
