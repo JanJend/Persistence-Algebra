@@ -32,6 +32,29 @@
 namespace graded_linalg {
 
 using r2degree = std::pair<double, double>;
+
+// Vector addition
+r2degree operator+(const r2degree& a,
+    const r2degree& b) {
+return {a.first + b.first, a.second + b.second};
+}
+
+// Vector subtraction
+r2degree operator-(const r2degree& a,
+    const r2degree& b) {
+return {a.first - b.first, a.second - b.second};
+}
+
+// Scalar multiplication (scalar * pair)
+r2degree operator*(double scalar, const r2degree& p) {
+return {scalar * p.first, scalar * p.second};
+}
+
+// Scalar multiplication (pair * scalar)
+r2degree operator*(const r2degree& p, double scalar) {
+return {p.first * scalar, p.second * scalar};
+}
+
 template<>
 struct Degree_traits<r2degree> {
     static bool equals(const r2degree& lhs, const r2degree& rhs) {
@@ -117,6 +140,7 @@ struct Degree_traits<r2degree> {
         iss >> deg.first >> deg.second;
         return deg;
     }
+
 
 }; //Degree_traits<r2degree>
 
@@ -737,7 +761,6 @@ struct R2Resolution {
 
     /**
      * @brief Only works for modules with all generators at a single degree
-     *  TO-DO: Log transform on the scale parameter. What to do on density?
      * @return double 
      */
     double area (const r2degree& bound) const {
@@ -753,6 +776,39 @@ struct R2Resolution {
         return base_area;
     }
 
+    /**
+     * @brief Only works for modules with all generators at a single degree
+     * Normalised so that the area of the free module is 1.
+     *  TO-DO: Log transform on the scale parameter. What to do on density?
+     * @return double 
+     */
+    double area (const pair<r2degree>& bounds) const {
+        //TO-DO: Actually only need to compute the minimal element here.
+        auto [min, max] = d1.bounding_box();
+        max = bounds.second;
+        assert(max.first >= min.first);
+        assert(max.second >= min.second);
+        r2degree range = bounds.second-bounds.first;
+        double range_area = range.first * range.second;
+        double base_area = d1.get_num_rows() * (max.first - min.first) * (max.second - min.second);
+        for(const auto& degree : d1.col_degrees){
+            assert(degree.first <= max.first);
+            assert(degree.second <= max.second);
+            assert(degree.first >= min.first);
+            assert(degree.second >= min.second);
+            base_area -= (max.first - degree.first) * (max.second - degree.second);
+        }
+        for(const auto& degree : d2.col_degrees){
+            assert(degree.first <= max.first);
+            assert(degree.second <= max.second);
+            assert(degree.first >= min.first);
+            assert(degree.second >= min.second);
+            base_area += (max.first - degree.first) * (max.second - degree.second);
+        }
+        double normalised_area = base_area/range_area;
+        return normalised_area;
+    }
+
     double slope () const {
         double area = this->area();
         if(area == 0){
@@ -764,6 +820,15 @@ struct R2Resolution {
 
     double slope (const r2degree& bound) const {
         double area = this->area(bound);
+        if(area == 0){
+            std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
+        }
+        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
+        return slope_value;
+    }
+
+    double slope (const pair<r2degree>& bounds) const {
+        double area = this->area(bounds);
         if(area == 0){
             std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
         }
