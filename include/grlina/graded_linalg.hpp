@@ -34,6 +34,40 @@ namespace graded_linalg {
 
 
 /**
+ * @brief Converts a dense matrix to a sparse matrix
+ * 
+ * @tparam index 
+ * @param matrix 
+ * @return SparseMatrix<index> 
+ */
+template <typename index>
+SparseMatrix<index> sparse_from_dense(DenseMatrix& matrix){
+    SparseMatrix<index> result = SparseMatrix<index>(matrix.get_num_cols(), matrix.get_num_rows());
+    for(index i = 0; i < matrix.get_num_cols(); i++){
+        result.data.push_back(vec<index>());
+        for(index j = 0; j < matrix.get_num_rows(); j++){
+            if(matrix.data[i][j] == 1){
+                result.data[i].push_back(j);
+            }
+        }
+    }
+    return result;
+}
+
+template <typename index>
+vec<vec<SparseMatrix<index>>> all_sparse_proper_subspaces(index k){
+    vec<vec<SparseMatrix<index>>> result = vec<vec<SparseMatrix<index>>>(k);
+    for(index i = 0; i < k; i++){
+    
+        vec<DenseMatrix> i_spaces = all_proper_subspaces(i+1);
+        for(DenseMatrix matrix : i_spaces){
+            result[i].emplace_back(sparse_from_dense<index>(matrix));
+        }
+    }
+    return result;
+}
+
+/**
  * @brief Constructs a vector of R2GradedSparseMatrix objects from an input file stream.
  * 
  * @param file_stream input file stream containing multiple matrices

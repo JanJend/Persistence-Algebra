@@ -222,7 +222,25 @@ class MatrixUtil{
         CT::set_entry(data[i], j);
     }
 
-    void cull_columns(index& threshold, bool from_end = true){};
+    /**
+     * @brief Deletes all rows after threshold or from end
+     * 
+     * @param threshold 
+     * @param from_end 
+     */
+    void cull_columns(const index& threshold, bool from_end = true){};
+
+    void delete_columns(const index& threshold, bool from_end = true){
+        assert(threshold <= this->get_num_cols());
+        assert(threshold >= 0);
+
+        if(from_end){
+            data.erase(data.end() - threshold, data.end());
+        } else {
+            data.erase(data.begin() + threshold, data.end());
+        }
+        this->compute_num_cols();
+    };
 
     public:
     /**
@@ -248,6 +266,11 @@ class MatrixUtil{
     void swap_cols(index i, index j) {
         std::swap(data[i], data[j]);
     };
+
+
+    COLUMN get_col(index i){
+        return data[i];
+    }
 
     /**
      * @brief Adds column i to column j. 
@@ -307,7 +330,12 @@ class MatrixUtil{
         }
     };
     
-
+    /**
+     * @brief Checks if the matrix is the zero matrix.
+     * 
+     * @return true 
+     * @return false 
+     */
     bool is_zero(){
         for(auto i = 0; i < this->num_cols; i++){
             if(!CT::is_zero(this->data[i])){
@@ -315,6 +343,21 @@ class MatrixUtil{
             }
         }
         return true;
+    }
+
+    /**
+     * @brief Returns the indices of the columns which are nonzero.
+     * 
+     * @return vec<index> 
+     */
+    vec<index> where_is_nonzero(){
+        vec<index> result;
+        for(auto i = 0; i < this->num_cols; i++){
+            if(!CT::is_zero(this->data[i])){
+                result.push_back(i);
+            }
+        }
+        return result;
     }
 
     /**
@@ -332,8 +375,6 @@ class MatrixUtil{
         return true;
     }
 
-    
-
     /**
      * @brief Checks if the matrix is nonzero
      * 
@@ -341,12 +382,7 @@ class MatrixUtil{
      * @return false 
      */
     bool is_nonzero(){
-        for(auto i = 0; i < this->num_cols; i++){
-            if(!CT::is_zero(this->data[i])){
-                return false;
-            }
-        }
-        return false;
+        return !is_zero();
     }
 
     /**
@@ -356,12 +392,7 @@ class MatrixUtil{
      * @return false 
      */
     bool is_nonzero(bitset& col_indices){
-        for(auto i = col_indices.find_first(); i != bitset::npos ; i = col_indices.find_next(i)){
-            if(!CT::is_zero(this->data[i])){
-                return false;
-            }
-        }
-        return false;
+        return !is_zero(col_indices);
     }
    
     bool is_zero(index i){
@@ -618,12 +649,12 @@ class MatrixUtil{
             return false;
         }
         for(index i = 0; i< num_cols; i++){
-            if( CT::is_equal(data[i], other.data[i]) ){
+            if( !CT::is_equal(data[i], other.data[i]) ){
                 if(output){
                     std::cout << "Column " << i << " does not match.";
                     std::cout << "This: " << data[i] << "\n Other: " << other.data[i] << std::endl;
                 }
-            return false;
+                return false;
             }
         }
         return true;
@@ -640,7 +671,7 @@ class MatrixUtil{
     index equals_with_entry_check(MatrixUtil& other, bool output = false){
         
         for(index i = 0; i< num_cols; i++){
-            if( CT::is_equal (data[i], other.data[i]) ){
+            if( !CT::is_equal (data[i], other.data[i]) ){
                 if(output){
                     std::cout << "Column " << i << " does not match.";
                 }
@@ -947,12 +978,14 @@ class MatrixUtil{
      * Can be computed faster even using column_reduction_with_memory using other as input, extending the getinverse function. (Could implement this).
      * 
      */
-    DERIVED divide_right(DERIVED& other) {
+    DERIVED divide_right(const DERIVED& other) const {
         DERIVED result = DERIVED(static_cast<DERIVED&>(*this));
         DERIVED other_copy(other);
         other_copy.column_gauss_jordan(result);
         return result;
     }
+
+    
 
     /**
      * @brief Computes this*other^{-1} without changing either matrix.
@@ -970,7 +1003,7 @@ class MatrixUtil{
      * 
      * @param other 
      */
-    void append_matrix(DERIVED& other) {
+    void append_matrix(const DERIVED& other) {
         assert(this->num_rows == other.num_rows);
         for(index i = 0; i < other.num_cols; i++) {
             this->data.push_back(other.data[i]);
@@ -978,7 +1011,7 @@ class MatrixUtil{
         this->num_cols += other.num_cols;
     }
 
-    protected:
+    public:
 
     /**
      * @brief Recursively finds a permutation of the column indices such that all diagonal elements are non-zero.
@@ -1019,7 +1052,7 @@ class MatrixUtil{
 
                 // If the minor is invertible, we can recursively find a permutation for the minor
                 if(minor_is_invertible){
-                    vec<int> minor_permutation = minor.rectify();
+                    vec<int> minor_permutation = minor.rectify_invertible();
                     for(index j = 0; j < this->num_cols; j++){
                         if(j < i){
                             permutation[j] = minor_permutation[j];
@@ -1349,13 +1382,13 @@ void simultaneous_align(std::unordered_map<index, DERIVED>& N_map, vec<index>& a
  */
 template <typename DERIVED>
 bool compare_col_space(DERIVED& A, DERIVED& B){
-    if(A.num_cols != B.num_cols){
+    if(A.get_num_cols() != B.get_num_cols()){
         return false;
     }
     DERIVED copy_A = DERIVED(A);
     DERIVED copy_B = DERIVED(B);
-    DERIVED A_inv = DERIVED(A.num_cols, "Identity");
-    DERIVED B_inv = DERIVED(B.num_cols, "Identity");
+    DERIVED A_inv = DERIVED(A.get_num_cols(), "Identity");
+    DERIVED B_inv = DERIVED(B.get_num_cols(), "Identity");
     copy_A.column_gauss_jordan(A_inv);
     copy_B.column_gauss_jordan(B_inv);
     

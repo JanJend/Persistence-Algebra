@@ -64,6 +64,7 @@ struct Degree_traits {
      */
     static bool lex_order(const D& a, const D& b);
 
+
     /**
      * @brief Lambda function to compare lexicographically for sorting.
      * 

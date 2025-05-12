@@ -318,7 +318,7 @@ void transform_matrix(array<index>& S, const std::unordered_map<index, index>& i
 }
 
 /**
- * @brief Parallelised function to change a sparse matrix by applying the indexMap to each entry.
+ * @brief Parallelised function to re-index a sparse matrix. An entry j is changed to index_vector[j].
  *
  * @param S
  * @param indexMap
@@ -398,10 +398,26 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         return *this;
     }
 
+    /**
+     * @brief Sorts the entries of a column
+     * 
+     * @param i 
+     */
     void sort_column(index i){
         std::sort(this->data[i].begin(), this->data[i].end());
     }
     
+    /**
+     * @brief Sorts all columns
+     * 
+     */
+    void sort_data(){
+        assert(this->num_cols == this->data.size());
+        for(index i = 0; i < this->num_cols; i++){
+            sort_column(i);
+        }
+    }
+
     /**
      * @brief Computes all rows from column data in reverse order.
      * 
@@ -575,6 +591,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         transform_matrix(this->data, indexMap, true);
     }
 
+
     void transform_data(const vec<index>& index_vector){
         transform_matrix(this->data, index_vector);
     }
@@ -686,7 +703,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * 
      * @param threshold 
      */
-    void cull_columns(index& threshold, bool from_end = true){
+    void cull_columns(const index& threshold, bool from_end = true){
         if(from_end){
             this->num_rows -= threshold;
         } else {
@@ -1086,7 +1103,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
  */
 template <typename index>
 SparseMatrix<index> multiply_transpose(SparseMatrix<index>& M, SparseMatrix<index>& N){
-  SparseMatrix<index> result(N.get_num_cols(), M.get_num_rows());
+  SparseMatrix<index> result(N.get_num_cols(), M.get_num_cols());
   result.data.resize(result.get_num_cols());
   // assert(M.get_num_rows() == N.get_num_rows()); Sometimes we dont know.
   for(index i = 0; i < N.get_num_cols(); i++){
