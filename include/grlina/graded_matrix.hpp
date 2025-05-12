@@ -459,8 +459,6 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
     
 
-    
-
     /**
      * @brief Returns all row indices whose degree is smaller or equal to d.
      * 

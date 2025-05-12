@@ -113,15 +113,15 @@ class MatrixUtil{
 
     using CT = Column_traits<COLUMN, index>;
 
+    public:
+    vec<COLUMN> data; //stores the columns of the matrix
+    std::unordered_map<index,index> pivots; // for the reduction algorithm
+
+
     protected:
     index num_cols;
     index num_rows;
     
-
-    public:
-    std::unordered_map<index,index> pivots; // for the reduction algorithm
-    vec<COLUMN> data; //stores the columns of the matrix
-
     index get_num_rows() const {return num_rows;};
     index get_num_cols() const {return num_cols;};
     
