@@ -96,6 +96,8 @@ struct Degree_traits {
     template <typename InputStream>
     static D from_stream(InputStream& iss);
 
+    static void add(const D& a, D& b);
+
 }; // Degree_traits
 
 

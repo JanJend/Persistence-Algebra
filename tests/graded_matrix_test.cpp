@@ -53,6 +53,13 @@ void functionality_demo() {
     std::cout << "   or use the constructor with degrees and the data: " << std::endl;
     R2GradedSparseMatrix<int> Pb(3, 3, test_data, col_degrees, row_degrees);
     
+    std::cout << " Create diagonal matrices by passing a vector of row indices: " << std::endl;
+    vec<int> row_indices = {0, 3, 4};
+    R2GradedSparseMatrix<int> diag(5, row_indices);
+    diag.col_degrees = {{1.0, 0.0}, {0.5, 0.5}, {0.0, 1.0}};
+    diag.row_degrees = {{0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {1.0, 1.0}, {1.0, 1.0}};
+    diag.print_graded();
+
     std::cout << "  Are these matrices actually graded? " << std::endl;
     std::cout << "  M is graded: " << M.is_graded_matrix() << std::endl;
     std::cout << "  N is graded: " << N.is_graded_matrix() << std::endl;
@@ -171,6 +178,12 @@ void algebraic_functionality_demo() {
     std::cout << "  Is the kernel minimal? " << K.is_minimal() << std::endl;
     auto Kkernel = K.graded_kernel();
     std::cout << "  is its kernel zero? " << Kkernel.is_zero() << std::endl;
+
+    // Shift:
+
+    std::cout << "  We can shift all columns and rows by a given degree:" << std::endl;
+    K.shift({0.5, 0.5});
+    K.print_graded();
 
 }   
 
@@ -305,7 +318,7 @@ void test_submodule_generated_at(){
 }
 
 int main() {
-    // functionality_demo();
+    functionality_demo();
     algebraic_functionality_demo();
     return 0;
 }
