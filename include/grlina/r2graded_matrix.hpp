@@ -209,6 +209,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
 
     R2GradedSparseMatrix(index m, index n) : GradedSparseMatrix<r2degree, index>(m, n) {}
     R2GradedSparseMatrix(index n, vec<index> indicator) : GradedSparseMatrix<r2degree, index>(n, indicator) {} 
+    R2GradedSparseMatrix(index m, index n, vec<r2degree> c_degrees, vec<r2degree> r_degrees) : GradedSparseMatrix<r2degree, index>(m, n, c_degrees, r_degrees) {} // Constructor with degrees
+    R2GradedSparseMatrix(index m, index n, const array<index>& data, vec<r2degree> c_degrees, vec<r2degree> r_degrees) : GradedSparseMatrix<r2degree, index>(m, n, data, c_degrees, r_degrees) {} // Constructor with data and degrees
 
     R2GradedSparseMatrix(const R2GradedSparseMatrix& other)
         : GradedSparseMatrix<r2degree, index>(other) {

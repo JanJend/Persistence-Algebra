@@ -111,7 +111,15 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
     GradedSparseMatrix(index m, index n) : SparseMatrix<index>(m, n), col_degrees(vec<D>(m)), row_degrees(vec<D>(n)) {}
 
-    GradedSparseMatrix(index m, index n, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index>(m, n), col_degrees(c_degrees), row_degrees(r_degrees) {}
+    GradedSparseMatrix(index m, index n, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index>(m, n), col_degrees(c_degrees), row_degrees(r_degrees) {
+        assert(col_degrees.size() == m);
+        assert(row_degrees.size() == n);
+    }
+
+    GradedSparseMatrix(index m, index n, const array<index>& data, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index>(m, n, data), col_degrees(c_degrees), row_degrees(r_degrees) {
+        assert(col_degrees.size() == m);
+        assert(row_degrees.size() == n);
+    }
     
     GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false, bool compute_batches = false)
         : SparseMatrix<index>() {
@@ -827,6 +835,26 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     }
 
     /**
+     * @brief Graded version of column deletion.
+     * 
+     * @param indices 
+     */
+    void delete_columns(vec<index>& indices) {
+        SparseMatrix<index>::delete_columns(indices);
+        vec_deletion(col_degrees, indices);
+    }
+
+    /**
+     * @brief Graded version of row deletion.
+     * 
+     * @param indices 
+     */
+    void delete_rows(vec<index>& indices) {
+        SparseMatrix<index>::delete_rows(indices);
+        vec_deletion(row_degrees, indices);
+    }
+
+    /**
      * @brief Computes a minimal presentation from this presentation.
      * 
      */
@@ -852,6 +880,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
                 multi_pivots[p].push_back(i);
                 // If after reduction the relation contains a generator of the same degree, 
                 // they form a pair which can be deleted.
+                // TO-DO: In fact any relation with an entry of the same degree should be superfluous.
                 if(this->col_degrees[i] == this->row_degrees[p]){
                     col_indices_to_remove.push_back(i);
                     row_indices_to_remove.push_back(p);
@@ -863,6 +892,53 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         }
         this->delete_columns(col_indices_to_remove);
         this->delete_rows(row_indices_to_remove);
+    }
+
+
+    /**
+     * @brief Checks if the matrix is minimal as a presentation,
+     *  by first looking for row-column pairs and then reducing a copy.
+     * 
+     * @return true 
+     * @return false 
+     */
+    bool is_minimal() const {
+        // First check for row-column pairs
+        for(index i = 0; i < this->num_cols; i++){
+            const vec<index>& col = this->data[i];
+            const D& col_degree = this->col_degrees[i];
+            for(index j : col){
+                const D& row_degree = this->row_degrees[j];
+                if( Degree_traits<D>::equals(col_degree , row_degree) ){
+                    return false;
+                }
+            }
+        }
+        // Then check for empty columns
+        GradedSparseMatrix<D, index> copy = *this;
+        array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
+        for(index i = 0; i < copy.num_cols; i++){
+            index p = copy.col_last(i);
+            bool found = true;
+            while( p != -1 && multi_pivots[p].size() != 0 && found){
+                found = false;
+                for(index j : multi_pivots[p]){
+                    if( is_admissible_column_operation(j, i) ){
+                        copy.col_op(j, i);
+                        found = true;
+                        p = copy.col_last(i);
+                        break;
+                    }
+                }
+            }
+            if(p != -1){
+                multi_pivots[p].push_back(i);
+            } else {
+                // Empty columns are superfluous
+                return false;
+            }
+        }
+        return true;
     }
 
      /**

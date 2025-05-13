@@ -7,19 +7,26 @@
 
 using namespace graded_linalg; 
 
-
+/**
+ * @brief This function demonstrates the basic functionality needed to work with Graded Matrices.
+ * 
+ */
 void functionality_demo() {
     std::filesystem::path current_path = std::filesystem::path(__FILE__).parent_path();
     std::filesystem::path toy_example_path = current_path / "../test_presentations/toy_example_2.scc";
     std::filesystem::path full_rips_path = current_path / "../test_presentations/full_rips_size_1_instance_5_min_pres.scc";
     std::filesystem::path non_example_path = current_path / "../test_presentations/non_example.scc";
 
+
     std::cout << "  Basic functionality of R2GradedSparseMatrix: \n"
+
+    // Loading and printing matrices:
     "   We can load them from files: " << std::endl;
     R2GradedSparseMatrix<int> M(toy_example_path.string());
     R2GradedSparseMatrix<int> N(full_rips_path.string());
     R2GradedSparseMatrix<int> O(non_example_path.string());
-    std::cout << "  We can print them with the degrees: " << std::endl;
+
+    std::cout << "  .. and print them with the degrees: " << std::endl;
     M.print_graded();
     std::cout << "  Next one is larger, so we dont print the degrees:" << std::endl;
     N.print();
@@ -29,6 +36,23 @@ void functionality_demo() {
     DenseMatrix O_dense = from_sparse(O);
     O_dense.print();
 
+    // Creating graded matrices:
+    std::cout << "  We can create a graded matrix from scratch: \n The data type of the degrees is a pair of doubles, r2degree = std::pair<double, double>"
+        << std::endl;
+    array<int> test_data = {{0}, {0, 1}, {2}};
+    vec<r2degree> col_degrees = {{1.0, 2.0}, {2.0, 1.0}, {2.0, 2.0}};
+    vec<r2degree> row_degrees = {{1.0, 0.0}, {0.5, 0.5}, {0.0, 1.0}};
+
+    R2GradedSparseMatrix<int> P(3, 3);
+    P.data = test_data;
+    P.col_degrees = col_degrees;
+    P.row_degrees = row_degrees;
+    std::cout << "   or use the constructor with degrees: " << std::endl;
+    R2GradedSparseMatrix<int> Pa(3, 3, col_degrees, row_degrees);
+    Pa.data = {{0}, {0, 1}, {2}};
+    std::cout << "   or use the constructor with degrees and the data: " << std::endl;
+    R2GradedSparseMatrix<int> Pb(3, 3, test_data, col_degrees, row_degrees);
+    
     std::cout << "  Are these matrices actually graded? " << std::endl;
     std::cout << "  M is graded: " << M.is_graded_matrix() << std::endl;
     std::cout << "  N is graded: " << N.is_graded_matrix() << std::endl;
@@ -77,33 +101,79 @@ void functionality_demo() {
     Graph G = boost_graph_from_edge_list(full_graph);
     print_graph(G);
 
+}
+
+/**
+ * @brief Demonstrates algebraic manipulation of graded matrices.
+ * 
+ */
+void algebraic_functionality_demo() {
+     std::filesystem::path current_path = std::filesystem::path(__FILE__).parent_path();
+    std::filesystem::path toy_example_path = current_path / "../test_presentations/toy_example_2.scc";
+    std::filesystem::path full_rips_path = current_path / "../test_presentations/full_rips_size_1_instance_5_min_pres.scc";
+    
+
+    std::cout << "  Algebraic functionality of Graded Matrices: \n"
+    "   Load the same matrices: " << std::endl;
+    R2GradedSparseMatrix<int> M(toy_example_path.string());
+    R2GradedSparseMatrix<int> N(full_rips_path.string());
+
+    // Minimality:
+
+    std::cout << "  Are they minimal?" << std::endl;
+    std::cout << "  M is not minimal: " << M.is_minimal() << std::endl;
+    std::cout << "  N is minimal: " << N.is_minimal() << std::endl;
+    M.print_graded();
+    std::cout << " We can minimise them, but the algorithm only works if the columns are sorted:" << std::endl;
+    M.sort_columns_lexicographically();
+    M.print_graded();
+    M.minimize();
+    M.print_graded();
+    std::cout << "  M is now minimal: " << M.is_minimal() << std::endl;
+    // Vector space at a concrete degree:
+
     std::cout << "  We can compute the presentation at any degree:" << std::endl;
+    std::cout << "  By this we mean a presentation of the vector space at this degree \n "
+    "I.e. a non-graded matrix whose cokernel is that vector space." << std::endl;
     r2degree deg = {0.45, -0.15};
     // auto P = N.map_at_degree(deg);
     auto [P, rows] = N.map_at_degree_pair(deg);
     std::cout << "  The presentation at degree " << deg << " is: " << std::endl;
     P.print();
-    std::cout << "  or shift indices directly to normalise the entries:" << std::endl;
+    std::cout << "  The set of generators at this degree is given by:" << std::endl;
+    std::cout <<  rows << std::endl;
+    std::cout << " This matrix is not normalised, in so far as its entries are in the range given by the generators." << std::endl;
+    std::cout << " To compute its cokernel we need to normalise it, which can be done directly by adding <true> to the map_at_degree function." << std::endl;
     auto [Q, rows_new] = N.map_at_degree_pair(deg, true);
     Q.print();
+    std::cout << "Or normalise directly:" << std::endl;
+    auto P_normalised = P;
+    P_normalised.compute_normalisation(rows);
+    P_normalised.print();
+    std::cout << "  rows_new still stores the original generators, so that we do not lose this information" << std::endl;
+    std::cout <<  rows_new << std::endl;
 
     std::cout << "  Then the dimension of the presented module is given by a basis for the cokernel at this point:" << std::endl;
     vec<int> basis = Q.coKernel_basis();
-    std::cout << "  The dimension is: " << basis.size() << std::endl;
-    /** 
-     * Bug in the code, will fix asap.
-    std::cout << "At last, compute the Hom-space between two graded matrices\n"
-     "(Warning this is the version optimised for pointwise rather flat modules):" << std::endl;
-    Hom_space_temp<int> End_N = hom_space(N, N);
-    SparseMatrix<int> hom_matrix = End_N.first;
-    vec<pair<int>> index_map = End_N.second;
+    std::cout << "  The dimension is: " << basis.size() <<  std::endl;
 
-    std::cout << "The hom_matrix stores every matrix as a sparse vector. \n"
-    "For every entry i in such a vector, index_map[i] stores the indices of the corresponding row operation" << std::endl;
-    std::cout << "The dimension of End(N, N) is: " << hom_matrix.get_num_cols() << std::endl;
-    */
+    std::cout << "  Compare this with computing this for the non-normalised matrix:" << std::endl;
+    vec<int> basis2 = P.coKernel_basis();
+    std::cout << "  The dimension is: " << basis2.size() << ", which is clearly different, so this computation is wrong if the matrix-entries are not normalised" << std::endl;
 
-}
+    // Kernel computation:
+
+    std::cout << " We can compute the kernel of any graded matrix-  which must be free over R^2 by Hilbert's syzygy thm - using the Lesnick, Wright, Kerber, Rolle Algorithm:" << std::endl;
+    auto K = M.graded_kernel();
+    std::cout << "  The kernel is:" << std::endl;
+    K.print_graded();
+    std::cout << "  The result should be minimal again, with zero kernel itself:" << std::endl;
+    std::cout << "  Is the kernel minimal? " << K.is_minimal() << std::endl;
+    auto Kkernel = K.graded_kernel();
+    std::cout << "  is its kernel zero? " << Kkernel.is_zero() << std::endl;
+
+}   
+
 
 void test_reordering(){
     const size_t num_rows = 3;
@@ -235,6 +305,7 @@ void test_submodule_generated_at(){
 }
 
 int main() {
-    test_submodule_generated_at();
+    // functionality_demo();
+    algebraic_functionality_demo();
     return 0;
 }

@@ -116,21 +116,18 @@ class MatrixUtil{
     public:
     vec<COLUMN> data; //stores the columns of the matrix
     std::unordered_map<index,index> pivots; // for the reduction algorithm
-
-
-    protected:
-    index num_cols;
-    index num_rows;
-    
     index get_num_rows() const {return num_rows;};
     index get_num_cols() const {return num_cols;};
-    
     void set_num_rows(index m){num_rows = m;};
     void set_num_cols(index n){num_cols = n;};
     void increase_num_cols(index n){num_cols += n;};
     void increase_num_rows(index n){num_rows += n;};
 
-
+    protected:
+    index num_cols;
+    index num_rows;
+    
+    
     MatrixUtil() {};
 
     MatrixUtil(index m) : num_cols(m), data(vec<COLUMN>()) {
@@ -144,7 +141,9 @@ class MatrixUtil{
     // Copy constructor
     MatrixUtil(const MatrixUtil& other) : data(other.data), num_cols(other.num_cols), num_rows(other.num_rows), pivots(other.pivots) {}
 
-    MatrixUtil(index m, index n, vec<COLUMN> d) : num_cols(m), num_rows(n), data(d) {}
+    MatrixUtil(index m, index n, vec<COLUMN> d) : num_cols(m), num_rows(n), data(d) {
+        assert(m == d.size());
+    }
 
 
     protected:
