@@ -65,7 +65,6 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
 
     protected:
-<<<<<<< Updated upstream
         GradedSparseMatrix(SparseMatrix<index>&& other) : SparseMatrix<index>(std::move(other)) {
             this->col_degrees = vec<D>(other.get_num_cols());
             this->row_degrees = vec<D>(other.get_num_rows());
@@ -89,12 +88,6 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             return *this;
         }
 
-=======
-    GradedSparseMatrix(SparseMatrix<index>&& other) : SparseMatrix<index>(std::move(other)) {
-        this->col_degrees = vec<D>(other.get_num_cols());
-        this->row_degrees = vec<D>(other.get_num_rows());
-    }
->>>>>>> Stashed changes
 
     public:
 
@@ -118,7 +111,6 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
     GradedSparseMatrix(index m, index n) : SparseMatrix<index>(m, n), col_degrees(vec<D>(m)), row_degrees(vec<D>(n)) {}
 
-<<<<<<< Updated upstream
     GradedSparseMatrix(index m, index n, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index>(m, n), col_degrees(c_degrees), row_degrees(r_degrees) {
         assert(col_degrees.size() == m);
         assert(row_degrees.size() == n);
@@ -129,10 +121,6 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         assert(row_degrees.size() == n);
     }
 
-=======
-    GradedSparseMatrix(index m, index n, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index>(m, n), col_degrees(c_degrees), row_degrees(r_degrees) {}
-
->>>>>>> Stashed changes
     GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false, bool compute_batches = false)
         : SparseMatrix<index>() {
         this->parse_stream(file_stream, lex_sort, compute_batches);
@@ -478,12 +466,6 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     }
 
 
-<<<<<<< Updated upstream
-=======
-
-
-
->>>>>>> Stashed changes
     /**
      * @brief Returns all row indices whose degree is smaller or equal to d.
      *
@@ -1138,13 +1120,8 @@ struct Compare_by_degrees {
  * @param row_indices If the row indices of B are shifted, this vector contains the shift.
  * @return vec<SparseMatrix<index>>
  */
-<<<<<<< Updated upstream
 template <typename D, typename index, typename DERIVED>
 std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimised(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B,
-=======
-template <typename D, typename index>
-std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space(const GradedSparseMatrix<D, index>& A, const GradedSparseMatrix<D, index>& B,
->>>>>>> Stashed changes
     const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>())  {
 
     assert(A.rows_computed);
@@ -1220,7 +1197,6 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space(const Gr
 }
 
 /**
-<<<<<<< Updated upstream
  * @brief Returns a vector of matrices Q which form a basis of Hom(A, B), where Q is a map on the generators.
  *  make sure that the rows of A are computed.
  * if row_indices
@@ -1300,24 +1276,12 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space(const Gr
  *
  * @param A
  * @param B
-=======
- * @brief Returns a vector of matrices Q which form a basis of Hom(A, B), where Q is a map on the generators.
- *
- * @param A
- * @param B
->>>>>>> Stashed changes
  * @param row_indices If the row indices of B are shifted, this vector contains the shift.
  * @return vec<SparseMatrix<index>>
  */
-<<<<<<< Updated upstream
 template <typename D, typename index, typename DERIVED>
 std::pair< SparseMatrix<index>, vec<std::pair<index, index> > > block_hom_space_without_optimisation(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& C, const GradedSparseMatrix<D, index, DERIVED>& B,
         vec<index>& C_rows, vec<index>& B_rows, bool system_size = false)  {
-=======
-template <typename D, typename index>
-std::pair< SparseMatrix<index>, vec<std::pair<index, index> > > block_hom_space_without_optimisation(const GradedSparseMatrix<D, index>& A, const GradedSparseMatrix<D, index>& C, const GradedSparseMatrix<D, index>& B,
-        vec<index>& C_rows, vec<index>& B_rows, bool system_size = false)  {
->>>>>>> Stashed changes
     vec<std::pair<index, index>> row_ops; // we store the matrices Q_i which form the basis of hom(C, B) as vectors
     // This translates from entries of the vector to entries of the matrix.
     SparseMatrix K(0,0);
