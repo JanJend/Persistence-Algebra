@@ -113,24 +113,21 @@ class MatrixUtil{
 
     using CT = Column_traits<COLUMN, index>;
 
-    protected:
-    index num_cols;
-    index num_rows;
-    
-
     public:
-    std::unordered_map<index,index> pivots; // for the reduction algorithm
     vec<COLUMN> data; //stores the columns of the matrix
-
+    std::unordered_map<index,index> pivots; // for the reduction algorithm
     index get_num_rows() const {return num_rows;};
     index get_num_cols() const {return num_cols;};
-    
     void set_num_rows(index m){num_rows = m;};
     void set_num_cols(index n){num_cols = n;};
     void increase_num_cols(index n){num_cols += n;};
     void increase_num_rows(index n){num_rows += n;};
 
-
+    protected:
+    index num_cols;
+    index num_rows;
+    
+    
     MatrixUtil() {};
 
     MatrixUtil(index m) : num_cols(m), data(vec<COLUMN>()) {
@@ -144,18 +141,42 @@ class MatrixUtil{
     // Copy constructor
     MatrixUtil(const MatrixUtil& other) : data(other.data), num_cols(other.num_cols), num_rows(other.num_rows), pivots(other.pivots) {}
 
-    MatrixUtil(index m, index n, vec<COLUMN> d) : num_cols(m), num_rows(n), data(d) {}
-
-    // Copy assignment operator. 
-    MatrixUtil& operator=(MatrixUtil& other){
-        if (this != &other) {
-            data = other.data;
-            num_cols = other.num_cols;
-            num_rows = other.num_rows;
-        }
-        return *this;
+    MatrixUtil(index m, index n, vec<COLUMN> d) : num_cols(m), num_rows(n), data(d) {
+        assert(m == d.size());
     }
 
+
+    protected:
+        MatrixUtil& assign(const MatrixUtil& other) {
+            if (this != &other) {
+                data = other.data;
+                num_cols = other.num_cols;
+                num_rows = other.num_rows;
+                pivots = other.pivots;
+            }
+            return *this;
+        }
+
+        MatrixUtil& assign(MatrixUtil&& other) {
+            if (this != &other) {
+                data = std::move(other.data);
+                num_cols = other.num_cols;
+                num_rows = other.num_rows;
+                pivots = std::move(other.pivots);
+            }
+            return *this;
+        }
+
+    public:
+        MatrixUtil& operator=(const MatrixUtil& other) {
+            return assign(other);
+        }
+
+        MatrixUtil& operator=(MatrixUtil&& other) {
+            return assign(std::move(other));
+        }
+
+        
 
     // Move constructor
     MatrixUtil(MatrixUtil&& other) noexcept : data(std::move(other.data)), num_cols(other.num_cols), num_rows(other.num_rows) {

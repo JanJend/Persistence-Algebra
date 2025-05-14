@@ -32,6 +32,29 @@
 namespace graded_linalg {
 
 using r2degree = std::pair<double, double>;
+
+// Vector addition
+r2degree operator+(const r2degree& a,
+    const r2degree& b) {
+return {a.first + b.first, a.second + b.second};
+}
+
+// Vector subtraction
+r2degree operator-(const r2degree& a,
+    const r2degree& b) {
+return {a.first - b.first, a.second - b.second};
+}
+
+// Scalar multiplication (scalar * pair)
+r2degree operator*(double scalar, const r2degree& p) {
+return {scalar * p.first, scalar * p.second};
+}
+
+// Scalar multiplication (pair * scalar)
+r2degree operator*(const r2degree& p, double scalar) {
+return {p.first * scalar, p.second * scalar};
+}
+
 template<>
 struct Degree_traits<r2degree> {
     static bool equals(const r2degree& lhs, const r2degree& rhs) {
@@ -118,6 +141,12 @@ struct Degree_traits<r2degree> {
         return deg;
     }
 
+    static void add(const r2degree& a, r2degree& b) {
+        b.first += a.first;
+        b.second += a.second;
+    }
+
+
 }; //Degree_traits<r2degree>
 
 /**
@@ -142,7 +171,7 @@ std::function<bool(const r2degree&, const r2degree&)> Degree_traits<r2degree>::c
  * @tparam index 
  */
 template <typename index>
-struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
+struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>> {
 
     // For kernel computation we will need to compute a grid, i.e. a function Z^2 -> R^2, 
     // such that all degrees of columsn and rows are in the image of this function.
@@ -163,19 +192,46 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
     std::vector<PQ> pq_row;
 
 
-    R2GradedSparseMatrix() : GradedSparseMatrix<r2degree, index>() {}
+    R2GradedSparseMatrix() : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>() {}
 
     private:
-    R2GradedSparseMatrix( SparseMatrix<index>&& other) :  GradedSparseMatrix<r2degree, index>(std::move(other)) {}
+    R2GradedSparseMatrix( SparseMatrix<index>&& other) :  GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(std::move(other)) {}
     
 
     public:
-    R2GradedSparseMatrix(index m, index n) : GradedSparseMatrix<r2degree, index>(m, n) {}
-    R2GradedSparseMatrix(index n, vec<index> indicator) : GradedSparseMatrix<r2degree, index>(n, indicator) {} 
 
-    R2GradedSparseMatrix( const SparseMatrix<index>& other) : GradedSparseMatrix<r2degree, index>(other.get_num_cols(), other.get_num_rows()) {
-        this->data = other.data;
+    R2GradedSparseMatrix& operator= (const R2GradedSparseMatrix& other) {
+        if (this != &other)
+            GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>::assign(other);
+        return *this;
+    }
+
+    R2GradedSparseMatrix& operator= (R2GradedSparseMatrix&& other) {
+        if (this != &other)
+            GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>::assign(std::move(other));
+        return *this;
+    }
+
+    R2GradedSparseMatrix(index m, index n) : 
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, n) {}
+    R2GradedSparseMatrix(index n, vec<index> indicator) : 
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(n, indicator) {} 
+    R2GradedSparseMatrix(index m, index n, vec<r2degree> c_degrees, vec<r2degree> r_degrees) : 
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, n, c_degrees, r_degrees) {} // Constructor with degrees
+    R2GradedSparseMatrix(index m, index n, const array<index>& data, vec<r2degree> c_degrees, vec<r2degree> r_degrees) : 
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, n, data, c_degrees, r_degrees) {} // Constructor with data and degrees
+
+    R2GradedSparseMatrix(const R2GradedSparseMatrix& other)
+        : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(other) {
     } // Copy constructor
+
+    R2GradedSparseMatrix(R2GradedSparseMatrix&& other)
+        : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(std::move(other)) {
+    } // Move constructor
+
+    R2GradedSparseMatrix( const SparseMatrix<index>& other) : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(other.get_num_cols(), other.get_num_rows()) {
+        this->data = other.data;
+    } // Copy constructor from SparseMatrix
 
     /**
      * @brief Constructs an R^2 graded matrix from an scc or firep data file.
@@ -184,7 +240,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
      * @param compute_batches whether to compute the column batches and k_max
      */
     R2GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false) 
-        : GradedSparseMatrix<r2degree, index>(filepath, lex_sort, compute_batches) {
+        : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(filepath, lex_sort, compute_batches) {
     } // Constructor from file
 
 
@@ -196,7 +252,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
      * @param compute_batches whether to compute the column batches and k_max
      */
     R2GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false, bool compute_batches = false)
-        : GradedSparseMatrix<r2degree, index>(file_stream, lex_sort, compute_batches) {
+        : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(file_stream, lex_sort, compute_batches) {
     } // Constructor from ifstream
 
     /**
@@ -293,62 +349,69 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
     private:
 
     template <typename T>
-    void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
-                            const std::vector<std::pair<T, T>>& vec2,
-                            std::vector<T>& out,
-                            bool useFirst = true) {
-        auto it1 = vec1.begin();
-        auto it2 = vec2.begin();
-        T last_x = T(); // Default initialize last_x
-        
-        while (it1 != vec1.end() || it2 != vec2.end()) {
-            T value;
+void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
+                           const std::vector<std::pair<T, T>>& vec2,
+                           std::vector<T>& out,
+                           bool useFirst = true) {
+    auto it1 = vec1.begin();
+    auto it2 = vec2.begin();
+    T last_x = T();
+    bool has_last_x = false;
 
-            if (it1 == vec1.end()) {
-                value = useFirst ? it2->first : it2->second;
-                if (value != last_x) {
-                    out.push_back(value);
-                    last_x = value;
-                }
-                ++it2;
-            } 
-            else if (it2 == vec2.end()) {
-                value = useFirst ? it1->first : it1->second;
-                if (value != last_x) {
-                    out.push_back(value);
-                    last_x = value;
+    while (it1 != vec1.end() || it2 != vec2.end()) {
+        T value;
+
+        if (it1 == vec1.end()) {
+            value = useFirst ? it2->first : it2->second;
+            if (!has_last_x || value != last_x) {
+                out.push_back(value);
+                last_x = value;
+                has_last_x = true;
+            }
+            ++it2;
+        } 
+        else if (it2 == vec2.end()) {
+            value = useFirst ? it1->first : it1->second;
+            if (!has_last_x || value != last_x) {
+                out.push_back(value);
+                last_x = value;
+                has_last_x = true;
+            }
+            ++it1;
+        } 
+        else {
+            T val1 = useFirst ? it1->first : it1->second;
+            T val2 = useFirst ? it2->first : it2->second;
+
+            if (val1 < val2) {
+                if (!has_last_x || val1 != last_x) {
+                    out.push_back(val1);
+                    last_x = val1;
+                    has_last_x = true;
                 }
                 ++it1;
             } 
-            else {
-                T val1 = useFirst ? it1->first : it1->second;
-                T val2 = useFirst ? it2->first : it2->second;
-
-                if (val1 < val2) {
-                    if (val1 != last_x) {
-                        out.push_back(val1);
-                        last_x = val1;
-                    }
-                    ++it1;
-                } 
-                else if (val2 < val1) {
-                    if (val2 != last_x) {
-                        out.push_back(val2);
-                        last_x = val2;
-                    }
-                    ++it2;
-                } 
-                else { // Both values are equal
-                    if (val1 != last_x) {
-                        out.push_back(val1);
-                        last_x = val1;
-                    }
-                    ++it1;
-                    ++it2;
+            else if (val2 < val1) {
+                if (!has_last_x || val2 != last_x) {
+                    out.push_back(val2);
+                    last_x = val2;
+                    has_last_x = true;
                 }
+                ++it2;
+            } 
+            else {
+                if (!has_last_x || val1 != last_x) {
+                    out.push_back(val1);
+                    last_x = val1;
+                    has_last_x = true;
+                }
+                ++it1;
+                ++it2;
             }
         }
     }
+}
+
 
     public:
 
@@ -590,6 +653,9 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         return result;
     }
 
+
+
+
     /**
      * @brief Computes a presentation for the submodule generated at the given degree.
      * 
@@ -605,7 +671,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         basis_injection.col_degrees = vec<r2degree>(basis_lift.size(), alpha);
         // Append this presentation itself
         basis_injection.append_matrix(*this);
-        basis_injection.col_degrees.insert(basis_injection.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
+        // Obsolete if append_matrix works correctly: basis_injection.col_degrees.insert(basis_injection.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
         // A kernel of this map is the pullback of this presentation along the injection
         R2GradedSparseMatrix<index> presentation = basis_injection.graded_kernel();
         // To get the map to the basis, forget all the rows which correspong to relations
@@ -615,20 +681,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index> {
         return minimal_presentation;
     }   
 
-    R2GradedSparseMatrix submodule_generated_by(R2GradedSparseMatrix& new_generators) const {
-        assert(this->get_num_rows() == new_generators.get_num_rows());
-        assert(this->row_degrees == new_generators.row_degrees);
-        index num_new_gens = new_generators.get_num_cols();
-        new_generators.append_matrix(*this);
-        new_generators.col_degrees.insert(new_generators.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
-        // A kernel of this map is the pullback of this presentation along the injection
-        R2GradedSparseMatrix<index> presentation = new_generators.graded_kernel();
-        // To get the map to the basis, forget all the rows which correspong to relations
-        presentation.cull_columns(num_new_gens, false);
-        vec<index> minimal_relations = presentation.column_reduction_graded();
-        R2GradedSparseMatrix<index> minimal_presentation = presentation.restricted_domain_copy(minimal_relations);
-        return minimal_presentation;
-    }
+    
 
     pair<r2degree> bounding_box() const{
         r2degree min = {std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
@@ -665,11 +718,30 @@ struct R2Resolution {
     R2Resolution(const R2GradedSparseMatrix<index>& d1, const R2GradedSparseMatrix<index>& d2) 
         : d1(d1), d2(d2) {}
     
-    R2Resolution(const R2GradedSparseMatrix<index>& d1) 
+        //TO-DO: Test this:
+    R2Resolution(const R2GradedSparseMatrix<index>& d1, const bool& is_minimal = false) 
         : d1(d1) {
-            auto d1_copy = d1;
-            d2 = d1_copy.graded_kernel();
+            // Kernel computation is easy if the presentation is minimal, sorted, and has one generator.
+            if(is_minimal && d1.get_num_rows() == 1){
+                assert(is_sorted(d1.col_degrees, Degree_traits<r2degree>::lex_lambda));
+                d2 = R2GradedSparseMatrix<index>(d1.get_num_cols()-1, d1.get_num_cols());
+                d2.data = vec< vec<index> >(d1.get_num_cols()-1);
+                d2.row_degrees = d1.col_degrees;
+                d2.col_degrees = vec<r2degree>(d1.get_num_cols()-1);
+                r2degree last_degree = d1.col_degrees[0];
+                for(index i = 1; i < d1.get_num_cols(); i++){
+                    r2degree join = Degree_traits<r2degree>::join(last_degree, d1.col_degrees[i]);
+                    d2.data[i] = {i -1, i};
+                    d2.col_degrees[i] = join;
+                    r2degree last_degree = d1.col_degrees[i];
+                }
+            } else {
+                auto d1_copy = d1;
+                d2 = d1_copy.graded_kernel();
+            }
         }
+    
+
     
     
     
@@ -703,8 +775,94 @@ struct R2Resolution {
         return base_area;
     }
 
+
+    /**
+     * @brief Only works for modules with all generators at a single degree
+     * @return double 
+     */
+    double area (const r2degree& bound) const {
+        auto [min, max] = d1.bounding_box();
+        max = bound;
+        double base_area = d1.get_num_rows()*(max.first - min.first) * (max.second - min.second);
+        for(const auto& degree : d1.col_degrees){
+            base_area -= (max.first - degree.first) * (max.second - degree.second);
+        }
+        for(const auto& degree : d2.col_degrees){
+            base_area += (max.first - degree.first) * (max.second - degree.second);
+        }
+        return base_area;
+    }
+
+    /**
+     * @brief Only works for modules with all generators at a single degree
+     * Normalised so that the area of the free module is 1.
+     *  TO-DO: Log transform on the scale parameter. What to do on density?
+     * @return double 
+     */
+    double area (const pair<r2degree>& bounds) const {
+        //TO-DO: Actually only need to compute the minimal element here.
+        auto [min, max] = d1.bounding_box();
+        max = bounds.second;
+        assert(max.first >= min.first);
+        assert(max.second >= min.second);
+        r2degree range = bounds.second-bounds.first;
+        double range_area = range.first * range.second;
+        double base_area = d1.get_num_rows() * (max.first - min.first) * (max.second - min.second);
+        for(const auto& degree : d1.col_degrees){
+            assert(degree.first <= max.first);
+            assert(degree.second <= max.second);
+            assert(degree.first >= min.first);
+            assert(degree.second >= min.second);
+            base_area -= (max.first - degree.first) * (max.second - degree.second);
+        }
+        for(const auto& degree : d2.col_degrees){
+            assert(degree.first <= max.first);
+            assert(degree.second <= max.second);
+            assert(degree.first >= min.first);
+            assert(degree.second >= min.second);
+            base_area += (max.first - degree.first) * (max.second - degree.second);
+        }
+        double normalised_area = base_area/range_area;
+        return normalised_area;
+    }
+
     double slope () const {
-        return (d1.get_num_rows()/this->area());
+        double area = this->area();
+        if(area == 0){
+            std::cerr << "Area is zero, slope will be infinite. Consider passing a bound." << std::endl;
+        }
+        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
+        return slope_value;
+    }
+
+    double slope (const r2degree& bound) const {
+        double area = this->area(bound);
+        if(area == 0){
+            std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
+        }
+        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
+        return slope_value;
+    }
+
+    double slope (const pair<r2degree>& bounds) const {
+        double area = this->area(bounds);
+        if(area == 0){
+            std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
+        }
+        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
+        return slope_value;
+    }
+
+    /**
+     * @brief Returns a polynomial a[0] + a[1]*x + a[2]*y + a[3]*x*y
+     * which gives the area of the module after shifting the (assumed to be) single generator by (x,y)
+     * 
+     * @param bounds 
+     * @return std::array<double, 4> 
+     */
+    std::array<double, 4> area_polynomial (const pair<r2degree>& bounds) const {
+        assert(d1.get_num_rows() == 1);
+        // TO-DO: Finish this.
     }
 
     /**

@@ -210,7 +210,7 @@ void write_vector_of_sets_to_file(const std::vector<std::set<T>>& vec, const std
  * this function returns false if they have non-matching degrees.
  * 
  */
-template <typename index>
+template <typename index, typename DERIVED>
 bool compare_streams_of_graded_matrices(std::ifstream& stream1, std::ifstream& stream2) {
     vec<R2GradedSparseMatrix<index>> matrices1;
     construct_matrices_from_stream(matrices1, stream1, false, false);
@@ -219,10 +219,10 @@ bool compare_streams_of_graded_matrices(std::ifstream& stream1, std::ifstream& s
     if(matrices1.size() != matrices2.size()){
         return false;
     }
-    std::sort(matrices1.begin(), matrices1.end(), Compare_by_degrees<r2degree, index>());
-    std::sort(matrices2.begin(), matrices2.end(), Compare_by_degrees<r2degree, index>());
+    std::sort(matrices1.begin(), matrices1.end(), Compare_by_degrees<r2degree, index, DERIVED>());
+    std::sort(matrices2.begin(), matrices2.end(), Compare_by_degrees<r2degree, index, DERIVED>());
     for(index i = 0; i < matrices1.size(); i++){
-        if( Compare_by_degrees<r2degree, index>::compare_three_way(matrices1[i], matrices2[i]) != 0){
+        if( Compare_by_degrees<r2degree, index, DERIVED>::compare_three_way(matrices1[i], matrices2[i]) != 0){
             return false;
         }
     }
@@ -245,9 +245,6 @@ bool compare_files_of_graded_matrices(std::string path1, std::string path2) {
     return compare_streams_of_graded_matrices<index>(stream1, stream2);
 }
     
-
-
-
 
 /**
  * @brief Gets the Minor of M with respect to the row and column indices and saves the result as a DenseMatrix.

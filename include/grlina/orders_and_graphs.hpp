@@ -53,7 +53,6 @@ struct Degree_traits {
 
     static bool smaller_equal (const D& lhs, const D& rhs);
     
-
     /**
      * @brief This can be any topolgical order on the degrees.
      * 
@@ -63,7 +62,6 @@ struct Degree_traits {
      * @return false 
      */
     static bool lex_order(const D& a, const D& b);
-
 
     /**
      * @brief Lambda function to compare lexicographically for sorting.
@@ -97,6 +95,8 @@ struct Degree_traits {
      */
     template <typename InputStream>
     static D from_stream(InputStream& iss);
+
+    static void add(const D& a, D& b);
 
 }; // Degree_traits
 
