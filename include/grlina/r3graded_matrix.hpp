@@ -149,10 +149,10 @@ std::function<bool(const triple&, const triple&)> Degree_traits<triple>::lex_lam
 };
 
 template <typename index>
-struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index> {
+struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>> {
 
-    R3GradedSparseMatrix() : GradedSparseMatrix<triple, index>() {}
-    R3GradedSparseMatrix(index m, index n) : GradedSparseMatrix<triple, index>(m, n) {}
+    R3GradedSparseMatrix() : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>() {}
+    R3GradedSparseMatrix(index m, index n) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(m, n) {}
 
     /**
      * @brief Constructs an R^3 graded matrix from an scc or firep data file.
@@ -161,7 +161,7 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index> {
      * @param compute_batches whether to compute the column batches and k_max
      */
     R3GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false) 
-        : GradedSparseMatrix<triple, index>(filepath, lex_sort, compute_batches) {
+        : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(filepath, lex_sort, compute_batches) {
     } // Constructor from file
 
     /**
@@ -172,7 +172,7 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index> {
      * @param compute_batches whether to compute the column batches and k_max
      */
     R3GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false, bool compute_batches = false)
-        : GradedSparseMatrix<triple, index>(file_stream, lex_sort, compute_batches ) {
+        : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(file_stream, lex_sort, compute_batches ) {
     }
 
 

@@ -63,6 +63,41 @@ namespace graded_linalg {
     }
 
     /**
+     * @brief Delets all entries of v at the indices given while preserving the order of v.
+     * 
+     * @tparam T 
+     * @tparam index 
+     * @param v 
+     * @param indices 
+     */
+    template<typename T, typename index>
+    void vec_deletion(std::vector<T>& v, const std::vector<index>& indices) {
+
+        assert(std::is_sorted(indices.begin(), indices.end()));
+
+        index read = 0;
+        index write = 0;
+        index j = 0;
+        index n = v.size();
+        index m = indices.size();
+
+        while (read < n) {
+            if (j < m && read == indices[j]) {
+                ++read;
+                ++j;
+            } else {
+                if (read != write) {
+                    v[write] = std::move(v[read]);
+                }
+                ++read;
+                ++write;
+            }
+        }
+
+        v.resize(write);
+    }
+
+    /**
      * @brief Attention: This might be slower then just counting parallelized! Returns the xor of all vectors whose indices are in the mask, generalizing the approach of add_to/ + operator. 
      * In essence this computes the product of the matrix with the column vector given by the mask over GF(2)
      * 
@@ -223,6 +258,40 @@ void erase_from_sorted_vector(vec<index>& v, index i){
     }
 }
 
+/**
+ * @brief Removes the intersection of v and w from v. Both must be sorted
+ * 
+ * @tparam index 
+ * @param v 
+ * @param w 
+ */
+template <typename index>
+void remove_intersection(vec<index>& v, const vec<index>& w) {
+    assert(std::is_sorted(v.begin(), v.end()));
+    assert(std::is_sorted(w.begin(), w.end()));
+    index i = 0; // Pointer for v
+    index j = 0; // Pointer for w
+    index k = 0; // Position to write in v
+
+    while (i < v.size() && j < w.size()) {
+        if (v[i] < w[j]) {
+            v[k++] = v[i++];
+        } else if (v[i] > w[j]) {
+            ++j;
+        } else { // v[i] == w[j], skip v[i]
+            ++i;
+            ++j;
+        }
+    }
+
+    // Copy any remaining elements from v (which are greater than all in w)
+    while (i < v.size()) {
+        v[k++] = v[i++];
+    }
+
+    v.resize(k); // Shrink v to keep only the unique values
+}
+
 template <typename index>
 void insert_into_sorted_vector(vec<index>& v, index i){
     auto it = std::lower_bound(v.begin(), v.end(), i);
@@ -304,6 +373,42 @@ void apply_transformation(vec<index>& target, const vec<index>& index_vector) {
 }
 
 /**
+ * @brief Re-indxes the entries of v by subtracting the number of entries in w which are smaller than v[i].
+ * 
+ * @tparam index 
+ * @param v 
+ * @param w 
+ */
+template<typename index>
+void re_index_non_ocurrences(std::vector<index>& v, const std::vector<index>& w) {
+    assert(std::is_sorted(v.begin(), v.end()));
+    assert(std::is_sorted(w.begin(), w.end()));
+    index j = 0;
+    index m = w.size();
+    for (index& a : v) {
+        while (j < m && w[j] < a) {
+            ++j;
+        }
+        a -= j;
+    }
+}
+
+/**
+ * @brief Re-indexes the entries of S after having deleted the entries in indices_to_delete.
+ * 
+ * @tparam index 
+ * @param S 
+ * @param indices_to_delete 
+ */
+template<typename index>
+void re_index_matrix(array<index>& S, const vec<index>& indices_to_delete){
+    #pragma omp parallel for
+    for(index i = 0; i < S.size(); ++i){
+        re_index_non_ocurrences(S[i], indices_to_delete);
+    }
+}
+
+/**
  * @brief Parallelised function to change a sparse matrix by applying the indexMap to each entry.
  *
  * @param S
@@ -318,7 +423,7 @@ void transform_matrix(array<index>& S, const std::unordered_map<index, index>& i
 }
 
 /**
- * @brief Parallelised function to change a sparse matrix by applying the indexMap to each entry.
+ * @brief Parallelised function to re-index a sparse matrix. An entry j is changed to index_vector[j].
  *
  * @param S
  * @param indexMap
@@ -391,17 +496,72 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     // So that the rows are not computed multiple times by accident.
     bool rows_computed;
 
-    SparseMatrix& operator=(SparseMatrix&& other) {
-        this->num_rows = other.num_rows;
-        this->num_cols = other.num_cols;
-        this->data = std::move(other.data);
-        return *this;
-    }
 
+    protected:
+        SparseMatrix& assign(const SparseMatrix& other) {
+            MatrixUtil<vec<index>, index, SparseMatrix<index>>::assign(other); // Call base
+            _rows = other._rows;
+            rows_computed = other.rows_computed;
+            return *this;
+        }
+    
+        SparseMatrix& assign(SparseMatrix&& other) {
+            MatrixUtil<vec<index>, index, SparseMatrix<index>>::assign(std::move(other));
+            _rows = std::move(other._rows);
+            rows_computed = other.rows_computed;
+            return *this;
+        }
+    
+    public:
+        SparseMatrix& operator=(const SparseMatrix& other) {
+            if (this != &other)
+                assign(other);
+            return *this;
+        }
+    
+        SparseMatrix& operator=(SparseMatrix&& other) {
+            if (this != &other)
+                assign(std::move(other));
+            return *this;
+        }
+
+
+    SparseMatrix() : MatrixUtil<vec<index>, index, SparseMatrix<index>>() {}
+
+    SparseMatrix(index m) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m) {}
+
+    SparseMatrix(index m, index n) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n) {}
+
+    SparseMatrix(const SparseMatrix& other) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(other)  {}
+
+    SparseMatrix(SparseMatrix&& other) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(std::move(other))  {}
+
+    SparseMatrix(index m, index n, const array<index>& data) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, data) {}
+    
+    SparseMatrix(index m, index n, const std::string& type, const index percent = -1) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, type, percent) {}
+
+    SparseMatrix(index n, vec<index> indicator) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(n, indicator) {}
+
+    /**
+     * @brief Sorts the entries of a column
+     * 
+     * @param i 
+     */
     void sort_column(index i){
         std::sort(this->data[i].begin(), this->data[i].end());
     }
     
+    /**
+     * @brief Sorts all columns
+     * 
+     */
+    void sort_data(){
+        assert(this->num_cols == this->data.size());
+        for(index i = 0; i < this->num_cols; i++){
+            sort_column(i);
+        }
+    }
+
     /**
      * @brief Computes all rows from column data in reverse order.
      * 
@@ -563,6 +723,41 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         transform_matrix(this->data, row_map, true);
     }
 
+    /**
+     * @brief Deletes the rows given by row_indices; row_indices must be sorted!
+     * 
+     * @param row_indices 
+     */
+    void delete_rows(const vec<index>& row_indices_to_remove) {
+        assert(std::is_sorted(row_indices_to_remove.begin(), row_indices_to_remove.end()));
+        vec<index> remaining_rows = vec<index>();
+        for(index i = 0; i < this->num_cols; i++) {
+            remove_intersection(this->data[i], row_indices_to_remove);
+        }
+        for(index j = 0; j < this->num_rows; j++) {
+            auto it = row_indices_to_remove.begin();
+            if(j == *it){
+                it++;
+            } else {
+                remaining_rows.push_back(j);
+            }
+        }
+        compute_normalisation(remaining_rows);
+        this->num_rows = remaining_rows.size();
+    }
+
+    /**
+     * @brief Deletes the columns given by col_indices; col_indices must be sorted!
+     * 
+     * @param col_indices_to_remove 
+     */
+    void delete_columns(const vec<index>& col_indices_to_remove) {
+        assert(std::is_sorted(col_indices_to_remove.begin(), col_indices_to_remove.end()));
+        vec_deletion(this->data, col_indices_to_remove);
+        this->num_cols = this->data.size();
+    }
+
+
     void compute_normalisation_with_pivots(const vec<index>& row_indices) {
         assert(row_indices.size() == this->num_rows);
         auto row_map = shiftIndicesMap(row_indices);
@@ -574,6 +769,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     void transform_data(const std::unordered_map<index, index>& indexMap) {
         transform_matrix(this->data, indexMap, true);
     }
+
 
     void transform_data(const vec<index>& index_vector){
         transform_matrix(this->data, index_vector);
@@ -620,19 +816,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
       std::sort(row.begin(),row.end());
     }    
 
-    SparseMatrix() : MatrixUtil<vec<index>, index, SparseMatrix<index>>() {}
-
-    SparseMatrix(index m) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m) {}
-
-    SparseMatrix(index m, index n) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n) {}
-
-    SparseMatrix(const SparseMatrix& other) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(other)  {}
-
-    SparseMatrix(index m, index n, const array<index>& data) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, data) {}
     
-    SparseMatrix(index m, index n, const std::string& type, const index percent = -1) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, type, percent) {}
-
-    SparseMatrix(index n, vec<index> indicator) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(n, indicator) {}
 
     // Adds the i-th row to the j-th. 
     void fast_row_op(index i, index j){
@@ -686,7 +870,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * 
      * @param threshold 
      */
-    void cull_columns(index& threshold, bool from_end = true){
+    void cull_columns(const index& threshold, bool from_end = true){
         if(from_end){
             this->num_rows -= threshold;
         } else {
@@ -1086,7 +1270,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
  */
 template <typename index>
 SparseMatrix<index> multiply_transpose(SparseMatrix<index>& M, SparseMatrix<index>& N){
-  SparseMatrix<index> result(N.get_num_cols(), M.get_num_rows());
+  SparseMatrix<index> result(N.get_num_cols(), M.get_num_cols());
   result.data.resize(result.get_num_cols());
   // assert(M.get_num_rows() == N.get_num_rows()); Sometimes we dont know.
   for(index i = 0; i < N.get_num_cols(); i++){

@@ -41,15 +41,13 @@ using Hom_space_temp = std::pair< SparseMatrix<index>, vec<std::pair<index,index
  * @tparam D 
  * @tparam index 
  */
-template <typename D, typename index>
+template <typename D, typename index, typename DERIVED>
 struct GradedSparseMatrix : public SparseMatrix<index> {
     
     vec<D> col_degrees;
     vec<D> row_degrees;
 
-    vec<vec<index>> col_batches;
-
-
+    // Unclear if we really need the following:
     // admissible_col[i] stores to what column i can be added
     array<index> admissible_col;
     // I actually want to store the indices of the columns that can be added to i strictly, i.e. without the batch
@@ -59,17 +57,69 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     // Same here, but not strict.
     array<index> admissible_row_dual;
 
-
     // This is only relevant for AIDA
+    vec<vec<index>> col_batches;
     vec<index> rel_k = vec<index>(100, 0);
 	vec<index> gen_k= vec<index>(100, 0);
     index k_max = 1;
 
+
+    protected:
+        GradedSparseMatrix(SparseMatrix<index>&& other) : SparseMatrix<index>(std::move(other)) {
+            this->col_degrees = vec<D>(other.get_num_cols());
+            this->row_degrees = vec<D>(other.get_num_rows());
+        } 
+
+        GradedSparseMatrix& assign(const GradedSparseMatrix& other) {
+            SparseMatrix<index>::assign(other);
+            this->col_degrees = other.col_degrees;
+            this->row_degrees = other.row_degrees;
+            this->col_batches = other.col_batches;
+            this->k_max = other.k_max;
+            return *this;
+        }
+
+        GradedSparseMatrix& assign(GradedSparseMatrix&& other) {
+            SparseMatrix<index>::assign(std::move(other));
+            this->col_degrees = std::move(other.col_degrees);
+            this->row_degrees = std::move(other.row_degrees);
+            this->col_batches = std::move(other.col_batches);
+            this->k_max = other.k_max;
+            return *this;
+        }
+            
+
+    public:
+
+    GradedSparseMatrix& operator= (const GradedSparseMatrix& other) {
+        if (this != &other)
+            assign(other);
+        return *this;
+    }
+
+    GradedSparseMatrix& operator= (GradedSparseMatrix&& other) {
+        if (this != &other)
+            assign(std::move(other));
+        return *this;
+    }
+
     GradedSparseMatrix() : SparseMatrix<index>() {};
+
+    GradedSparseMatrix(const GradedSparseMatrix& other) : SparseMatrix<index>(other), col_degrees(other.col_degrees), row_degrees(other.row_degrees), col_batches(other.col_batches), k_max(other.k_max) {}
+
+    GradedSparseMatrix(GradedSparseMatrix&& other) : SparseMatrix<index>(std::move(other)), col_degrees(std::move(other.col_degrees)), row_degrees(std::move(other.row_degrees)), col_batches(std::move(other.col_batches)), k_max(other.k_max) {}
 
     GradedSparseMatrix(index m, index n) : SparseMatrix<index>(m, n), col_degrees(vec<D>(m)), row_degrees(vec<D>(n)) {}
 
-    GradedSparseMatrix(index m, index n, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index>(m, n), col_degrees(c_degrees), row_degrees(r_degrees) {}
+    GradedSparseMatrix(index m, index n, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index>(m, n), col_degrees(c_degrees), row_degrees(r_degrees) {
+        assert(col_degrees.size() == m);
+        assert(row_degrees.size() == n);
+    }
+
+    GradedSparseMatrix(index m, index n, const array<index>& data, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index>(m, n, data), col_degrees(c_degrees), row_degrees(r_degrees) {
+        assert(col_degrees.size() == m);
+        assert(row_degrees.size() == n);
+    }
     
     GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false, bool compute_batches = false)
         : SparseMatrix<index>() {
@@ -80,6 +130,34 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         : SparseMatrix<index>() {
         std::ifstream file = create_ifstream(filepath);
         this->parse_stream(file, lex_sort, compute_batches);
+    }
+
+    GradedSparseMatrix(index n, vec<index> indicator) 
+        : SparseMatrix<index>(n, indicator), col_degrees(vec<D>(indicator.size())), row_degrees(vec<D>(n)) {}
+
+    bool is_admissible_column_operation(index i, index j) const {
+        return Degree_traits<D>::smaller_equal( col_degrees[i], col_degrees[j]) && i != j;
+    }
+
+    bool is_admissible_column_operation(index i, const D d) const {
+        return Degree_traits<D>::smaller_equal( col_degrees[i], d);
+    }
+
+    bool is_admissible_row_operation(index i, index j) const {
+        assert(i != j);
+        return Degree_traits<D>::greater_equal( row_degrees[i], row_degrees[j] );
+    }
+
+    bool is_admissible_row_operation(index i, D d) const {
+        return Degree_traits<D>::greater_equal( row_degrees[i], d);
+    }
+
+    bool is_admissible_row_operation(D d, index i) const {
+        return Degree_traits<D>::greater_equal( d, row_degrees[i]);
+    }
+
+    bool is_strictly_admissible_column_operation(index i, index j) const {
+        return Degree_traits<D>::smaller( col_degrees[i], col_degrees[j]);
     }
 
     /**
@@ -285,6 +363,16 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->num_rows = this->row_degrees.size();
     }
 
+    void cull_columns(const index& threshold, bool from_end = true) {
+
+        SparseMatrix<index>::cull_columns(threshold, from_end); 
+
+        if (from_end) {
+            this->row_degrees.resize(this->num_rows - threshold);
+        } else {
+            this->row_degrees.resize(threshold);
+        }
+    }
 
     /**
      * @brief Prints the content in scc format to a stream. Partially from MPP_UTILS print_in_rivet_format in Graded_matrix.h
@@ -377,6 +465,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         return this->restricted_domain_copy(local_admissible_columns);
     }
 
+    
+
     /**
      * @brief Returns all row indices whose degree is smaller or equal to d.
      * 
@@ -391,31 +481,6 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             }
         }
         return result;
-    }
-
-    bool is_admissible_column_operation(index i, index j) const {
-        return Degree_traits<D>::smaller_equal( col_degrees[i], col_degrees[j]) && i != j;
-    }
-
-    bool is_admissible_column_operation(index i, const D d) const {
-        return Degree_traits<D>::smaller_equal( col_degrees[i], d);
-    }
-
-    bool is_admissible_row_operation(index i, index j) const {
-        assert(i != j);
-        return Degree_traits<D>::greater_equal( row_degrees[i], row_degrees[j] );
-    }
-
-    bool is_admissible_row_operation(index i, D d) const {
-        return Degree_traits<D>::greater_equal( row_degrees[i], d);
-    }
-
-    bool is_admissible_row_operation(D d, index i) const {
-        return Degree_traits<D>::greater_equal( d, row_degrees[i]);
-    }
-
-    bool is_strictly_admissible_column_operation(index i, index j) const {
-        return Degree_traits<D>::smaller( col_degrees[i], col_degrees[j]);
     }
 
     /**
@@ -446,13 +511,50 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * 
      * @return degree_list 
      */
-    vec<D> discrete_support() {
+    vec<D> discrete_support() const {
         assert(this->col_degrees.size() == this->num_cols);
         assert(this->row_degrees.size() == this->num_rows);
         vec<D> result = col_degrees;
         result.insert(result.end(), row_degrees.begin(), row_degrees.end());
+        std::sort(result.begin(), result.end(), Degree_traits<D>::lex_lambda);
+        // Remove duplicates (works only after sorting)
+        result.erase(std::unique(result.begin(), result.end()), result.end());
         return result;
     }  
+
+   
+
+    /**
+     * @brief Counts the number of columns with degree smaller or equal to d.
+     * 
+     * @param d 
+     * @return index 
+     */
+    index num_cols_before (D d) {
+        index result = 0;
+        for(index i = 0; i < this->num_cols; i++){
+            if( Degree_traits<D>::smaller_equal(col_degrees[i], d) ){
+                result++;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @brief Counts the number of rows with degree smaller or equal to d.
+     * 
+     * @param d 
+     * @return index 
+     */
+    index num_rows_before (D d) {
+        index result = 0;
+        for(index i = 0; i < this->num_rows; i++){
+            if( Degree_traits<D>::smaller_equal(row_degrees[i], d) ){
+                result++;
+            }
+        }
+        return result;
+    }
 
     /**
      * @brief Prints the matrix as well as the column and row degrees.
@@ -604,7 +706,27 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     }
 
     /**
-     * @brief Sorts the rows lexicographically by degree, then transforming the data accordingly.
+     * @brief Sorts the columns lexicographically by degree, 
+     * saves the permutation used to do so, applies it also on the data and returns its inverse.
+     * 
+     * @return vec<index> 
+     */
+    vec<index> sort_columns_lexicographically_with_output() {
+        vec<index> permutation = sort_and_get_permutation<D, index>(this->col_degrees, Degree_traits<D>::lex_lambda);
+        array<index> new_data = array<index>(this->data.size());
+        for(index i = 0; i < this->data.size(); i++) {
+            new_data[i] = this->data[permutation[i]];
+        }
+        this->data = new_data;
+        vec<index> reverse = vec<index>(permutation.size());
+        for (int i = 0; i < permutation.size(); ++i) {
+            reverse[permutation[i]] = i;
+        }
+        return reverse;
+    }
+
+    /**
+     * @brief Sorts the rows lexicographically by degree, then transforms the data accordingly.
      * 
      */
     void sort_rows_lexicographically(){
@@ -616,6 +738,24 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             reverse[permutation[i]] = i;
         }
         this->transform_data(reverse);
+        this->sort_data();
+    }
+
+    /**
+     * @brief Sorts the rows lexicographically by degree, then transforms the data accordingly and returns the permutation used to sort.
+     * 
+     * @return vec<index> 
+     */
+    vec<index> sort_rows_lexicographically_with_output(){
+        vec<index> permutation = sort_and_get_permutation<D, index>(this->row_degrees, Degree_traits<D>::lex_lambda);
+        // Need inverse of permutation
+        vec<index> reverse = vec<index>(permutation.size());
+        for (int i = 0; i < permutation.size(); ++i) {
+            reverse[permutation[i]] = i;
+        }
+        this->transform_data(reverse);
+        this->sort_data();
+        return permutation;
     }
 
     /**
@@ -635,7 +775,275 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             }
     }
 
-    
+    /**
+     * @brief Returns (a free cover of) the kernel of this map. To be implemented in the derived class.
+     * 
+     * @return DERIVED 
+     */
+    DERIVED graded_kernel();
+
+    void shift (D d){
+        for(index i = 0; i < this->num_cols; i++){
+            Degree_traits<D>::add(d, this->col_degrees[i]);
+        }
+        for(index i = 0; i < this->num_rows; i++){
+            Degree_traits<D>::add(d, this->row_degrees[i]);
+        }
+    }
+
+    void shift_generators (D d){
+        for(index i = 0; i < this->num_rows; i++){
+            Degree_traits<D>::add(d, this->row_degrees[i]);
+        }
+    }
+
+    /**
+     * @brief Computes a basis of coker_alpha and lifts it to a set of elements in the 0-chains given as a list of rows.
+     * 
+     * @param alpha 
+     * @return vec<index> 
+     */
+    vec<index> basislift_at (D alpha) const {
+        auto [B_alpha, rows_alpha] = this->map_at_degree_pair(alpha);
+        B_alpha.compute_normalisation(rows_alpha);
+        vec<index> basislift_to_rows_alpha = B_alpha.coKernel_basis();
+        vec<index> basis_lift = vec_restriction(rows_alpha, basislift_to_rows_alpha);
+        return basis_lift;
+    }
+
+    /**
+     * @brief Crude computation to get the dimension of the presented module at alpha.
+     * 
+     * @param alpha 
+     * @return index 
+     */
+    index dim_at(D alpha){
+        vec<index> basislift = this->basislift_at(alpha);
+        return basislift.size();
+    }
+
+    /**
+     * @brief Performs column reduction whenever grades make it possible.
+     * 
+     */
+    vec<index> column_reduction_graded(){ 
+        array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
+        vec<index> non_zero_columns;
+        for(index i = 0; i < this->num_cols; i++){
+            index p = this->col_last(i);
+            bool found = true;
+            while( p != -1 && multi_pivots[p].size() != 0 && found){
+                found = false;
+                for(index j : multi_pivots[p]){
+                    if( is_admissible_column_operation(j, i) ){
+                        this->col_op(j, i);
+                        found = true;
+                        p = this->col_last(i);
+                        break;
+                    }
+                }
+            }
+            if(p != -1){
+                multi_pivots[p].push_back(i);
+                non_zero_columns.push_back(i);
+            }
+        }
+
+        return non_zero_columns;
+    }
+
+    /**
+     * @brief Graded version of column deletion.
+     * 
+     * @param indices 
+     */
+    void delete_columns(vec<index>& indices) {
+        SparseMatrix<index>::delete_columns(indices);
+        vec_deletion(col_degrees, indices);
+    }
+
+    /**
+     * @brief Graded version of row deletion.
+     * 
+     * @param indices 
+     */
+    void delete_rows(vec<index>& indices) {
+        SparseMatrix<index>::delete_rows(indices);
+        vec_deletion(row_degrees, indices);
+    }
+
+    /**
+     * @brief Computes a minimal presentation from this presentation.
+     * 
+     */
+    void minimize(){
+        array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
+        vec<index> col_indices_to_remove;
+        vec<index> row_indices_to_remove;
+        for(index i = 0; i < this->num_cols; i++){
+            index p = this->col_last(i);
+            bool found = true;
+            while( p != -1 && multi_pivots[p].size() != 0 && found){
+                found = false;
+                for(index j : multi_pivots[p]){
+                    if( is_admissible_column_operation(j, i) ){
+                        this->col_op(j, i);
+                        found = true;
+                        p = this->col_last(i);
+                        break;
+                    }
+                }
+            }
+            if(p != -1){
+                multi_pivots[p].push_back(i);
+                // If after reduction the relation contains a generator of the same degree, 
+                // they form a pair which can be deleted.
+                // TO-DO: In fact any relation with an entry of the same degree should be superfluous.
+                if(this->col_degrees[i] == this->row_degrees[p]){
+                    col_indices_to_remove.push_back(i);
+                    row_indices_to_remove.push_back(p);
+                }
+            } else {
+                // Empty columns can also be removed
+                col_indices_to_remove.push_back(i);
+            }
+        }
+        this->delete_columns(col_indices_to_remove);
+        this->delete_rows(row_indices_to_remove);
+    }
+
+
+    /**
+     * @brief Checks if the matrix is minimal as a presentation,
+     *  by first looking for row-column pairs and then reducing a copy.
+     * 
+     * @return true 
+     * @return false 
+     */
+    bool is_minimal() const {
+        // First check for row-column pairs
+        for(index i = 0; i < this->num_cols; i++){
+            const vec<index>& col = this->data[i];
+            const D& col_degree = this->col_degrees[i];
+            for(index j : col){
+                const D& row_degree = this->row_degrees[j];
+                if( Degree_traits<D>::equals(col_degree , row_degree) ){
+                    return false;
+                }
+            }
+        }
+        // Then check for empty columns
+        GradedSparseMatrix<D, index, DERIVED> copy = *this;
+        array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
+        for(index i = 0; i < copy.num_cols; i++){
+            index p = copy.col_last(i);
+            bool found = true;
+            while( p != -1 && multi_pivots[p].size() != 0 && found){
+                found = false;
+                for(index j : multi_pivots[p]){
+                    if( is_admissible_column_operation(j, i) ){
+                        copy.col_op(j, i);
+                        found = true;
+                        p = copy.col_last(i);
+                        break;
+                    }
+                }
+            }
+            if(p != -1){
+                multi_pivots[p].push_back(i);
+            } else {
+                // Empty columns are superfluous
+                return false;
+            }
+        }
+        return true;
+    }
+
+     /**
+     * @brief Appends the columns and column degrees of another graded matrix.
+     * 
+     * @param other 
+     */
+    void append_matrix(const GradedSparseMatrix& other) {
+        assert(this->num_rows == other.num_rows);
+        for(index i = 0; i < other.num_cols; i++) {
+            this->data.push_back(other.data[i]);
+            this->col_degrees.push_back(other.col_degrees[i]);
+        }
+        this->num_cols += other.num_cols;
+    }
+
+    /**
+     * @brief Computes a presentation for the quotient by a submodule. 
+     * The submodule is given by a graded matrix denoting a map from the generators of the submodule to the generators of this module.
+     * This method appends the input matrix to the current matrix and minimises it.
+     * 
+     * @param Y 
+     */
+    void quotient_by (GradedSparseMatrix<D, index, DERIVED>& Y) {
+        this->append_matrix(Y);
+        this->minimize();
+    }
+
+    /**
+     * @brief Same but does not change this matrix.
+     * 
+     * @param Y 
+     * @return DERIVED 
+     */
+    DERIVED quotient_by_copy (DERIVED& Y) const {
+        GradedSparseMatrix<D, index, DERIVED> copy = *this;
+        copy.append_matrix(Y);
+        copy.minimize();
+        return copy;
+    }
+
+    /**
+     * @brief Let M present a module and S a submodule of M via a map from generators to generators
+     * 
+     * @param 
+     */
+    DERIVED inverse_image(DERIVED& M, DERIVED& S) {
+        index row_temp = this->num_cols;
+        this->append_matrix(S);
+        this->append_matrix(M);
+        auto K = this->graded_kernel();
+        K.cull_columns(row_temp);
+        K.column_reduction_graded();
+    }
+
+    /**
+     * @brief Same but does not change this matrix.
+     * 
+     * @param M 
+     * @param S 
+     * @return DERIVED 
+     */
+    DERIVED inverse_image_copy  (DERIVED& M, DERIVED& S) const {
+        GradedSparseMatrix<D, index, DERIVED> copy = *this;
+        index row_temp = copy.num_cols;
+        copy.append_matrix(S);
+        copy.append_matrix(M);
+        auto K = copy.graded_kernel();
+        K.cull_columns(row_temp);
+        K.column_reduction_graded();
+        return K;
+    }
+
+    DERIVED submodule_generated_by(DERIVED& new_generators) const {
+        assert(this->get_num_rows() == new_generators.get_num_rows());
+        assert(this->row_degrees == new_generators.row_degrees);
+        index num_new_gens = new_generators.get_num_cols();
+        new_generators.append_matrix(*this);
+        // Obsolete if append_matrix works correctly: new_generators.col_degrees.insert(new_generators.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
+        // A kernel of this map is the pullback of this presentation along the injection
+        DERIVED presentation = new_generators.graded_kernel();
+        // To get the map to the basis, forget all the rows which correspong to relations
+        presentation.cull_columns(num_new_gens, false);
+        vec<index> minimal_relations = presentation.column_reduction_graded();
+        DERIVED minimal_presentation = presentation.restricted_domain_copy(minimal_relations);
+        return minimal_presentation;
+    }
 
 
 }; // GradedSparseMatrix
@@ -647,7 +1055,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
  * @tparam D 
  * @tparam index 
  */
-template <typename D, typename index>
+template <typename D, typename index, typename DERIVED>
 struct Compare_by_degrees {
 
     /**
@@ -657,7 +1065,7 @@ struct Compare_by_degrees {
      * @param b 
      * @return int 
      */
-    static int compare_three_way(const GradedSparseMatrix<D, index>& a, const GradedSparseMatrix<D, index>& b) {
+    static int compare_three_way(const GradedSparseMatrix<D, index, DERIVED>& a, const GradedSparseMatrix<D, index, DERIVED>& b) {
         // Compare row degrees
         for (size_t i = 0; i < std::min(a.row_degrees.size(), b.row_degrees.size()); ++i) {
             if (Degree_traits<D>::smaller(a.row_degrees[i], b.row_degrees[i])) {
@@ -687,7 +1095,7 @@ struct Compare_by_degrees {
         return 0;
     }
 
-    bool operator()(const GradedSparseMatrix<D, index>& a, const GradedSparseMatrix<D, index>& b) const {
+    bool operator()(const GradedSparseMatrix<D, index, DERIVED>& a, const GradedSparseMatrix<D, index, DERIVED>& b) const {
         return compare_three_way(a, b) == -1;
     }
 };
@@ -701,8 +1109,8 @@ struct Compare_by_degrees {
  * @param row_indices If the row indices of B are shifted, this vector contains the shift.
  * @return vec<SparseMatrix<index>> 
  */
-template <typename D, typename index>
-std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space(const GradedSparseMatrix<D, index>& A, const GradedSparseMatrix<D, index>& B, 
+template <typename D, typename index, typename DERIVED>
+std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimised(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, 
     const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>())  {
     
     assert(A.rows_computed);
@@ -779,14 +1187,89 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space(const Gr
 
 /**
  * @brief Returns a vector of matrices Q which form a basis of Hom(A, B), where Q is a map on the generators. 
+ *  make sure that the rows of A are computed.
+ * if row_indices
+ * @param A 
+ * @param B 
+ * @param row_indices If the row indices of B are shifted, this vector contains the shift.
+ * @return vec<SparseMatrix<index>> 
+ */
+template <typename D, typename index, typename DERIVED>
+std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, 
+    const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>())  {
+    
+    assert(A.rows_computed);
+
+    vec<SparseMatrix<index>> result;
+    vec<std::pair<index,index>> variable_positions; // Stores the position of the variables in the matrix Q
+    SparseMatrix<index> S(0,0);
+    S.data.reserve( A.get_num_rows() + B.get_num_rows() + 1);
+    index S_index = 0;
+
+    for(index i = 0; i < A.get_num_rows(); i++) {
+        for(index j = 0; j < B.get_num_rows(); j++) {
+            if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.row_degrees[j])){
+                S.data.push_back(vec<index>());
+                variable_positions.push_back(std::make_pair(i, j));
+                for(auto rit = A._rows[i].rbegin(); rit != A._rows[i].rend(); rit++){
+                    auto& column_index = *rit;
+                    S.data[S_index].emplace_back(linearise_position_reverse_ext(column_index, j, A.get_num_cols(), B.get_num_rows()));
+                }
+                S_index++;
+            } 
+        }
+    }
+    
+    index row_op_threshold = S_index;
+    assert( variable_positions.size() == S_index );
+
+    if(row_op_threshold == 0){
+        // If there are no row-operations, then the hom-space is zero.
+        return std::make_pair( SparseMatrix<index>(0,0), variable_positions);
+    }
+
+    std::unordered_map<index, index> row_map;
+    if(row_indices_B.size() != 0){
+        row_map = shiftIndicesMap(row_indices_B );
+    }
+
+    // Then all column-operations from B to A
+    for(index i = A.get_num_cols()-1; i > -1; i--){
+        for(index j = 0; j < B.get_num_cols(); j++){
+            if(B.is_admissible_column_operation(j, A.col_degrees[i])){
+                S.data.push_back(vec<index>());
+                for(index row_index : B.data[j]){
+                    if(row_indices_B.size() != 0){
+                        S.data[S_index].emplace_back(linearise_position_reverse_ext(i, row_map[row_index], A.get_num_cols(), B.get_num_rows()));
+                    } else {
+                        S.data[S_index].emplace_back(linearise_position_reverse_ext(i, row_index, A.get_num_cols(), B.get_num_rows()));        
+                    }
+                }
+                S_index++;
+            }
+        }
+    }
+
+
+    S.compute_num_cols();
+    auto K = S.kernel();
+    K.cull_columns(row_op_threshold, false);
+    K.compute_num_cols();
+    K.column_reduction_triangular(true);
+
+    return std::make_pair(K, variable_positions);
+}
+
+/**
+ * @brief Returns a vector of matrices Q which form a basis of Hom(A, B), where Q is a map on the generators. 
  * 
  * @param A 
  * @param B 
  * @param row_indices If the row indices of B are shifted, this vector contains the shift.
  * @return vec<SparseMatrix<index>> 
  */
-template <typename D, typename index>
-std::pair< SparseMatrix<index>, vec<std::pair<index, index> > > block_hom_space_without_optimisation(const GradedSparseMatrix<D, index>& A, const GradedSparseMatrix<D, index>& C, const GradedSparseMatrix<D, index>& B,
+template <typename D, typename index, typename DERIVED>
+std::pair< SparseMatrix<index>, vec<std::pair<index, index> > > block_hom_space_without_optimisation(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& C, const GradedSparseMatrix<D, index, DERIVED>& B,
         vec<index>& C_rows, vec<index>& B_rows, bool system_size = false)  { 
     vec<std::pair<index, index>> row_ops; // we store the matrices Q_i which form the basis of hom(C, B) as vectors
     // This translates from entries of the vector to entries of the matrix.
@@ -1005,8 +1488,8 @@ bool hom_quotient_zero( const Hom_space_temp<index>& full_space,
  * @param alpha 
  * @return Hom_space_temp<index> 
  */
-template <typename D, typename index>
-Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index>& A, const GradedSparseMatrix<D, index>& B, Hom_space_temp<index>& full_hom_space, const D alpha) {
+template <typename D, typename index, typename DERIVED>
+Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, Hom_space_temp<index>& full_hom_space, const D alpha) {
     
     Hom_space_temp<index> result;
     auto [B_alpha, B_alpha_gens] = B.map_at_degree_pair(alpha);

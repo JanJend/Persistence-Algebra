@@ -187,8 +187,18 @@ void test_kernel(){
     assert(Zero.is_zero());
 }
 
+void test_row_deletion(){
+    vec<char> data = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
+    vec<int> delete_indices = {2, 4, 6};
+    vec<char> expected_data = {'a', 'b', 'd', 'f', 'h'};
+    vec_deletion(data, delete_indices); 
+    std::cout << data << std::endl;
+    assert(data == expected_data);
+}
+
 int main() {
 
+    test_row_deletion();
     functionality_demo();
     row_test();
     test_kernel();

@@ -1,8 +1,8 @@
 #include <iostream>
 #include <cassert>
 #include <vector>
-#include <dense_matrix.hpp>
-#include <matrix_base.hpp>
+#include <grlina/dense_matrix.hpp>
+#include <grlina/matrix_base.hpp>
 #include <filesystem>
 
 using namespace graded_linalg;
