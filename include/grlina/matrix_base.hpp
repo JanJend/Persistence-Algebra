@@ -22,7 +22,6 @@
 
 
 #include <iostream>
-#include <vector>
 #include <unordered_map>
 #include <boost/dynamic_bitset.hpp>
 #include <numeric>

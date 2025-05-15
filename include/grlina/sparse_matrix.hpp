@@ -23,7 +23,6 @@
 #include <vector>
 #include <grlina/matrix_base.hpp>
 #include <grlina/dense_matrix.hpp>
-#include <unordered_map>
 #include <omp.h>
 #include <boost/dynamic_bitset.hpp>
 #include <cmath>
