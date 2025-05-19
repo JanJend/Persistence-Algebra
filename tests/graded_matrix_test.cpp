@@ -185,6 +185,19 @@ void algebraic_functionality_demo() {
     K.shift({0.5, 0.5});
     K.print_graded();
 
+
+    R2GradedSparseMatrix<int> M1(2,2);
+    M1.col_degrees = {{1, 1}, {2, 2}};
+    M1.row_degrees = {{1, 1}, {1, 1}};
+    M1.data = {{0}, {0, 1}};
+    M1.print_graded();
+    SparseMatrix<int> M2_(2, 2, "Identity");
+    R2GradedSparseMatrix<int> M2(M2_);
+    M2.row_degrees = {{1, 1}, {2, 2}};
+    M2.col_degrees = {{2, 2}, {2, 2}};
+    M2.print_graded();
+    auto M3 = M1*M2;
+    M3.print_graded();
 }   
 
 
@@ -318,7 +331,6 @@ void test_submodule_generated_at(){
 }
 
 int main() {
-    functionality_demo();
     algebraic_functionality_demo();
     return 0;
 }

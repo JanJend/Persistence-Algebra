@@ -129,6 +129,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
     GradedSparseMatrix(index n, vec<index> indicator)
         : SparseMatrix<index>(n, indicator), col_degrees(vec<D>(indicator.size())), row_degrees(vec<D>(n)) {}
+    GradedSparseMatrix(index m, std::string type, const index percent = -1)
+        : SparseMatrix<index>(m, type, percent), col_degrees(vec<D>(m)), row_degrees(vec<D>(m)) {}
 
     bool is_admissible_column_operation(index i, index j) const {
         return Degree_traits<D>::smaller_equal( col_degrees[i], col_degrees[j]) && i != j;
@@ -1052,8 +1054,35 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         }
     }
 
+    DERIVED transposed_copy() const {
+        DERIVED result;
+        result.set_num_rows(this->num_cols);
+        result.set_num_cols(this->num_rows);
+        result.col_degrees = this->row_degrees;
+        result.row_degrees = this->col_degrees;
+        result.data.resize(this->num_rows);
+        
+        for(index i = 0; i < this->num_cols; i++){
+            for(index j : this->data[i]){
+                result.data[j].push_back(i);
+            }
+        }
+        return result;
+    }
+
+
 }; // GradedSparseMatrix
 
+
+template <typename D, typename index, typename DERIVED>
+DERIVED operator*(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B) {
+    SparseMatrix<index> product = static_cast<const SparseMatrix<index>&>(A) * static_cast<const SparseMatrix<index>&>(B);
+    DERIVED result(std::move(product));
+    result.row_degrees = A.row_degrees;
+    result.col_degrees = B.col_degrees;
+
+    return result;
+}
 
 /**
  * @brief Compares two graded matrices by their degrees.
@@ -1494,15 +1523,9 @@ bool hom_quotient_zero( const Hom_space_temp<index>& full_space,
  * @param alpha
  * @return Hom_space_temp<index>
  */
-<<<<<<< Updated upstream
 template <typename D, typename index, typename DERIVED>
 Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, Hom_space_temp<index>& full_hom_space, const D alpha) {
 
-=======
-template <typename D, typename index>
-Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index>& A, const GradedSparseMatrix<D, index>& B, Hom_space_temp<index>& full_hom_space, const D alpha) {
-
->>>>>>> Stashed changes
     Hom_space_temp<index> result;
     auto [B_alpha, B_alpha_gens] = B.map_at_degree_pair(alpha);
     auto [A_alpha, A_alpha_gens] = A.map_at_degree_pair(alpha);
