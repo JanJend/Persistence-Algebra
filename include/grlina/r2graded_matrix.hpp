@@ -39,6 +39,15 @@ r2degree operator+(const r2degree& a,
 return {a.first + b.first, a.second + b.second};
 }
 
+vec<r2degree> operator+(const vec<r2degree>& a,
+    const r2degree& b) {
+    vec<r2degree> result = a;
+    for (auto& elem : result) {
+        elem = elem + b;
+    }
+    return result;
+}
+
 // Vector subtraction
 r2degree operator-(const r2degree& a,
     const r2degree& b) {
@@ -194,7 +203,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
 
     R2GradedSparseMatrix() : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>() {}
 
-    private:
+
     R2GradedSparseMatrix( SparseMatrix<index>&& other) :  GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(std::move(other)) {}
     
 
@@ -216,6 +225,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, n) {}
     R2GradedSparseMatrix(index n, vec<index> indicator) : 
         GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(n, indicator) {} 
+    R2GradedSparseMatrix(index m, std::string type, const index percent = -1) : 
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, type, percent) {} // Constructor with type
     R2GradedSparseMatrix(index m, index n, vec<r2degree> c_degrees, vec<r2degree> r_degrees) : 
         GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, n, c_degrees, r_degrees) {} // Constructor with degrees
     R2GradedSparseMatrix(index m, index n, const array<index>& data, vec<r2degree> c_degrees, vec<r2degree> r_degrees) : 
@@ -705,6 +716,7 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
     }
 
 }; // R2GradedSparseMatrix
+
 
 
 template<typename index>

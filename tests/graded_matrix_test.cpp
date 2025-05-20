@@ -185,6 +185,47 @@ void algebraic_functionality_demo() {
     K.shift({0.5, 0.5});
     K.print_graded();
 
+
+    R2GradedSparseMatrix<int> M1(2,2);
+    M1.col_degrees = {{1, 1}, {2, 2}};
+    M1.row_degrees = {{1, 1}, {1, 1}};
+    M1.data = {{0}, {0, 1}};
+    M1.print_graded();
+    SparseMatrix<int> M2_(2, 2, "Identity");
+    R2GradedSparseMatrix<int> M2(M2_);
+    M2.row_degrees = {{1, 1}, {2, 2}};
+    M2.col_degrees = {{2, 2}, {2, 2}};
+    M2.print_graded();
+    auto M3 = M1*M2;
+    M3.print_graded();
+    
+    R2GradedSparseMatrix<int> Non_interval(1, 2);
+    Non_interval.col_degrees = {{2, 2}};
+    Non_interval.row_degrees = {{0, 1}, {1, 0}};
+    Non_interval.data = {{0, 1}};
+
+    R2GradedSparseMatrix<int> Submodule1(1, 2);
+    Submodule1.col_degrees = {{0, 1}};
+    Submodule1.row_degrees = {{0, 1}, {1, 0}};
+    Submodule1.data = {{0}};
+    R2GradedSparseMatrix<int> Submodule2(1, 2);
+    Submodule2.col_degrees = {{1, 0}};
+    Submodule2.row_degrees = {{0, 1}, {1, 0}};
+    Submodule2.data = {{1}};
+    std::cout << "  The submodule intersection of the two submodules is: " << std::endl;
+    auto intersection = Non_interval.submodule_intersection(Submodule1, Submodule2);
+    intersection.print_graded();
+    std::cout << "  And the presentation of the intersection itself is:" << std::endl;
+    auto I_pres = Non_interval.submodule_generated_by(intersection);
+    I_pres.print_graded();
+    I_pres.compute_rows_forward();
+    I_pres.print_rows();
+    vec<R2GradedSparseMatrix<int>> Hom = hom_space_basis(I_pres, Non_interval);
+    std::cout << "  The homomorphisms are given on generators by: " << std::endl;
+    for(auto h : Hom){
+        h.print_graded();
+    }
+
 }   
 
 
@@ -318,7 +359,6 @@ void test_submodule_generated_at(){
 }
 
 int main() {
-    functionality_demo();
     algebraic_functionality_demo();
     return 0;
 }

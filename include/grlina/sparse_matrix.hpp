@@ -562,6 +562,16 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         }
     }
 
+
+    bool is_sorted() const {
+        for(index i = 0; i < this->num_cols; i++){
+            if(!std::is_sorted(this->data[i].begin(), this->data[i].end())){
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * @brief Computes all rows from column data in reverse order.
      * 
@@ -1269,7 +1279,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
  * 
  */
 template <typename index>
-SparseMatrix<index> multiply_transpose(SparseMatrix<index>& M, SparseMatrix<index>& N){
+SparseMatrix<index> multiply_transpose(const SparseMatrix<index>& M, const SparseMatrix<index>& N){
   SparseMatrix<index> result(N.get_num_cols(), M.get_num_cols());
   result.data.resize(result.get_num_cols());
   // assert(M.get_num_rows() == N.get_num_rows()); Sometimes we dont know.
@@ -1288,12 +1298,16 @@ SparseMatrix<index> multiply_transpose(SparseMatrix<index>& M, SparseMatrix<inde
  * 
  */
 template <typename index>
-SparseMatrix<index> multiply(SparseMatrix<index>& M, SparseMatrix<index>& N){
+SparseMatrix<index> multiply(const SparseMatrix<index>& M, const SparseMatrix<index>& N){
     assert(M.get_num_cols() == N.get_num_rows());
     SparseMatrix<index> transpose = M.transposed_copy();
     return multiply_transpose(transpose, N);
 }
 
+template <typename index>
+SparseMatrix<index>  operator*(const SparseMatrix<index>& M, const SparseMatrix<index>& N){
+    return multiply(M, N);
+}
 
 
 template <typename index>
