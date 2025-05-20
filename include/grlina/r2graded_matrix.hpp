@@ -718,12 +718,6 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
 }; // R2GradedSparseMatrix
 
 
-R2GradedSparseMatrix<index> shifted_identity( vec<r2degree>& generators, const r2degree& shift) {
-    R2GradedSparseMatrix<index> result(generators.size(), "Identity");
-    result.col_degrees = generators;
-    result.row_degrees = generators + shift;
-    return result;
-}
 
 template<typename index>
 struct R2Resolution {

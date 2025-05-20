@@ -190,7 +190,7 @@ struct Column_traits<vec<index>, index> {
     }
 
 
-    static bool scalar_product(const vec<index>& v, const vec<index>& w){
+    static bool scalar_product(const vec<index>& v,const vec<index>& w){
         auto it_v = v.begin();
         auto it_w = w.begin();
         index count = 0;
