@@ -475,6 +475,21 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         return column_permutation;
     }
 
+    /**
+     * @brief Returns the indices of the closest smaller grid point or -1,-1 if to the left of the grid.
+     * 
+     * @param degree 
+     * @return pair<index> 
+     */
+    pair<index> get_closest_smaller_grid_point(r2degree& degree){
+        double& first = degree.first;
+        double& second = degree.second;
+        auto it_x = std::lower_bound(x_grid.begin(), x_grid.end(), first);
+        auto it_y = std::lower_bound(y_grid.begin(), y_grid.end(), second);
+        index x_index = (it_x != x_grid.begin()) ? std::distance(x_grid.begin(), it_x) - 1 : -1;
+        index y_index = (it_y != y_grid.begin()) ? std::distance(y_grid.begin(), it_y) - 1 : -1;
+    }
+
     void print_grid(){
         std::cout << "x_grid: ";
         for (const auto& x : x_grid) {
@@ -723,7 +738,7 @@ struct R2Resolution {
         : d1(d1) {
             // Kernel computation is easy if the presentation is minimal, sorted, and has one generator.
             if(is_minimal && d1.get_num_rows() == 1){
-                assert(is_sorted(d1.col_degrees, Degree_traits<r2degree>::lex_lambda));
+                assert(std::is_sorted(d1.col_degrees.begin(), d1.col_degrees.end(), Degree_traits<r2degree>::lex_lambda));
                 d2 = R2GradedSparseMatrix<index>(d1.get_num_cols()-1, d1.get_num_cols());
                 d2.data = vec< vec<index> >(d1.get_num_cols()-1);
                 d2.row_degrees = d1.col_degrees;
@@ -756,113 +771,6 @@ struct R2Resolution {
         index num_chains_1 = d1.num_cols_before(alpha);
         index num_chains_2 = d2.num_cols_before(alpha);
         return num_chains_0 - num_chains_1 + num_chains_2;
-    }
-
-    /**
-     * @brief Only works for modules with all generators at a single degree
-     *  TO-DO: Log transform on the scale parameter. What to do on density?
-     * @return double 
-     */
-    double area () const {
-        auto [min, max] = d1.bounding_box();
-        double base_area = d1.get_num_rows()*(max.first - min.first) * (max.second - min.second);
-        for(const auto& degree : d1.col_degrees){
-            base_area -= (max.first - degree.first) * (max.second - degree.second);
-        }
-        for(const auto& degree : d2.col_degrees){
-            base_area += (max.first - degree.first) * (max.second - degree.second);
-        }
-        return base_area;
-    }
-
-
-    /**
-     * @brief Only works for modules with all generators at a single degree
-     * @return double 
-     */
-    double area (const r2degree& bound) const {
-        auto [min, max] = d1.bounding_box();
-        max = bound;
-        double base_area = d1.get_num_rows()*(max.first - min.first) * (max.second - min.second);
-        for(const auto& degree : d1.col_degrees){
-            base_area -= (max.first - degree.first) * (max.second - degree.second);
-        }
-        for(const auto& degree : d2.col_degrees){
-            base_area += (max.first - degree.first) * (max.second - degree.second);
-        }
-        return base_area;
-    }
-
-    /**
-     * @brief Only works for modules with all generators at a single degree
-     * Normalised so that the area of the free module is 1.
-     *  TO-DO: Log transform on the scale parameter. What to do on density?
-     * @return double 
-     */
-    double area (const pair<r2degree>& bounds) const {
-        //TO-DO: Actually only need to compute the minimal element here.
-        auto [min, max] = d1.bounding_box();
-        max = bounds.second;
-        assert(max.first >= min.first);
-        assert(max.second >= min.second);
-        r2degree range = bounds.second-bounds.first;
-        double range_area = range.first * range.second;
-        double base_area = d1.get_num_rows() * (max.first - min.first) * (max.second - min.second);
-        for(const auto& degree : d1.col_degrees){
-            assert(degree.first <= max.first);
-            assert(degree.second <= max.second);
-            assert(degree.first >= min.first);
-            assert(degree.second >= min.second);
-            base_area -= (max.first - degree.first) * (max.second - degree.second);
-        }
-        for(const auto& degree : d2.col_degrees){
-            assert(degree.first <= max.first);
-            assert(degree.second <= max.second);
-            assert(degree.first >= min.first);
-            assert(degree.second >= min.second);
-            base_area += (max.first - degree.first) * (max.second - degree.second);
-        }
-        double normalised_area = base_area/range_area;
-        return normalised_area;
-    }
-
-    double slope () const {
-        double area = this->area();
-        if(area == 0){
-            std::cerr << "Area is zero, slope will be infinite. Consider passing a bound." << std::endl;
-        }
-        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
-        return slope_value;
-    }
-
-    double slope (const r2degree& bound) const {
-        double area = this->area(bound);
-        if(area == 0){
-            std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
-        }
-        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
-        return slope_value;
-    }
-
-    double slope (const pair<r2degree>& bounds) const {
-        double area = this->area(bounds);
-        if(area == 0){
-            std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
-        }
-        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
-        return slope_value;
-    }
-
-    /**
-     * @brief Returns a polynomial a[0] + a[1]*x + a[2]*y + a[3]*x*y
-     * which gives the area of the module after shifting the (assumed to be) single generator by (x,y)
-     * 
-     * @param bounds 
-     * @return std::array<double, 4> 
-     */
-    std::array<double, 4> area_polynomial (const pair<r2degree>& bounds) const {
-        assert(d1.get_num_rows() == 1);
-        // TO-DO: Finish this.
     }
 
     /**
