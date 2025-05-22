@@ -1078,6 +1078,12 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         return minimal_presentation;
     }
 
+    /**
+     * @brief TO-DO: erase() is linear in the size of the vector, so this is quadratic. Instead we should use
+     * std::remove_if !
+     * 
+     * @param cs 
+     */
     void delete_all_but_columns(vec<index> cs){
         auto i = cs.rbegin();
         for(index j = this->get_num_cols(); j >= 0; j--){ // caution: will not work if index is unsigned
