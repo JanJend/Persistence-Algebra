@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "grlina/orders_and_graphs.hpp"
 #ifndef R2GRADED_MATRIX_HPP
 #define R2GRADED_MATRIX_HPP
 
@@ -22,10 +23,7 @@
 #include <grlina/grid_scheduler.hpp>
 #include <iostream>
 #include <vector>
-#include <chrono>
 #include <string>
-#include <fstream>
-#include <sstream>
 
 
 
@@ -685,20 +683,16 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
 
     pair<r2degree> bounding_box() const{
         r2degree min = {std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
-        r2degree max = {std::numeric_limits<double>::min(), std::numeric_limits<double>::min()};
+        r2degree max = {-std::numeric_limits<double>::max(), -std::numeric_limits<double>::max()};
 
         for (const auto& degree : this->col_degrees) {
-            min.first = std::min(min.first, degree.first);
-            min.second = std::min(min.second, degree.second);
-            max.first = std::max(max.first, degree.first);
-            max.second = std::max(max.second, degree.second);
+            min = Degree_traits<r2degree>::meet(min, degree);
+            max = Degree_traits<r2degree>::join(max, degree);
         }
 
         for (const auto& degree : this->row_degrees) {
-            min.first = std::min(min.first, degree.first);
-            min.second = std::min(min.second, degree.second);
-            max.first = std::max(max.first, degree.first);
-            max.second = std::max(max.second, degree.second);
+            min = Degree_traits<r2degree>::meet(min, degree);
+            max = Degree_traits<r2degree>::join(max, degree);
         }
 
         return {min, max};

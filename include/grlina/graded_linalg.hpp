@@ -67,6 +67,17 @@ vec<vec<SparseMatrix<index>>> all_sparse_proper_subspaces(index k){
     return result;
 }
 
+template <typename index>
+void fill_up_subspaces (vec<vec<SparseMatrix<index>>>& subspaces, index k ){
+    for(index i = subspaces.size(); i < k; i++){
+        subspaces.push_back(vec<SparseMatrix<index>>());
+        vec<DenseMatrix> i_spaces = all_proper_subspaces(i+1);
+        for(DenseMatrix matrix : i_spaces){
+            subspaces[i].emplace_back(sparse_from_dense<index>(matrix));
+        }
+    }
+}
+
 /**
  * @brief Constructs a vector of R2GradedSparseMatrix objects from an input file stream.
  * 
