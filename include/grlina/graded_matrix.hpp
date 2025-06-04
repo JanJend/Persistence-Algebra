@@ -820,6 +820,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
     /**
      * @brief Performs column reduction whenever grades make it possible.
+     * Needs columns to be sorted in a linear extension of N^2
      *
      */
     vec<index> column_reduction_graded(){
@@ -1028,7 +1029,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * @param S
      * @return DERIVED
      */
-    DERIVED inverse_image_copy  (const DERIVED& M, const DERIVED& S) const {
+    DERIVED inverse_image_copy (const DERIVED& M, const DERIVED& S) const {
         DERIVED copy = *this;
         index row_temp = copy.num_cols;
         copy.append_matrix(S);
@@ -1129,7 +1130,7 @@ DERIVED operator*(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSp
 
 
 
-template <typename D, typename index, typename DERIVED>
+template <typename D, typename DERIVED>
 DERIVED shifted_identity( vec<D>& generators, const D& epsilon) {
     DERIVED result(generators.size(), "Identity");
     result.col_degrees = generators;
