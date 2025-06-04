@@ -221,12 +221,12 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         return *this;
     }
 
-    R2GradedSparseMatrix(index m, index n) : 
-        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, n) {}
+    R2GradedSparseMatrix(index cols, index rows) : 
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(cols, rows) {}
     R2GradedSparseMatrix(index n, vec<index> indicator) : 
         GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(n, indicator) {} 
-    R2GradedSparseMatrix(index m, std::string type, const index percent = -1) : 
-        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, type, percent) {} // Constructor with type
+    R2GradedSparseMatrix(index cols, index rows, std::string type, const index percent = -1) : 
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(cols, rows, type, percent) {} // Constructor with type
     R2GradedSparseMatrix(index m, index n, vec<r2degree> c_degrees, vec<r2degree> r_degrees) : 
         GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, n, c_degrees, r_degrees) {} // Constructor with degrees
     R2GradedSparseMatrix(index m, index n, const array<index>& data, vec<r2degree> c_degrees, vec<r2degree> r_degrees) : 

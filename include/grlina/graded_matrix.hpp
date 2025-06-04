@@ -129,8 +129,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
     GradedSparseMatrix(index n, vec<index> indicator)
         : SparseMatrix<index>(n, indicator), col_degrees(vec<D>(indicator.size())), row_degrees(vec<D>(n)) {}
-    GradedSparseMatrix(index m, std::string type, const index percent = -1)
-        : SparseMatrix<index>(m, type, percent), col_degrees(vec<D>(m)), row_degrees(vec<D>(m)) {}
+    GradedSparseMatrix(index cols, index rows, std::string type, const index percent = -1)
+        : SparseMatrix<index>(cols, rows, type, percent), col_degrees(vec<D>(cols)), row_degrees(vec<D>(cols)) {}
 
     bool is_admissible_column_operation(index i, index j) const {
         return Degree_traits<D>::smaller_equal( col_degrees[i], col_degrees[j]) && i != j;
@@ -1132,7 +1132,7 @@ DERIVED operator*(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSp
 
 template <typename D, typename DERIVED>
 DERIVED shifted_identity( vec<D>& generators, const D& epsilon) {
-    DERIVED result(generators.size(), "Identity");
+    DERIVED result(generators.size(),generators.size(), "Identity");
     result.col_degrees = generators;
     result.row_degrees = generators + epsilon;
     return result;
