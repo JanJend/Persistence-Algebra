@@ -63,6 +63,27 @@ namespace graded_linalg {
     }
 
     /**
+     * @brief Inverse to vec_restriction. Returns the indices in "target" of the elements in subset. 
+     * Only works if both are sorted.
+     * @tparam index 
+     * @tparam T 
+     * @return vec<T>   
+     */
+    template <typename index, typename T>
+    vec<index> get_index_vector(vec<T> target, vec<T> subset){
+        vec<index> result = vec<index>();
+        auto itS = subset.begin();
+        for(index i = 0; i < target.size() ; i++){
+            if(itS != subset.end() && *itS == target[i]){
+                result.push_back(i);
+                itS++;
+            }
+        }
+        assert(itS == subset.end() && "Not all elements of the subset were found in the target");
+        return result;
+    }
+
+    /**
      * @brief Delets all entries of v at the indices given while preserving the order of v.
      * 
      * @tparam T 
@@ -526,21 +547,21 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         }
 
 
-    SparseMatrix() : MatrixUtil<vec<index>, index, SparseMatrix<index>>() {}
+    SparseMatrix() : MatrixUtil<vec<index>, index, SparseMatrix<index>>() { rows_computed = false; }
 
-    SparseMatrix(index m) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m) {}
+    SparseMatrix(index m) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m) {rows_computed = false;}
 
-    SparseMatrix(index m, index n) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n) {}
+    SparseMatrix(index m, index n) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n) {rows_computed = false;}
 
     SparseMatrix(const SparseMatrix& other) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(other)  {}
 
     SparseMatrix(SparseMatrix&& other) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(std::move(other))  {}
 
-    SparseMatrix(index m, index n, const array<index>& data) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, data) {}
+    SparseMatrix(index m, index n, const array<index>& data) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, data) {rows_computed = false;}
     
-    SparseMatrix(index m, index n, const std::string& type, const index percent = -1) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, type, percent) {}
+    SparseMatrix(index m, index n, const std::string& type, const index percent = -1) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, type, percent) {rows_computed = false;}
 
-    SparseMatrix(index n, vec<index> indicator) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(n, indicator) {}
+    SparseMatrix(index n, vec<index> indicator) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(n, indicator) {rows_computed = false;}
 
     /**
      * @brief Sorts the entries of a column
@@ -730,6 +751,9 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      */
     void delete_rows(const vec<index>& row_indices_to_remove) {
         assert(std::is_sorted(row_indices_to_remove.begin(), row_indices_to_remove.end()));
+        if(row_indices_to_remove.empty()){
+            return;
+        }
         vec<index> remaining_rows = vec<index>();
         for(index i = 0; i < this->num_cols; i++) {
             remove_intersection(this->data[i], row_indices_to_remove);
@@ -753,6 +777,9 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      */
     void delete_columns(const vec<index>& col_indices_to_remove) {
         assert(std::is_sorted(col_indices_to_remove.begin(), col_indices_to_remove.end()));
+        if(col_indices_to_remove.empty()){
+            return;
+        }
         vec_deletion(this->data, col_indices_to_remove);
         this->num_cols = this->data.size();
     }
@@ -816,7 +843,14 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
       std::sort(row.begin(),row.end());
     }    
 
-    
+    bool is_sorted_sparse(){
+        for(auto col : this->data){
+            if(!is_sorted<index>(col)){
+                return false;
+            }
+        }
+        return true;
+    }
 
     // Adds the i-th row to the j-th. 
     void fast_row_op(index i, index j){
@@ -969,7 +1003,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     /**
      * @brief Computes the cokernel of a sparse matrix over F_2 by column reducing the matrix first
      * Notice that the result must be a cokernel to the non-reduced matrix, too, so we can also use a copy instead, if we want to keep the original matrix.
-    *  Careful, this is not working right now, because it uses another column_reduction algorithm
+    *  Careful, this may not be working correctly right now, because it uses another column_reduction algorithm
     * @param S 
     * @param isReduced
     * @return sparseMatrix 
@@ -988,13 +1022,11 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 
 		auto indexMap = shiftIndicesMap(quotientBasis);
 		SparseMatrix trunc(*this);
-	
 		trunc.delete_last_entries();
-
 		transform_matrix(trunc.data, indexMap, true);
 	
 		index newRows = quotientBasis.size();
-		index newCols = this->num_rows;
+		index newCols = this->get_num_rows();
 		SparseMatrix result(newCols, newRows);
         result.data = vec<vec<index>>(newCols, vec<index>());
 		index j = 0;
@@ -1089,7 +1121,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
             }
         }
 
-        return std::move(result_t);
+        return result_t;
     }       
 
     /**
@@ -1370,7 +1402,7 @@ void simultaneous_row_reduction_on_submatrix(std::unordered_map<index, SparseMat
 
 /**
  * @brief F_2 Sparse Matrix using std::set / binary trees for its columns.
- * 
+ * This could work better if the matrix is not very sparse and a lot of single elements need to be changed.
  * @tparam index 
  */
 template <typename index>

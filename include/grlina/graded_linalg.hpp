@@ -21,7 +21,6 @@
 
 
 #include <vector>
-#include <random>
 #include <grlina/sparse_matrix.hpp>
 #include <grlina/graded_matrix.hpp>
 #include <grlina/matrix_base.hpp>
@@ -29,6 +28,7 @@
 #include <grlina/r2graded_matrix.hpp>
 #include <grlina/r3graded_matrix.hpp>
 #include <grlina/dense_matrix.hpp>
+#include <grlina/homomorphisms.hpp>
 
 namespace graded_linalg {
 
