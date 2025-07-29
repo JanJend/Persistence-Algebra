@@ -331,7 +331,7 @@ class MatrixUtil{
      * 
      * @param suppress_description 
      */
-    const void print(bool suppress_description = false, bool space = false){
+    void print(bool suppress_description = false, bool space = false) const {
         if(data.size() != num_cols){
             std::cout << "Data size: " << data.size() << " num_cols: " << num_cols << std::endl;
         }
@@ -1139,9 +1139,9 @@ class MatrixUtil{
      *          Equivalently, the set of row indices which are not pivots after column-reduction.
      * @return vec<index> 
      */
-    vec<index> coKernel_basis(const bool& no_reduction = false){
+    vec<index> coKernel_basis(const bool& is_reduced = false){
         vec<index> basis;
-        if(!no_reduction){
+        if(!is_reduced){
             column_reduction();
         }
         for(index i = 0 ; i < this->num_rows; i++){
@@ -1225,7 +1225,7 @@ class MatrixUtil{
 
         // Add the columns of the two matrices
         for (index i = 0; i < this->num_cols; ++i) {
-            this->CT::add_to(this->data[i], other.data[i]);
+            CT::add_to(this->data[i], other.data[i]);
         }
     }
 
@@ -1258,11 +1258,11 @@ template<typename index, typename T>
 vec<index> general_reduction(vec< T > matrices) {
     // Ensure all matrices have the same dimensions
     assert(!matrices.empty());
-    index num_cols = matrices[0].num_cols;
-    index num_rows = matrices[0].num_rows;
+    index num_cols = matrices[0].get_num_cols();
+    index num_rows = matrices[0].get_num_rows();
     for (const T& matrix : matrices) {
-        assert(matrix.num_cols == num_cols);
-        assert(matrix.num_rows == num_rows);
+        assert(matrix.get_num_cols() == num_cols);
+        assert(matrix.get_num_rows() == num_rows);
     }
 
     vec<index> non_zero_indices;
@@ -1403,7 +1403,7 @@ void simultaneous_align(std::unordered_map<index, DERIVED>& N_map, vec<index>& a
  * @return false 
  */
 template <typename DERIVED>
-bool compare_col_space(DERIVED& A, DERIVED& B){
+bool compare_col_space(const DERIVED& A,const DERIVED& B){
     if(A.get_num_cols() != B.get_num_cols()){
         return false;
     }

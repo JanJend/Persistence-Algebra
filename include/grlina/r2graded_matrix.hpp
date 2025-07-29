@@ -15,7 +15,6 @@
 
 #pragma once
 
-#include "grlina/orders_and_graphs.hpp"
 #ifndef R2GRADED_MATRIX_HPP
 #define R2GRADED_MATRIX_HPP
 
@@ -334,10 +333,10 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      * @param permutation 
      */
     void permute_rows_graded(const vec<index>& permutation) {
-        assert(permutation.size() == this->num_rows);
+        assert(permutation.size() == this->get_num_rows());
         this->transform_data(permutation);
         this->sort_data();
-        vec<r2degree> new_row_degrees(this->num_rows);
+        vec<r2degree> new_row_degrees(this->get_num_rows());
         for(index i = 0; i < permutation.size(); i++) {
             new_row_degrees[permutation[i]] = this->row_degrees[i];
         }
@@ -515,10 +514,10 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         // Write the header lines
         output_stream << "scc2020" << std::endl;
         output_stream << "2" << std::endl;
-        output_stream << this->num_cols << " " << this->num_rows << " 0" << std::endl;
+        output_stream << this->get_num_cols() << " " << this->get_num_rows() << " 0" << std::endl;
 
         // Write the column degrees and data
-        for (index i = 0; i < this->num_cols; ++i) {
+        for (index i = 0; i < this->get_num_cols(); ++i) {
             Degree_traits<r2degree>::write_degree(output_stream, this->col_degrees[i]);
             output_stream << " ; ";
             for (const auto& val : this->data[i]) {
@@ -528,10 +527,9 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         }
 
         // Write the row degrees
-        for (index i = 0; i < this->num_rows; ++i) {
+        for (index i = 0; i < this->get_num_rows(); ++i) {
             Degree_traits<r2degree>::write_degree(output_stream, this->row_degrees[i]);
             output_stream << " ;" << std::endl;
-            output_stream << std::endl;
         }
     }
 
@@ -700,6 +698,138 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
 
 }; // R2GradedSparseMatrix
 
+template<typename index>
+struct R2Sequence{
+
+    R2GradedSparseMatrix<index> first;
+    R2GradedSparseMatrix<index> second;
+
+    private:
+    static std::pair<r2degree, std::vector<index>> parse_line(const std::string& line,  const bool& hasEntries = false) {
+        std::istringstream iss(line);
+        std::vector<index> rel;
+
+        r2degree deg = Degree_traits<r2degree>::from_stream(iss);
+
+        // Consume the semicolon
+        std::string tmp;
+        iss >> tmp;
+        if(tmp != ";"){
+            std::cerr << "Error: Expecting a semicolon. Invalid format in the following line: " << line << std::endl;
+            std::abort();
+        }
+
+        // Parse relation
+        if(hasEntries){
+            index num;
+            while (iss >> num) {
+                rel.push_back(num);
+            }
+        }
+
+        return std::move(std::make_pair(deg, rel));
+    }
+
+    void parse_stream(std::istream& file_stream) {
+        std::string line;
+
+        // Read the first line to determine the file type
+        std::getline(file_stream, line);
+        if (line.find("firep") != std::string::npos) {
+            // Skip 2 lines for FIREP
+            std::getline(file_stream, line);
+            std::getline(file_stream, line);
+        } else if (line.find("scc2020") != std::string::npos) {
+            // Skip 1 line for SCC2020
+            std::getline(file_stream, line);
+        } else {
+            // Invalid file type
+            std::cerr << "Error: Unsupported file format. The first line must contain firep or scc2020." << std::endl;
+            std::abort();
+        }
+
+        // Parse the first line after skipping
+        std::getline(file_stream, line);
+        std::istringstream iss(line);
+        index a, b, c, zero;
+        if (!(iss >> a >> b >> c >> zero) || zero != 0) {
+            std::cerr << "Error: expected 4 numbers in header, last one should be 0" << std::endl;
+            std::abort();
+        }
+
+        this->first.set_num_rows(c);
+        this->first.set_num_cols(b);
+        this->first.row_degrees.reserve(c);
+        this->first.col_degrees.reserve(b);
+        this->first.data.reserve(b);
+
+        this->second.set_num_rows(b);
+        this->second.set_num_cols(a);
+        this->second.row_degrees.reserve(b);
+        this->second.col_degrees.reserve(a);
+        this->second.data.reserve(a);
+
+        index rel_counter = 0;
+
+        bool first_pass = true;
+
+        while (rel_counter < a + b + c) {
+            if(!std::getline(file_stream, line)){
+                std::cout << "Error: Unexpected end of file. \n Make sure that the dimensions of the file are correctly given at the beginning of the file." << std::endl;
+            }
+            std::pair<r2degree, std::vector<index>> line_data;
+            if (rel_counter < a) {
+                line_data = parse_line(line, true);
+                this->second.col_degrees.push_back(line_data.first);
+                this->second.data.push_back(line_data.second);
+                rel_counter++;
+            } else if (rel_counter < a + b) {
+                line_data = parse_line(line, true);
+                this->second.row_degrees.push_back(line_data.first);
+                this->first.col_degrees.push_back(line_data.first);
+                this->first.data.push_back(line_data.second);
+                rel_counter++;
+            } else {
+                line_data = parse_line(line, false);
+                this->first.row_degrees.push_back(line_data.first);
+                rel_counter++;
+            }
+        }
+    } // Constructor from ifstream
+
+    public:
+    R2Sequence() {}
+
+    R2Sequence(const R2GradedSparseMatrix<index>& first, const R2GradedSparseMatrix<index>& second) 
+        : first(first), second(second) {}
+    
+    R2Sequence(const std::string& filepath) {
+        first = R2GradedSparseMatrix<index>();
+        second = R2GradedSparseMatrix<index>();
+        std::ifstream file_stream(filepath);
+        if (!file_stream.is_open()) {
+            std::cerr << "Error: Could not open file " << filepath << std::endl;
+            std::abort();
+        }
+        parse_stream(file_stream);
+        file_stream.close();
+    }
+
+    R2Sequence(std::istream& file_stream) {
+        first = R2GradedSparseMatrix<index>();
+        second = R2GradedSparseMatrix<index>();
+        parse_stream(file_stream);
+    }
+
+    R2GradedSparseMatrix<index> get_homology() {
+        auto K = first.graded_kernel();
+        second.sort_columns_lexicographically();
+        second.sort_rows_lexicographically();
+        K.quotient_by(second);
+        return K;
+    }
+
+};
 
 template<typename index>
 struct R2Resolution {
@@ -717,7 +847,7 @@ struct R2Resolution {
         : d1(d1) {
             // Kernel computation is easy if the presentation is minimal, sorted, and has one generator.
             if(is_minimal && d1.get_num_rows() == 1){
-                assert(is_sorted(d1.col_degrees, Degree_traits<r2degree>::lex_lambda));
+                // assert sored! Todo
                 d2 = R2GradedSparseMatrix<index>(d1.get_num_cols()-1, d1.get_num_cols());
                 d2.data = vec< vec<index> >(d1.get_num_cols()-1);
                 d2.row_degrees = d1.col_degrees;
@@ -736,7 +866,48 @@ struct R2Resolution {
         }
     
 
-    
+    /**
+     * @brief Writes the R^2 resolution to an output stream.
+     * 
+     * @param output_stream output stream to write the matrix data
+     */
+    template <typename Outputstream>
+    void to_stream(Outputstream& output_stream) const {
+        
+        output_stream << std::fixed << std::setprecision(17);
+
+        // Write the header lines
+        output_stream << "scc2020" << std::endl;
+        output_stream << "3" << std::endl;
+        output_stream << this->d2.get_num_cols() << " " << this->d2.get_num_rows() << " " << this->d1.get_num_rows() << std::endl;
+
+        // Write the syzygies
+        for (index i = 0; i < this->d2.get_num_cols(); ++i) {
+            Degree_traits<r2degree>::write_degree(output_stream, this->d2.col_degrees[i]);
+            output_stream << " ; ";
+            for (const auto& val : this->d2.data[i]) {
+                output_stream << val << " ";
+            }
+            output_stream << std::endl;
+        }
+
+        // Write the relations
+        for (index i = 0; i < this->d1.get_num_cols(); ++i) {
+            Degree_traits<r2degree>::write_degree(output_stream, this->d1.col_degrees[i]);
+            output_stream << " ; ";
+            for (const auto& val : this->d1.data[i]) {
+                output_stream << val << " ";
+            }
+            output_stream << std::endl;
+        }
+
+        // Write the generators
+        for (index i = 0; i < this->d1.get_num_rows(); ++i) {
+            Degree_traits<r2degree>::write_degree(output_stream, this->d1.row_degrees[i]);
+            output_stream << " ;" << std::endl;
+        }
+    }
+
     
     
     /**
