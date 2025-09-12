@@ -998,7 +998,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * @return DERIVED
      */
     DERIVED quotient_by_copy (DERIVED& Y) const {
-        DERIVED copy = *this;
+        DERIVED copy = static_cast<const DERIVED&>(*this);
         copy.append_matrix(Y);
         copy.minimize();
         return copy;
@@ -1030,7 +1030,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * @return DERIVED
      */
     DERIVED inverse_image_copy (const DERIVED& M, const DERIVED& S) const {
-        DERIVED copy = *this;
+        DERIVED copy = static_cast<const DERIVED&>(*this);
         index row_temp = copy.num_cols;
         copy.append_matrix(S);
         copy.append_matrix(M);
