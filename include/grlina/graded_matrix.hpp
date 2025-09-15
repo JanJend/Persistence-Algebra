@@ -991,7 +991,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->minimize();
     }
 
-    /**
+    /** 
      * @brief Same but does not change this matrix.
      *
      * @param Y
