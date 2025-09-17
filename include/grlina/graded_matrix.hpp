@@ -1087,8 +1087,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      */
     void delete_all_but_columns(vec<index> cs){
         auto i = cs.rbegin();
-        for(index j = this->get_num_cols(); j >= 0; j--){ // caution: will not work if index is unsigned
-            if(j == *i){
+        for(index j = this->get_num_cols() - 1; j >= 0; j--){ // caution: will not work if index is unsigned
+            if(i < cs.rend() && j == *i){
                 i++;
             } else {
                 this->data.erase(this->data.begin() + j);
