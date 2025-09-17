@@ -1098,6 +1098,27 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         }
     }
 
+    void delete_all_but_columns_alt(vec<index> cs) {
+        decltype(this->data) new_data;
+        decltype(this->col_degrees) new_col_degrees;
+        
+        auto cs_it = cs.begin();
+        
+        for (index i = 0; i < this->get_num_cols(); ++i) {
+            // If current column index matches next column to keep
+            if (cs_it != cs.end() && i == *cs_it) {
+                new_data.push_back(this->data[i]);
+                new_col_degrees.push_back(this->col_degrees[i]);
+                ++cs_it;
+            }
+            // Otherwise skip this column (don't add to new vectors)
+        }
+        
+        this->data = std::move(new_data);
+        this->col_degrees = std::move(new_col_degrees);
+        this->num_cols = cs.size();
+    }
+
     DERIVED transposed_copy() const {
         DERIVED result;
         result.set_num_rows(this->num_cols);
