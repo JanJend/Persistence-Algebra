@@ -104,7 +104,11 @@ struct Degree_traits<triple> {
         }
     }
 
-    static std::function<bool(const triple&, const triple&)> lex_lambda;
+    static std::function<bool(const triple&, const triple&)> lex_lambda() {
+        return [](const triple& a, const triple& b) {
+            return Degree_traits<triple>::lex_order(a, b);
+        };
+    }
 
     static vec<double> position(const triple& a) {
         return {a.x, a.y, a.z};
@@ -139,13 +143,6 @@ struct Degree_traits<triple> {
         iss >> deg.x >> deg.y >> deg.z;
         return deg;
     }
-};
-
-/**
- * @brief Lambda function to compare lexicographically for sorting.
- */
-std::function<bool(const triple&, const triple&)> Degree_traits<triple>::lex_lambda = [](const triple& a, const triple& b) {
-    return Degree_traits<triple>::lex_order(a, b);
 };
 
 template <typename index>

@@ -67,7 +67,11 @@ struct Degree_traits {
      * @brief Lambda function to compare lexicographically for sorting.
      * 
      */
-    static std::function<bool(const D&, const D&)> lex_lambda;
+    static std::function<bool(const D&, const D&)> lex_lambda() {
+        return [](const D& a, const D& b) {
+            return Degree_traits<D>::lex_order(a, b);
+        };
+    }
 
     /**
      * @brief Any Embedding of the degree poset into any R^n.
@@ -99,12 +103,6 @@ struct Degree_traits {
     static void add(const D& a, D& b);
 
 }; // Degree_traits
-
-
-template <typename D>
-std::function<bool(const D&, const D&)> Degree_traits<D>::lex_lambda = [](const D& a, const D& b) {
-    return Degree_traits<D>::lex_order(a, b);
-};
 
 
 /**
@@ -139,7 +137,7 @@ Graph induced_subgraph (const Graph& g, const vec<index>& vertices) {
     return subgraph;
 }
 
-void delete_incoming_edges(Graph& g, const Vertex& v) {
+inline void delete_incoming_edges(Graph& g, const Vertex& v) {
     in_edge_iterator in_begin, in_end;
     std::tie(in_begin, in_end) = boost::in_edges(v, g);
     for (auto it = in_begin; it != in_end; ++it) {
@@ -171,7 +169,7 @@ void print_graph_with_labels(const Graph& g, const std::vector<T>& labels) {
  * @brief prints the content of a graph
  * 
  */
-void print_graph(const Graph& g){
+inline void print_graph(const Graph& g){
     boost::print_graph(g); //For now
 }
 
@@ -183,7 +181,7 @@ void print_graph(const Graph& g){
  * @param v The vertex.
  * @return true if the vertex has incoming edges, false otherwise.
  */
-bool has_incoming_edges(const Graph& g, const Vertex& v) {
+inline bool has_incoming_edges(const Graph& g, const Vertex& v) {
     in_edge_iterator in_begin, in_end;
     // Get the range of incoming edges for vertex v
     std::tie(in_begin, in_end) = boost::in_edges(v, g);

@@ -512,7 +512,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         assert(this->row_degrees.size() == this->num_rows);
         vec<D> result = col_degrees;
         result.insert(result.end(), row_degrees.begin(), row_degrees.end());
-        std::sort(result.begin(), result.end(), Degree_traits<D>::lex_lambda);
+        std::sort(result.begin(), result.end(), Degree_traits<D>::lex_lambda());
         // Remove duplicates (works only after sorting)
         result.erase(std::unique(result.begin(), result.end()), result.end());
         return result;
@@ -693,7 +693,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      *
      */
     void sort_columns_lexicographically() {
-        vec<index> permutation = sort_and_get_permutation<D, index>(this->col_degrees, Degree_traits<D>::lex_lambda);
+        vec<index> permutation = sort_and_get_permutation<D, index>(this->col_degrees, Degree_traits<D>::lex_lambda());
         array<index> new_data = array<index>(this->data.size());
         for(index i = 0; i < this->data.size(); i++) {
             new_data[i] = this->data[permutation[i]];
@@ -708,7 +708,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * @return vec<index>
      */
     vec<index> sort_columns_lexicographically_with_output() {
-        vec<index> permutation = sort_and_get_permutation<D, index>(this->col_degrees, Degree_traits<D>::lex_lambda);
+        vec<index> permutation = sort_and_get_permutation<D, index>(this->col_degrees, Degree_traits<D>::lex_lambda());
         array<index> new_data = array<index>(this->data.size());
         for(index i = 0; i < this->data.size(); i++) {
             new_data[i] = this->data[permutation[i]];
@@ -727,7 +727,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      */
     void sort_rows_lexicographically(){
 
-        vec<index> permutation = sort_and_get_permutation<D, index>(this->row_degrees, Degree_traits<D>::lex_lambda);
+        vec<index> permutation = sort_and_get_permutation<D, index>(this->row_degrees, Degree_traits<D>::lex_lambda());
         // Need inverse of permutation
         vec<index> reverse = vec<index>(permutation.size());
         for (int i = 0; i < permutation.size(); ++i) {
@@ -743,7 +743,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * @return vec<index>
      */
     vec<index> sort_rows_lexicographically_with_output(){
-        vec<index> permutation = sort_and_get_permutation<D, index>(this->row_degrees, Degree_traits<D>::lex_lambda);
+        vec<index> permutation = sort_and_get_permutation<D, index>(this->row_degrees, Degree_traits<D>::lex_lambda());
         // Need inverse of permutation
         vec<index> reverse = vec<index>(permutation.size());
         for (int i = 0; i < permutation.size(); ++i) {
@@ -1620,7 +1620,7 @@ Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index, DERIVED>& A, 
  * @param filepath
  * @return std::ifstream
  */
-std::ifstream check_matrix_file(const std::string& filepath) {
+inline std::ifstream check_matrix_file(const std::string& filepath) {
     size_t dotPosition = filepath.find_last_of('.');
     bool no_file_extension = false;
     if (dotPosition == std::string::npos) {
