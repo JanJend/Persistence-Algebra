@@ -810,7 +810,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      */
     vec<index> basislift_at (D alpha) const {
         auto [B_alpha, rows_alpha] = this->map_at_degree_pair(alpha);
-        B_alpha.compute_normalisation(rows_alpha);
+        // B_alpha.compute_normalisation(rows_alpha); Should be done in map_at_degree_pair ("shifted" is true by default    )
         vec<index> basislift_to_rows_alpha = B_alpha.coKernel_basis();
         vec<index> basis_lift = vec_restriction(rows_alpha, basislift_to_rows_alpha);
         return basis_lift;
@@ -1054,7 +1054,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     }
 
     /**
-     * @brief Sets all generators to be at the degree d.
+     * @brief Sets all generators to be at the degree d and shifts the relations accordingly.s
      * 
      * @param d 
      */
