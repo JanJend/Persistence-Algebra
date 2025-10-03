@@ -360,7 +360,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->num_rows = this->row_degrees.size();
     }
 
-    void cull_columns(const index& threshold, bool from_end = true) {
+    void cull_columns(const index& threshold, bool from_end) {
 
         SparseMatrix<index>::cull_columns(threshold, from_end);
 
@@ -1048,28 +1048,6 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->delete_rows(row_indices_to_remove);
     }
 
-    /**
-     * @brief Graded version of column deletion.
-     * 
-     * @param indices 
-     */
-    void delete_columns(vec<index>& indices) {
-        SparseMatrix<index>::delete_columns(indices);
-        vec_deletion(col_degrees, indices);
-    }
-
-    /**
-     * @brief Graded version of row deletion.
-     * 
-     * @param indices 
-     */
-    void delete_rows(vec<index>& indices) {
-        SparseMatrix<index>::delete_rows(indices);
-        vec_deletion(row_degrees, indices);
-    }
-
-    
-
 
     /**
      * @brief Checks if the matrix is minimal as a presentation,
@@ -1124,6 +1102,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      */
     void append_matrix(const GradedSparseMatrix& other) {
         assert(this->num_rows == other.num_rows);
+        assert(this->row_degrees == other.row_degrees);
         for(index i = 0; i < other.num_cols; i++) {
             this->data.push_back(other.data[i]);
             this->col_degrees.push_back(other.col_degrees[i]);
@@ -1180,7 +1159,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->append_matrix(S);
         this->append_matrix(M);
         auto K = static_cast<DERIVED*>(this)->graded_kernel();
-        K.cull_columns(row_temp);
+        K.cull_columns(row_temp, false);
         K.semi_minimize();
          // TO-DO: If we want to fully minimize, we need to compute a kernel in the derived class.
         return K;
@@ -1194,14 +1173,16 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * @return DERIVED
      */
     DERIVED inverse_image_copy (const DERIVED& M, const DERIVED& S) const {
+
         DERIVED copy = static_cast<const DERIVED&>(*this);
         index row_temp = copy.num_cols;
         copy.append_matrix(S);
         copy.append_matrix(M);
-        auto K = copy->graded_kernel();
-        K.cull_columns(row_temp);
+        auto K = copy.graded_kernel();
+        K.cull_columns(row_temp, false);
+        K.sort_rows_lexicographically(); // ensure rows are sorted for semi_minimize
         K.semi_minimize();
-        // TO-DO: If we want to fully minimize, we need to do this in the derived class.
+        // TO-DO: could also fully minimize if we need to?
         return K;
     }
 

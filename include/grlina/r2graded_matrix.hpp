@@ -606,7 +606,8 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
      * @return SparseMatrix<index> 
      */
     R2GradedSparseMatrix graded_kernel() {
-
+        assert(this->col_degrees.size() == this->get_num_cols());
+        assert(this->row_degrees.size() == this->get_num_rows());
         vec<index> column_permutation = this->compute_grid_representation();
         this->initialise_grid_scheduler();
         
@@ -674,6 +675,7 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         result.row_degrees = this->col_degrees;
     
         result.permute_rows_graded(column_permutation);
+
         return result;
     }
 

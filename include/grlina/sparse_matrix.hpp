@@ -913,11 +913,11 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * 
      * @param threshold 
      */
-    void cull_columns(const index& threshold, bool from_end = true){
+    void cull_columns(const index& threshold, bool from_end){
         if(from_end){
-            this->num_rows -= threshold;
+            this->set_num_rows(this->get_num_rows() - threshold);
         } else {
-            this->num_rows = threshold;
+            this->set_num_rows(threshold);
         }
 
         for (index j = 0; j < this->num_cols; j++){
