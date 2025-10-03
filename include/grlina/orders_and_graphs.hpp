@@ -21,7 +21,6 @@
 #include <iostream>
 #include <vector>
 #include <unordered_map>
-#include <stack>
 #include <set>
 #include <iomanip>
 #include <boost/graph/adjacency_list.hpp>
@@ -40,6 +39,17 @@ typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
 typedef boost::graph_traits<Graph>::in_edge_iterator in_edge_iterator;
 typedef boost::graph_traits<Graph>::out_edge_iterator out_edge_iterator;
 
+template <typename T>
+using vec = std::vector<T>;
+template <typename T>
+using array = vec<vec<T>>;
+template <typename T>
+using pair = std::pair<T, T>;
+template <typename T>
+using set = std::set<T>;
+
+
+
 template <typename D>
 struct Degree_traits {
     
@@ -53,7 +63,6 @@ struct Degree_traits {
 
     static bool smaller_equal (const D& lhs, const D& rhs);
     
-
     /**
      * @brief This can be any topolgical order on the degrees.
      * 
@@ -63,7 +72,6 @@ struct Degree_traits {
      * @return false 
      */
     static bool lex_order(const D& a, const D& b);
-
 
     /**
      * @brief Lambda function to compare lexicographically for sorting.
@@ -97,6 +105,8 @@ struct Degree_traits {
      */
     template <typename InputStream>
     static D from_stream(InputStream& iss);
+
+    static void add(const D& a, D& b);
 
 }; // Degree_traits
 
