@@ -31,6 +31,7 @@
 #include <boost/graph/topological_sort.hpp>
 #include <functional>
 #include <map>
+#include "matrix_base.hpp"
 
 namespace graded_linalg {
 
@@ -156,6 +157,8 @@ void delete_incoming_edges(Graph& g, const Vertex& v) {
         boost::remove_edge(*it, g);
     }
 }
+
+
 
 // Function to print the graph with labels
 template <typename T>

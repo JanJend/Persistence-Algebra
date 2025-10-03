@@ -857,32 +857,14 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         return non_zero_columns;
     }
 
-    /**
-     * @brief Graded version of column deletion.
-     * 
-     * @param indices 
-     */
-    void delete_columns(vec<index>& indices) {
-        SparseMatrix<index>::delete_columns(indices);
-        vec_deletion(col_degrees, indices);
-    }
 
     /**
-     * @brief Graded version of row deletion.
-     * 
-     * @param indices 
-     */
-    void delete_rows(vec<index>& indices) {
-        SparseMatrix<index>::delete_rows(indices);
-        vec_deletion(row_degrees, indices);
-    }
-
-    /**
-     * @brief Computes a minimal presentation from this presentation, 
+     * @brief Removes all superfluous row-column pairs and those columns, which can be "trivially" zeroed out.
      * assumes a compatible ordering of the columns!
-     * 
      */
-    void minimize(){
+    void semi_minimize(){
+        // First do a check for row-column pairs (easy) and the "trivial" zero columns, 
+        // which can be removed by normal column reduction.
         array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
         vec<index> col_indices_to_remove;
         vec<index> row_indices_to_remove;
@@ -917,6 +899,28 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->delete_columns(col_indices_to_remove);
         this->delete_rows(row_indices_to_remove);
     }
+
+    /**
+     * @brief Graded version of column deletion.
+     * 
+     * @param indices 
+     */
+    void delete_columns(vec<index>& indices) {
+        SparseMatrix<index>::delete_columns(indices);
+        vec_deletion(col_degrees, indices);
+    }
+
+    /**
+     * @brief Graded version of row deletion.
+     * 
+     * @param indices 
+     */
+    void delete_rows(vec<index>& indices) {
+        SparseMatrix<index>::delete_rows(indices);
+        vec_deletion(row_degrees, indices);
+    }
+
+    
 
 
     /**
@@ -989,7 +993,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     void quotient_by (GradedSparseMatrix<D, index, DERIVED>& Y) {
         this->append_matrix(Y);
         this->sort_columns_lexicographically();
-        this->minimize();
+        this->column_reduction_graded();
+
     }
 
     /**
@@ -1001,7 +1006,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     DERIVED quotient_by_copy (DERIVED& Y) const {
         GradedSparseMatrix<D, index, DERIVED> copy = *this;
         copy.append_matrix(Y);
-        copy.minimize();
+        copy.semi_minimize();
+        // TO-DO: If we want to fully minimize, we need to compute a kernel in the derived class.
         return copy;
     }
 
@@ -1016,7 +1022,9 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->append_matrix(M);
         auto K = this->graded_kernel();
         K.cull_columns(row_temp);
-        K.column_reduction_graded();
+        K.semi_minimize();
+         // TO-DO: If we want to fully minimize, we need to compute a kernel in the derived class.
+        return K;
     }
 
     /**
@@ -1033,7 +1041,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         copy.append_matrix(M);
         auto K = copy.graded_kernel();
         K.cull_columns(row_temp);
-        K.column_reduction_graded();
+        K.semi_minimize();
+        // TO-DO: If we want to fully minimize, we need to do this in the derived class.
         return K;
     }
 
@@ -1048,9 +1057,12 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         DERIVED presentation = copy.graded_kernel();
         // To get the map to the basis, forget all the rows which correspong to relations
         presentation.cull_columns(num_new_gens, false);
-        vec<index> minimal_relations = presentation.column_reduction_graded();
-        DERIVED minimal_presentation = presentation.restricted_domain_copy(minimal_relations);
-        return minimal_presentation;
+        if constexpr (requires (DERIVED& d) { d.minimize(); }) {
+            presentation.minimize();
+        } else {
+            presentation.semi_minimize();
+        }
+        return presentation;
     }
 
     /**
