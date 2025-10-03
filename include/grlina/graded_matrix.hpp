@@ -760,6 +760,24 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         return permutation;
     }
 
+    bool are_columns_sorted_lexicographically() const {
+        for(index i = 1; i < this->num_cols; i++) {
+            if( !Degree_traits<D>::lex_lambda()(this->col_degrees[i-1], this->col_degrees[i]) && !Degree_traits<D>::equals(this->col_degrees[i-1], this->col_degrees[i]) ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool are_rows_sorted_lexicographically() const {
+        for(index i = 1; i < this->num_rows; i++) {
+            if( !Degree_traits<D>::lex_lambda()(this->row_degrees[i-1], this->row_degrees[i]) && !Degree_traits<D>::equals(this->row_degrees[i-1], this->row_degrees[i]) ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * @brief Outputs the lists of generators and relations
      *
@@ -778,11 +796,105 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     }
 
     /**
-     * @brief Returns (a free cover of) the kernel of this map. To be implemented in the derived class.
-     *
-     * @return DERIVED
+    * @brief Computes a minimal presentation from this presentation, 
+    * assumes a compatible ordering of the columns and rows!
      */
-    DERIVED graded_kernel();
+    void minimize(){
+        assert(this->are_columns_sorted_lexicographically());
+        assert(this->are_rows_sorted_lexicographically());
+        vec<index> col_indices_to_remove;
+        vec<index> row_indices_to_remove;
+        for(index i = 0; i < this->num_cols; i++){
+            index p = this->col_last(i);
+            if(p != -1 && Degree_traits<D>::equals(this->col_degrees[i], this->row_degrees[p])){
+                col_indices_to_remove.push_back(i);
+                row_indices_to_remove.push_back(p);
+            }
+        }
+        this->delete_columns(col_indices_to_remove);
+        this->delete_rows(row_indices_to_remove);
+        col_indices_to_remove.clear();
+        row_indices_to_remove.clear();
+        auto K = static_cast<DERIVED*>(this)->graded_kernel();
+        for(index i = 0; i < K.get_num_cols(); i++){
+            // For this to work, the rows of K must be sorted lexicographically
+            index p = K.col_last(i);
+            if(p == -1){
+                std::cerr << "Error: Found an empty column in the kernel during minimization. This can only happen if the kernel computation (mpfree adaptation) is not working." << std::endl;
+
+            } else {
+                if( Degree_traits<D>::equals(K.col_degrees[i], K.row_degrees[p]) ){
+                    // This column can be removed
+                    col_indices_to_remove.push_back(p);
+                }
+            }
+        }
+        this->delete_columns(col_indices_to_remove);
+    }
+
+    /**
+     * @brief Computes a minimal presentation from this presentation, 
+     * assumes a compatible ordering of the columns!
+     * TO-DO: Check if this function is typically faster than the above.
+     */
+    void minimize_variant(){
+        assert(this->are_columns_sorted_lexicographically());
+        assert(this->are_rows_sorted_lexicographically());
+        // First do a check for row-column pairs (easy) and the "trivial" zero columns, 
+        // which can be removed by normal column reduction.
+        array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
+        vec<index> col_indices_to_remove;
+        vec<index> row_indices_to_remove;
+        for(index i = 0; i < this->num_cols; i++){
+            index p = this->col_last(i);
+            bool found = true;
+            while( p != -1 && multi_pivots[p].size() != 0 && found){
+                found = false;
+                for(index j : multi_pivots[p]){
+                    if( this->is_admissible_column_operation(j, i) ){
+                        this->col_op(j, i);
+                        found = true;
+                        p = this->col_last(i);
+                        break;
+                    }
+                }
+            }
+            if(p != -1){
+                multi_pivots[p].push_back(i);
+                // If after reduction the relation contains a generator of the same degree, 
+                // they form a pair which can be deleted.
+                // TO-DO: In fact any relation with an entry of the same degree should be superfluous.
+                if(this->col_degrees[i] == this->row_degrees[p]){
+                    col_indices_to_remove.push_back(i);
+                    row_indices_to_remove.push_back(p);
+                }
+            } else {
+                // Empty columns can also be removed
+                col_indices_to_remove.push_back(i);
+            }
+        }
+        this->delete_columns(col_indices_to_remove);
+        this->delete_rows(row_indices_to_remove);
+        // The above might miss those columns which can only be zeroes out via 
+        // Non-compaitble column operations. For these we need to compute the kernel
+        col_indices_to_remove.clear();
+        row_indices_to_remove.clear();
+        auto K = static_cast<DERIVED*>(this)->graded_kernel();
+        for(index i = 0; i < K.get_num_cols(); i++){
+            // For this to work, the rows of K must be sorted lexicographically
+            index p = K.col_last(i);
+            if(p == -1){
+                std::cerr << "Error: Found an empty column in the kernel during minimization. This can only happen if the kernel computation (mpfree adaptation) is not working." << std::endl;
+
+            } else {
+                if( Degree_traits<D>::equals(K.col_degrees[i], K.row_degrees[p]) ){
+                    // This column can be removed
+                    col_indices_to_remove.push_back(p);
+                }
+            }
+        }
+        this->delete_columns(col_indices_to_remove);
+    }
 
     void shift (D d){
         for(index i = 0; i < this->num_cols; i++){
@@ -896,7 +1008,11 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * assumes a compatible ordering of the columns!
      *
      */
-    void minimize(){
+    void semi_minimize(){
+        assert(this->are_columns_sorted_lexicographically());
+        assert(this->are_rows_sorted_lexicographically());
+        // First do a check for row-column pairs (easy) and the "trivial" zero columns, 
+        // which can be removed by normal column reduction.
         array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
         vec<index> col_indices_to_remove;
         vec<index> row_indices_to_remove;
@@ -931,6 +1047,28 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->delete_columns(col_indices_to_remove);
         this->delete_rows(row_indices_to_remove);
     }
+
+    /**
+     * @brief Graded version of column deletion.
+     * 
+     * @param indices 
+     */
+    void delete_columns(vec<index>& indices) {
+        SparseMatrix<index>::delete_columns(indices);
+        vec_deletion(col_degrees, indices);
+    }
+
+    /**
+     * @brief Graded version of row deletion.
+     * 
+     * @param indices 
+     */
+    void delete_rows(vec<index>& indices) {
+        SparseMatrix<index>::delete_rows(indices);
+        vec_deletion(row_degrees, indices);
+    }
+
+    
 
 
     /**
@@ -1012,7 +1150,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     void quotient_by (GradedSparseMatrix<D, index, DERIVED>& Y) {
         this->append_matrix(Y);
         this->sort_columns_lexicographically();
-        this->minimize();
+        this->column_reduction_graded();
+
     }
 
     /** 
@@ -1024,7 +1163,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     DERIVED quotient_by_copy (DERIVED& Y) const {
         DERIVED copy = static_cast<const DERIVED&>(*this);
         copy.append_matrix(Y);
-        copy.minimize();
+        copy.semi_minimize();
+        // TO-DO: If we want to fully minimize, we need to compute a kernel in the derived class.
         return copy;
     }
 
@@ -1039,10 +1179,10 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         index row_temp = this->num_cols;
         this->append_matrix(S);
         this->append_matrix(M);
-        auto K = this->graded_kernel();
-        K.cull_columns(row_temp, false);
-        K.column_reduction_graded();
-        assert(K.num_rows == row_temp);
+        auto K = static_cast<DERIVED*>(this)->graded_kernel();
+        K.cull_columns(row_temp);
+        K.semi_minimize();
+         // TO-DO: If we want to fully minimize, we need to compute a kernel in the derived class.
         return K;
     }
 
@@ -1058,10 +1198,10 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         index row_temp = copy.num_cols;
         copy.append_matrix(S);
         copy.append_matrix(M);
-        auto K = copy.graded_kernel();
-        K.cull_columns(row_temp, false);
-        K.column_reduction_graded();
-        assert(K.num_rows == row_temp);
+        auto K = copy->graded_kernel();
+        K.cull_columns(row_temp);
+        K.semi_minimize();
+        // TO-DO: If we want to fully minimize, we need to do this in the derived class.
         return K;
     }
 
@@ -1091,7 +1231,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     DERIVED submodule_generated_by(DERIVED& new_generators) const {
         assert(this->get_num_rows() == new_generators.get_num_rows());
         assert(this->row_degrees == new_generators.row_degrees);
-        auto copy = new_generators;
+        DERIVED copy = new_generators;
         index num_new_gens = copy.get_num_cols();
         copy.append_matrix(*this);
         // Obsolete if append_matrix works correctly: copy.col_degrees.insert(copy.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
@@ -1099,9 +1239,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         DERIVED presentation = copy.graded_kernel();
         // To get the map to the basis, forget all the rows which correspong to relations
         presentation.cull_columns(num_new_gens, false);
-        vec<index> minimal_relations = presentation.column_reduction_graded();
-        DERIVED minimal_presentation = presentation.restricted_domain_copy(minimal_relations);
-        return minimal_presentation;
+        presentation.semi_minimize();
+        return presentation;
     }
 
     /**

@@ -33,7 +33,7 @@ namespace graded_linalg {
 
 
 template <typename T>
-std::ostream& operator<< (std::ostream& ostr, const vec<T>& c) {
+inline std::ostream& operator<< (std::ostream& ostr, const vec<T>& c) {
     for(T i:c) {
       ostr << i << " ";
     }
@@ -41,7 +41,7 @@ std::ostream& operator<< (std::ostream& ostr, const vec<T>& c) {
 }
 
 template<typename T>
-std::ostream& operator<<(std::ostream& os, const std::set<T>& v) {
+inline std::ostream& operator<<(std::ostream& os, const std::set<T>& v) {
     os << "{";
     for (auto it = v.begin(); it != v.end(); ++it) {
         os << *it;
