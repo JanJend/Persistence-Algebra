@@ -18,7 +18,7 @@ struct BitsetHash {
 /**
  * @brief asks if a < b in order of the entries (reverse of standard comparison)
  */
-bool compareBitsets(const boost::dynamic_bitset<>& a, const boost::dynamic_bitset<>& b) {
+inline bool compareBitsets(const boost::dynamic_bitset<>& a, const boost::dynamic_bitset<>& b) {
     if (a.size() != b.size()) {
         throw std::invalid_argument("Bitsets must be of the same size for comparison.");
     }
@@ -32,7 +32,7 @@ bool compareBitsets(const boost::dynamic_bitset<>& a, const boost::dynamic_bitse
     return false; // The bitsets are equal
 }
 
-std::ostream& operator<< (std::ostream& ostr, const boost::dynamic_bitset<>& bs) {
+inline std::ostream& operator<< (std::ostream& ostr, const boost::dynamic_bitset<>& bs) {
     for (int i = 0; i < bs.size(); i++){
       ostr << bs[i] << " ";
     }
@@ -45,7 +45,7 @@ std::ostream& operator<< (std::ostream& ostr, const boost::dynamic_bitset<>& bs)
  * 
  * @param bs 
  */
-void print_bitset(const boost::dynamic_bitset<>& bs) {
+inline void print_bitset(const boost::dynamic_bitset<>& bs) {
     std::cout << bs << std::endl;
 }
 
@@ -54,7 +54,7 @@ void print_bitset(const boost::dynamic_bitset<>& bs) {
  * 
  * @param bs 
  */
-void print_bitset_reverse(const boost::dynamic_bitset<>& bs) {
+inline void print_bitset_reverse(const boost::dynamic_bitset<>& bs) {
     for (int i = bs.size() - 1; i >= 0; --i) {
         std::cout << bs[i] << " ";
     }
@@ -67,7 +67,7 @@ void print_bitset_reverse(const boost::dynamic_bitset<>& bs) {
  * @param bs 
  * @return std::string 
  */
-std::string bitsetToString_alt(const boost::dynamic_bitset<>& bs) {
+inline std::string bitsetToString_alt(const boost::dynamic_bitset<>& bs) {
     std::string result;
     result.reserve(bs.size());
     for (int i = bs.size() - 1; i >= 0; --i) {
@@ -82,7 +82,7 @@ std::string bitsetToString_alt(const boost::dynamic_bitset<>& bs) {
  * @param bs 
  * @return std::string 
  */
-std::string bitsetToString(const boost::dynamic_bitset<>& bs) {
+inline std::string bitsetToString(const boost::dynamic_bitset<>& bs) {
     std::string result;
     result.reserve(bs.size());
     for (size_t i = 0; i < bs.size(); ++i) {
@@ -97,7 +97,7 @@ std::string bitsetToString(const boost::dynamic_bitset<>& bs) {
  * @param bs 
  * @param file 
  */
-void serializeDynamicBitset(const boost::dynamic_bitset<>& bs, std::ofstream& file) {
+inline void serializeDynamicBitset(const boost::dynamic_bitset<>& bs, std::ofstream& file) {
     int length = bs.size();
     file.write(reinterpret_cast<const char*>(&length), sizeof(length));
     const auto& bs_data = bs.to_ulong();
@@ -111,7 +111,7 @@ void serializeDynamicBitset(const boost::dynamic_bitset<>& bs, std::ofstream& fi
  * @param file 
  * @return boost::dynamic_bitset<> 
  */
-boost::dynamic_bitset<> deserializeDynamicBitset(std::ifstream& file) {
+inline boost::dynamic_bitset<> deserializeDynamicBitset(std::ifstream& file) {
     int length;
     file.read(reinterpret_cast<char*>(&length), sizeof(length));
     unsigned long bs_data;
@@ -120,7 +120,7 @@ boost::dynamic_bitset<> deserializeDynamicBitset(std::ifstream& file) {
 }
 
 
-vec<bitset> compute_standard_vectors(int k){
+inline vec<bitset> compute_standard_vectors(int k){
     vec<bitset> result;
     for (int i = 0; i < k; i++){
         result.emplace_back(bitset(k, 0).set(i));
@@ -134,7 +134,7 @@ vec<bitset> compute_standard_vectors(int k){
  * @param k 
  * @return 
  */
-vec<boost::dynamic_bitset<>> compute_sum_of_standard_vectors(int k){
+inline vec<boost::dynamic_bitset<>> compute_sum_of_standard_vectors(int k){
     auto result = vec<boost::dynamic_bitset<>>();
     for (int i = 0; i < k; i++){
         boost::dynamic_bitset<> bitset(i + 1);
@@ -151,7 +151,7 @@ vec<boost::dynamic_bitset<>> compute_sum_of_standard_vectors(int k){
  * @param b 
  * @return bitset 
  */
-bitset glue(const bitset& a, const bitset& b){
+inline bitset glue(const bitset& a, const bitset& b){
     bitset result = a;
     assert(a.count() == b.size());
     size_t counter = 0;
@@ -170,7 +170,7 @@ bitset glue(const bitset& a, const bitset& b){
  * @param a 
  * @param b 
  */
-void glue_to(bitset& a, const bitset& b){
+inline void glue_to(bitset& a, const bitset& b){
     assert(a.count() == b.size());
     size_t counter = 0;
     for(auto it = a.find_first(); it != bitset::npos; it = a.find_next(it)){
@@ -183,7 +183,7 @@ void glue_to(bitset& a, const bitset& b){
 
 
 
-void generateCombinations(boost::dynamic_bitset<> &bitset, int offset, int k, std::vector<boost::dynamic_bitset<>> &combinations) {
+inline void generateCombinations(boost::dynamic_bitset<> &bitset, int offset, int k, std::vector<boost::dynamic_bitset<>> &combinations) {
     if (k == 0) {
         combinations.push_back(bitset);
         return;
@@ -203,7 +203,7 @@ void generateCombinations(boost::dynamic_bitset<> &bitset, int offset, int k, st
  * @param k 
  * @return std::vector<boost::dynamic_bitset<>> 
  */
-std::vector<boost::dynamic_bitset<>> generateAllBitsetsWithKOnes(int n, int k) {
+inline std::vector<boost::dynamic_bitset<>> generateAllBitsetsWithKOnes(int n, int k) {
     std::vector<boost::dynamic_bitset<>> combinations;
     boost::dynamic_bitset<> bitset(n, 0);
     generateCombinations(bitset,  0, k, combinations);
@@ -216,7 +216,7 @@ std::vector<boost::dynamic_bitset<>> generateAllBitsetsWithKOnes(int n, int k) {
  * @param n 
  * @return std::vector<boost::dynamic_bitset<>> 
  */
-std::vector<boost::dynamic_bitset<>> generateHalfBitsets(int n) {
+inline std::vector<boost::dynamic_bitset<>> generateHalfBitsets(int n) {
     // Check if n is even
     if (n % 2 != 0 || n <= 0) {
         throw std::invalid_argument("n must be a positive even number.");
@@ -235,7 +235,7 @@ std::vector<boost::dynamic_bitset<>> generateHalfBitsets(int n) {
     return bitsets;
 }
 
-std::vector<boost::dynamic_bitset<>> generateBitsets(int n) {
+inline std::vector<boost::dynamic_bitset<>> generateBitsets(int n) {
     std::vector<boost::dynamic_bitset<>> bitsets;
 
     // Start k from the largest possible value less than n/2 (if n is even) or less than n/2 rounded down (if n is odd)

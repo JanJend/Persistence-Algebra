@@ -190,7 +190,7 @@ struct Column_traits<vec<index>, index> {
     }
 
 
-    static bool scalar_product(vec<index>& v, vec<index>& w){
+    static bool scalar_product(const vec<index>& v,const vec<index>& w){
         auto it_v = v.begin();
         auto it_w = w.begin();
         index count = 0;
@@ -240,7 +240,7 @@ struct Column_traits<vec<index>, index> {
     static vec<index> get_random_vector(index length, float rate) {
         vec<index> v;
         for(index i = 0; i < length; i++) {
-            if(static_cast<float>(rand()) / RAND_MAX < rate) {
+            if(static_cast<float>(rand()) / static_cast<float>(RAND_MAX) < rate) {
                 v.push_back(i);
             }
         }

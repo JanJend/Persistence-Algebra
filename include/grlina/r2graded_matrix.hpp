@@ -32,24 +32,33 @@ namespace graded_linalg {
 using r2degree = std::pair<double, double>;
 
 // Vector addition
-r2degree operator+(const r2degree& a,
+inline r2degree operator+(const r2degree& a,
     const r2degree& b) {
 return {a.first + b.first, a.second + b.second};
 }
 
+inline vec<r2degree> operator+(const vec<r2degree>& a,
+    const r2degree& b) {
+    vec<r2degree> result = a;
+    for (auto& elem : result) {
+        elem = elem + b;
+    }
+    return result;
+}
+
 // Vector subtraction
-r2degree operator-(const r2degree& a,
+inline r2degree operator-(const r2degree& a,
     const r2degree& b) {
 return {a.first - b.first, a.second - b.second};
 }
 
 // Scalar multiplication (scalar * pair)
-r2degree operator*(double scalar, const r2degree& p) {
+inline r2degree operator*(double scalar, const r2degree& p) {
 return {scalar * p.first, scalar * p.second};
 }
 
 // Scalar multiplication (pair * scalar)
-r2degree operator*(const r2degree& p, double scalar) {
+inline r2degree operator*(const r2degree& p, double scalar) {
 return {p.first * scalar, p.second * scalar};
 }
 
@@ -103,9 +112,23 @@ struct Degree_traits<r2degree> {
         }
     }
 
-    static std::function<bool(const r2degree&, const r2degree&)> lex_lambda;
+    /**
+    * @brief Lambda function to compare lexicographically for sorting.
+    */
+    static std::function<bool(const r2degree&, const r2degree&)> lex_lambda() {
+        return [](const r2degree& a, const r2degree& b) {
+            return Degree_traits<r2degree>::lex_order(a, b);
+        };
+    }
 
-    static std::function<bool(const r2degree&, const r2degree&)> colex_lambda;
+    /**
+    * @brief Lambda function to compare colexicographically for sorting.
+    */
+    static std::function<bool(const r2degree&, const r2degree&)> colex_lambda() {
+        return [](const r2degree& a, const r2degree& b) {
+            return Degree_traits<r2degree>::colex_order(a, b);
+        };
+    }
 
     static vec<double> position(const r2degree& a)  {
         return {a.first, a.second};
@@ -147,19 +170,6 @@ struct Degree_traits<r2degree> {
 
 }; //Degree_traits<r2degree>
 
-/**
- * @brief Lambda function to compare lexicographically for sorting.
- */
-std::function<bool(const r2degree&, const r2degree&)> Degree_traits<r2degree>::lex_lambda = [](const r2degree& a, const r2degree& b) {
-    return Degree_traits<r2degree>::lex_order(a, b);
-};
-
-/**
- * @brief Lambda function to compare colexicographically for sorting.
- */
-std::function<bool(const r2degree&, const r2degree&)> Degree_traits<r2degree>::colex_lambda = [](const r2degree& a, const r2degree& b) {
-    return Degree_traits<r2degree>::colex_order(a, b);
-};
 
 
 
@@ -192,7 +202,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
 
     R2GradedSparseMatrix() : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>() {}
 
-    private:
+
     R2GradedSparseMatrix( SparseMatrix<index>&& other) :  GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(std::move(other)) {}
     
 
@@ -210,10 +220,12 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         return *this;
     }
 
-    R2GradedSparseMatrix(index m, index n) : 
-        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, n) {}
+    R2GradedSparseMatrix(index cols, index rows) : 
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(cols, rows) {}
     R2GradedSparseMatrix(index n, vec<index> indicator) : 
         GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(n, indicator) {} 
+    R2GradedSparseMatrix(index cols, index rows, std::string type, const index percent = -1) : 
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(cols, rows, type, percent) {} // Constructor with type
     R2GradedSparseMatrix(index m, index n, vec<r2degree> c_degrees, vec<r2degree> r_degrees) : 
         GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, n, c_degrees, r_degrees) {} // Constructor with degrees
     R2GradedSparseMatrix(index m, index n, const array<index>& data, vec<r2degree> c_degrees, vec<r2degree> r_degrees) : 
@@ -284,7 +296,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      * 
      */
     void sort_rows_colexicographically() {
-        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->row_degrees, Degree_traits<r2degree>::colex_lambda);
+        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->row_degrees, Degree_traits<r2degree>::colex_lambda());
         vec<index> reverse = vec<index>(permutation.size());
         for (index i = 0; i < permutation.size(); ++i) {
             reverse[permutation[i]] = i;
@@ -294,7 +306,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     }
 
     vec<index> sort_rows_colexicographically_with_output() {
-        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->row_degrees, Degree_traits<r2degree>::colex_lambda);
+        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->row_degrees, Degree_traits<r2degree>::colex_lambda());
         vec<index> reverse = vec<index>(permutation.size());
         for (index i = 0; i < permutation.size(); ++i) {
             reverse[permutation[i]] = i;
@@ -309,7 +321,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      * 
      */
     void sort_columns_colexicographically() {
-        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda);
+        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda());
         array<index> new_data = array<index>(this->data.size());
         for(index i = 0; i < this->data.size(); i++) {
             new_data[i] = this->data[permutation[i]];
@@ -318,7 +330,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     }
 
     vec<index> sort_columns_colexicographically_with_output() {
-        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda);
+        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda());
         array<index> new_data = array<index>(this->data.size());
         for(index i = 0; i < this->data.size(); i++) {
             new_data[i] = this->data[permutation[i]];
@@ -423,8 +435,8 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
 
         auto column_degrees_lex = this->col_degrees;
         auto row_degrees_lex = this->row_degrees;
-        std::sort(column_degrees_lex.begin(), column_degrees_lex.end(), Degree_traits<r2degree>::lex_lambda);
-        std::sort(row_degrees_lex.begin(), row_degrees_lex.end(), Degree_traits<r2degree>::lex_lambda);
+        std::sort(column_degrees_lex.begin(), column_degrees_lex.end(), Degree_traits<r2degree>::lex_lambda());
+        std::sort(row_degrees_lex.begin(), row_degrees_lex.end(), Degree_traits<r2degree>::lex_lambda());
    
         x_grid.clear();
         y_grid.clear();
@@ -448,7 +460,7 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         merge_unique_elements<double>(column_degrees_lex, row_degrees_lex, x_grid, true);
 
         auto rows_degrees_colex = this->row_degrees;
-        std::sort(rows_degrees_colex.begin(), rows_degrees_colex.end(), Degree_traits<r2degree>::colex_lambda);
+        std::sort(rows_degrees_colex.begin(), rows_degrees_colex.end(), Degree_traits<r2degree>::colex_lambda());
         vec<index> column_permutation = this->sort_columns_colexicographically_with_output();
         merge_unique_elements<double>(this->col_degrees, rows_degrees_colex, y_grid, false);
 
@@ -846,6 +858,7 @@ struct R2Sequence{
     }
 
 };
+
 
 template<typename index>
 struct R2Resolution {

@@ -1,6 +1,5 @@
 #include <iostream>
 #include <cassert>
-#include <vector>
 #include <grlina/dense_matrix.hpp>
 #include <grlina/matrix_base.hpp>
 #include <filesystem>
