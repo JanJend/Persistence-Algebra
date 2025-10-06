@@ -22,13 +22,6 @@ void compute_minimization(std::filesystem::path input_path, std::filesystem::pat
     }
 }
 
-std::string insert_suffix_before_extension(const std::string& filepath, const std::string& suffix) {
-    std::filesystem::path path(filepath);
-    std::string stem = path.stem().string();             // filename without extension
-    std::string extension = path.extension().string();   // e.g., ".txt"
-    std::filesystem::path new_path = path.parent_path() / (stem + suffix + extension);
-    return new_path.string();
-}
 
 int main(int argc, char** argv) {
     
