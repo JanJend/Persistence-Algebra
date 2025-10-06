@@ -113,6 +113,8 @@ struct Degree_traits {
 
     static void add(const D& a, D& b);
 
+    static void subtract(const D& a, D& b);
+
 }; // Degree_traits
 
 

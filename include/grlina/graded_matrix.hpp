@@ -683,6 +683,27 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         return minimal_directed_graph<D, index>(support);
     }
 
+    
+    /**
+     * @brief Graded version of column deletion.
+     *
+     * @param indices
+     */
+    void delete_columns(vec<index>& indices) {
+        SparseMatrix<index>::delete_columns(indices);
+        vec_deletion(col_degrees, indices);
+    }
+
+    /**
+     * @brief Graded version of row deletion.
+     *
+     * @param indices
+     */
+    void delete_rows(vec<index>& indices) {
+        SparseMatrix<index>::delete_rows(indices);
+        vec_deletion(row_degrees, indices);
+    }
+
 
     /**
      * @brief Sorts the columns lexicographically by degree,
@@ -802,6 +823,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     void minimize(){
         assert(this->are_columns_sorted_lexicographically());
         assert(this->are_rows_sorted_lexicographically());
+        assert(this->get_num_rows() == this->row_degrees.size());
         vec<index> col_indices_to_remove;
         vec<index> row_indices_to_remove;
         for(index i = 0; i < this->num_cols; i++){
@@ -898,16 +920,16 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
     void shift (D d){
         for(index i = 0; i < this->num_cols; i++){
-            Degree_traits<D>::add(d, this->col_degrees[i]);
+            Degree_traits<D>::subtract(d, this->col_degrees[i]);
         }
         for(index i = 0; i < this->num_rows; i++){
-            Degree_traits<D>::add(d, this->row_degrees[i]);
+            Degree_traits<D>::subtract(d, this->row_degrees[i]);
         }
     }
 
     void shift_generators (D d){
         for(index i = 0; i < this->num_rows; i++){
-            Degree_traits<D>::add(d, this->row_degrees[i]);
+            Degree_traits<D>::subtract(d, this->row_degrees[i]);
         }
     }
 
@@ -967,25 +989,11 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         return non_zero_columns;
     }
 
-    /**
-     * @brief Graded version of column deletion.
-     *
-     * @param indices
-     */
-    void delete_columns(vec<index>& indices) {
-        SparseMatrix<index>::delete_columns(indices);
-        vec_deletion(col_degrees, indices);
+    void column_reduction_graded_w_deletion (){
+        auto nzc = this->column_reduction_graded();
+        this->delete_all_but_columns_alt(nzc);
     }
 
-    /**
-     * @brief Graded version of row deletion.
-     *
-     * @param indices
-     */
-    void delete_rows(vec<index>& indices) {
-        SparseMatrix<index>::delete_rows(indices);
-        vec_deletion(row_degrees, indices);
-    }
 
         /**
      * @brief Sets all generators to be at the degree d and shifts the relations accordingly.s
@@ -1129,8 +1137,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     void quotient_by (GradedSparseMatrix<D, index, DERIVED>& Y) {
         this->append_matrix(Y);
         this->sort_columns_lexicographically();
-        this->column_reduction_graded();
-
+        this->minimize();
     }
 
     /** 
@@ -1142,15 +1149,16 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     DERIVED quotient_by_copy (DERIVED& Y) const {
         DERIVED copy = static_cast<const DERIVED&>(*this);
         copy.append_matrix(Y);
-        copy.semi_minimize();
-        // TO-DO: If we want to fully minimize, we need to compute a kernel in the derived class.
+        this->sort_columns_lexicographically();
+        copy.minimize();
         return copy;
     }
 
     /**
      * @brief Let M present a module and S a submodule of M via a map from generators to generators.
-     * If this object presents a map f from some module to the one presented by M, then this method computes
-     * f^{-1}(Im S) as a submodule of the
+     * If this object presents a map f from the generators, say G, of some module to the one presented by M, 
+     * then this method computes the submodule f^{-1}(Im S) as a map to G.
+     * 
      *
      * @param
      */
@@ -1160,13 +1168,14 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->append_matrix(M);
         auto K = static_cast<DERIVED*>(this)->graded_kernel();
         K.cull_columns(row_temp, false);
-        K.semi_minimize();
-         // TO-DO: If we want to fully minimize, we need to compute a kernel in the derived class.
+        
+        K.column_reduction_graded_w_deletion();
+         // TO-DO: If we want to fully reduce, we need to compute a kernel in the derived class.
         return K;
     }
 
     /**
-     * @brief Same but does not change this matrix.
+     * @brief Same as above but does not change this matrix.
      *
      * @param M
      * @param S
@@ -1180,9 +1189,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         copy.append_matrix(M);
         auto K = copy.graded_kernel();
         K.cull_columns(row_temp, false);
-        K.sort_rows_lexicographically(); // ensure rows are sorted for semi_minimize
-        K.semi_minimize();
-        // TO-DO: could also fully minimize if we need to?
+        K.column_reduction_graded_w_deletion();
+        // TO-DO: could also fully minimize if we want to?
         return K;
     }
 
@@ -1199,17 +1207,17 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         assert(l.row_degrees == r.row_degrees);
         auto k = l.inverse_image_copy(static_cast<const DERIVED&>(*this), r);
         auto i = l*k;
-        i.column_reduction_graded();
+        i.column_reduction_graded_w_deletion();
         return i;
     };
 
     /**
      * @brief Returns a presentation of the submodule generated by the input, if *this is a presentation.
-     *
+     *  Does not minimize!
      * @param new_generators
      * @return DERIVED
      */
-    DERIVED submodule_generated_by(DERIVED& new_generators) const {
+    DERIVED submodule_generated_by(const DERIVED& new_generators) const {
         assert(this->get_num_rows() == new_generators.get_num_rows());
         assert(this->row_degrees == new_generators.row_degrees);
         DERIVED copy = new_generators;
@@ -1220,7 +1228,24 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         DERIVED presentation = copy.graded_kernel();
         // To get the map to the basis, forget all the rows which correspong to relations
         presentation.cull_columns(num_new_gens, false);
-        presentation.semi_minimize();
+        return presentation;
+    }
+
+    /**
+     * @brief Returns a presentation of the submodule generated by this, if M is the presentation of the super-module.
+     *  Does not minimize!
+     * @param new_generators
+     * @return DERIVED
+     */
+    DERIVED presentation_of_submodule (const DERIVED& M) {
+        assert(this->get_num_rows() == M.get_num_rows());
+        assert(this->row_degrees == M.row_degrees);
+        index num_new_gens = this->get_num_cols();
+        this->append_matrix(M);
+        // A kernel of this map is the pullback of this presentation along the injection
+        DERIVED presentation = static_cast<DERIVED&>(*this).graded_kernel();
+        // To get the map to the basis, forget all the rows which correspong to relations
+        presentation.cull_columns(num_new_gens, false);
         return presentation;
     }
 
@@ -1286,11 +1311,11 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
 template <typename D, typename index, typename DERIVED>
 DERIVED operator*(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B) {
+    assert(A.col_degrees == B.row_degrees);
     SparseMatrix<index> product = static_cast<const SparseMatrix<index>&>(A) * static_cast<const SparseMatrix<index>&>(B);
     DERIVED result(std::move(product));
     result.row_degrees = A.row_degrees;
     result.col_degrees = B.col_degrees;
-
     return result;
 }
 
@@ -1300,7 +1325,7 @@ template <typename D, typename DERIVED>
 DERIVED shifted_identity( vec<D>& generators, const D& epsilon) {
     DERIVED result(generators.size(),generators.size(), "Identity");
     result.col_degrees = generators;
-    result.row_degrees = generators + epsilon;
+    result.row_degrees = generators - epsilon;
     return result;
 }
 

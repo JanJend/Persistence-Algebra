@@ -52,6 +52,7 @@ inline r2degree operator-(const r2degree& a,
 return {a.first - b.first, a.second - b.second};
 }
 
+
 // Scalar multiplication (scalar * pair)
 inline r2degree operator*(double scalar, const r2degree& p) {
 return {scalar * p.first, scalar * p.second};
@@ -165,6 +166,11 @@ struct Degree_traits<r2degree> {
     static void add(const r2degree& a, r2degree& b) {
         b.first += a.first;
         b.second += a.second;
+    }
+
+    static void subtract(const r2degree& a, r2degree& b){
+        b.first -= a.first;
+        b.second -= a.second;
     }
 
 
@@ -679,68 +685,6 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         return result;
     }
 
-
-    /**
-     * @brief Computes a minimal presentation from this presentation, 
-     * assumes a compatible ordering of the columns!
-     * TO-DO: This function simply does not
-     */
-    void minimize(){
-        // First do a check for row-column pairs (easy) and the "trivial" zero columns, 
-        // which can be removed by normal column reduction.
-        array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
-        vec<index> col_indices_to_remove;
-        vec<index> row_indices_to_remove;
-        for(index i = 0; i < this->num_cols; i++){
-            index p = this->col_last(i);
-            bool found = true;
-            while( p != -1 && multi_pivots[p].size() != 0 && found){
-                found = false;
-                for(index j : multi_pivots[p]){
-                    if( this->is_admissible_column_operation(j, i) ){
-                        this->col_op(j, i);
-                        found = true;
-                        p = this->col_last(i);
-                        break;
-                    }
-                }
-            }
-            if(p != -1){
-                multi_pivots[p].push_back(i);
-                // If after reduction the relation contains a generator of the same degree, 
-                // they form a pair which can be deleted.
-                // TO-DO: In fact any relation with an entry of the same degree should be superfluous.
-                if(this->col_degrees[i] == this->row_degrees[p]){
-                    col_indices_to_remove.push_back(i);
-                    row_indices_to_remove.push_back(p);
-                }
-            } else {
-                // Empty columns can also be removed
-                col_indices_to_remove.push_back(i);
-            }
-        }
-        this->delete_columns(col_indices_to_remove);
-        this->delete_rows(row_indices_to_remove);
-        // The above might miss those columns which can only be zeroes out via 
-        // Non-compaitble column operations. For these we need to compute the kernel
-        col_indices_to_remove.clear();
-        row_indices_to_remove.clear();
-        auto K = this->graded_kernel();
-        for(index i = 0; i < K.get_num_cols(); i++){
-            // For this to work, the rows of K must be sorted lexicographically
-            index p = K.col_last(i);
-            if(p == -1){
-                std::cerr << "Error: Found an empty column in the kernel during minimization. This can only happen if the kernel computation (mpfree adaptation) is not working." << std::endl;
-
-            } else {
-                if( Degree_traits<r2degree>::equals(K.col_degrees[i], K.row_degrees[p]) ){
-                    // This column can be removed
-                    col_indices_to_remove.push_back(p);
-                }
-            }
-        }
-        this->delete_columns(col_indices_to_remove);
-    }
 
     /**
      * @brief Inefficient - computes a minimization.
