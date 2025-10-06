@@ -837,7 +837,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->delete_rows(row_indices_to_remove);
         col_indices_to_remove.clear();
         row_indices_to_remove.clear();
-        auto K = static_cast<DERIVED*>(this)->graded_kernel();
+        DERIVED copy = static_cast<DERIVED&>(*this);
+        auto K = copy.graded_kernel();
         for(index i = 0; i < K.get_num_cols(); i++){
             // For this to work, the rows of K must be sorted lexicographically
             index p = K.col_last(i);
@@ -901,7 +902,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         // Non-compaitble column operations. For these we need to compute the kernel
         col_indices_to_remove.clear();
         row_indices_to_remove.clear();
-        auto K = static_cast<DERIVED*>(this)->graded_kernel();
+        DERIVED copy = static_cast<DERIVED&>(*this);
+        auto K = copy.graded_kernel();
         for(index i = 0; i < K.get_num_cols(); i++){
             // For this to work, the rows of K must be sorted lexicographically
             index p = K.col_last(i);

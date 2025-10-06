@@ -15,10 +15,10 @@
 
 #pragma once
 
-#include "grlina/orders_and_graphs.hpp"
 #ifndef R2GRADED_MATRIX_HPP
 #define R2GRADED_MATRIX_HPP
 
+#include "grlina/orders_and_graphs.hpp"
 #include <grlina/graded_matrix.hpp>
 #include <grlina/grid_scheduler.hpp>
 #include <iostream>
@@ -1075,6 +1075,7 @@ struct R2Resolution {
     std::array<double, 4> area_polynomial (const pair<r2degree>& bounds) const {
         assert(d1.get_num_rows() == 1);
         // TO-DO: Finish this.
+        return {0,0,0,0};
     }
 
     /**
