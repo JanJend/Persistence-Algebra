@@ -1079,30 +1079,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             }
         }
         // Then check for empty columns
-        GradedSparseMatrix<D, index, DERIVED> copy = *this;
-        array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
-        for(index i = 0; i < copy.num_cols; i++){
-            index p = copy.col_last(i);
-            bool found = true;
-            while( p != -1 && multi_pivots[p].size() != 0 && found){
-                found = false;
-                for(index j : multi_pivots[p]){
-                    if( is_admissible_column_operation(j, i) ){
-                        copy.col_op(j, i);
-                        found = true;
-                        p = copy.col_last(i);
-                        break;
-                    }
-                }
-            }
-            if(p != -1){
-                multi_pivots[p].push_back(i);
-            } else {
-                // Empty columns are superfluous
-                return false;
-            }
-        }
-        return true;
+        // To-Do: use graded kernel.
     }
 
      /**
