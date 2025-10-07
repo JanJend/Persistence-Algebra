@@ -23,7 +23,6 @@
 #include <vector>
 #include <grlina/matrix_base.hpp>
 #include <grlina/dense_matrix.hpp>
-#include <unordered_map>
 #include <omp.h>
 #include <boost/dynamic_bitset.hpp>
 #include <cmath>
@@ -583,6 +582,16 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         }
     }
 
+
+    bool is_sorted() const {
+        for(index i = 0; i < this->num_cols; i++){
+            if(!std::is_sorted(this->data[i].begin(), this->data[i].end())){
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * @brief Computes all rows from column data in reverse order.
      * 
@@ -1000,6 +1009,11 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         return col_operations.restricted_domain_copy(zero_cols);
     }
 
+    SparseMatrix<index> get_kernel(){
+			//TODO Just added this to be able to compile! 
+			return *this;
+		}
+
     /**
      * @brief Computes the cokernel of a sparse matrix over F_2 by column reducing the matrix first
      * Notice that the result must be a cokernel to the non-reduced matrix, too, so we can also use a copy instead, if we want to keep the original matrix.
@@ -1296,7 +1310,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
  * 
  */
 template <typename index>
-SparseMatrix<index> multiply_transpose(SparseMatrix<index>& M, SparseMatrix<index>& N){
+SparseMatrix<index> multiply_transpose(const SparseMatrix<index>& M, const SparseMatrix<index>& N){
   SparseMatrix<index> result(N.get_num_cols(), M.get_num_cols());
   result.data.resize(result.get_num_cols());
   // assert(M.get_num_rows() == N.get_num_rows()); Sometimes we dont know.
@@ -1315,12 +1329,16 @@ SparseMatrix<index> multiply_transpose(SparseMatrix<index>& M, SparseMatrix<inde
  * 
  */
 template <typename index>
-SparseMatrix<index> multiply(SparseMatrix<index>& M, SparseMatrix<index>& N){
+SparseMatrix<index> multiply(const SparseMatrix<index>& M, const SparseMatrix<index>& N){
     assert(M.get_num_cols() == N.get_num_rows());
     SparseMatrix<index> transpose = M.transposed_copy();
     return multiply_transpose(transpose, N);
 }
 
+template <typename index>
+SparseMatrix<index>  operator*(const SparseMatrix<index>& M, const SparseMatrix<index>& N){
+    return multiply(M, N);
+}
 
 
 template <typename index>
