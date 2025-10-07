@@ -15,10 +15,10 @@
 
 #pragma once
 
-#include "grlina/orders_and_graphs.hpp"
 #ifndef R2GRADED_MATRIX_HPP
 #define R2GRADED_MATRIX_HPP
 
+#include "grlina/orders_and_graphs.hpp"
 #include <grlina/graded_matrix.hpp>
 #include <grlina/grid_scheduler.hpp>
 #include <iostream>
@@ -32,12 +32,12 @@ namespace graded_linalg {
 using r2degree = std::pair<double, double>;
 
 // Vector addition
-r2degree operator+(const r2degree& a,
+inline r2degree operator+(const r2degree& a,
     const r2degree& b) {
 return {a.first + b.first, a.second + b.second};
 }
 
-vec<r2degree> operator+(const vec<r2degree>& a,
+inline vec<r2degree> operator+(const vec<r2degree>& a,
     const r2degree& b) {
     vec<r2degree> result = a;
     for (auto& elem : result) {
@@ -47,18 +47,19 @@ vec<r2degree> operator+(const vec<r2degree>& a,
 }
 
 // Vector subtraction
-r2degree operator-(const r2degree& a,
+inline r2degree operator-(const r2degree& a,
     const r2degree& b) {
 return {a.first - b.first, a.second - b.second};
 }
 
+
 // Scalar multiplication (scalar * pair)
-r2degree operator*(double scalar, const r2degree& p) {
+inline r2degree operator*(double scalar, const r2degree& p) {
 return {scalar * p.first, scalar * p.second};
 }
 
 // Scalar multiplication (pair * scalar)
-r2degree operator*(const r2degree& p, double scalar) {
+inline r2degree operator*(const r2degree& p, double scalar) {
 return {p.first * scalar, p.second * scalar};
 }
 
@@ -112,9 +113,23 @@ struct Degree_traits<r2degree> {
         }
     }
 
-    static std::function<bool(const r2degree&, const r2degree&)> lex_lambda;
+    /**
+    * @brief Lambda function to compare lexicographically for sorting.
+    */
+    static std::function<bool(const r2degree&, const r2degree&)> lex_lambda() {
+        return [](const r2degree& a, const r2degree& b) {
+            return Degree_traits<r2degree>::lex_order(a, b);
+        };
+    }
 
-    static std::function<bool(const r2degree&, const r2degree&)> colex_lambda;
+    /**
+    * @brief Lambda function to compare colexicographically for sorting.
+    */
+    static std::function<bool(const r2degree&, const r2degree&)> colex_lambda() {
+        return [](const r2degree& a, const r2degree& b) {
+            return Degree_traits<r2degree>::colex_order(a, b);
+        };
+    }
 
     static vec<double> position(const r2degree& a)  {
         return {a.first, a.second};
@@ -153,22 +168,14 @@ struct Degree_traits<r2degree> {
         b.second += a.second;
     }
 
+    static void subtract(const r2degree& a, r2degree& b){
+        b.first -= a.first;
+        b.second -= a.second;
+    }
+
 
 }; //Degree_traits<r2degree>
 
-/**
- * @brief Lambda function to compare lexicographically for sorting.
- */
-std::function<bool(const r2degree&, const r2degree&)> Degree_traits<r2degree>::lex_lambda = [](const r2degree& a, const r2degree& b) {
-    return Degree_traits<r2degree>::lex_order(a, b);
-};
-
-/**
- * @brief Lambda function to compare colexicographically for sorting.
- */
-std::function<bool(const r2degree&, const r2degree&)> Degree_traits<r2degree>::colex_lambda = [](const r2degree& a, const r2degree& b) {
-    return Degree_traits<r2degree>::colex_order(a, b);
-};
 
 
 
@@ -295,7 +302,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      * 
      */
     void sort_rows_colexicographically() {
-        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->row_degrees, Degree_traits<r2degree>::colex_lambda);
+        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->row_degrees, Degree_traits<r2degree>::colex_lambda());
         vec<index> reverse = vec<index>(permutation.size());
         for (index i = 0; i < permutation.size(); ++i) {
             reverse[permutation[i]] = i;
@@ -305,7 +312,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     }
 
     vec<index> sort_rows_colexicographically_with_output() {
-        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->row_degrees, Degree_traits<r2degree>::colex_lambda);
+        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->row_degrees, Degree_traits<r2degree>::colex_lambda());
         vec<index> reverse = vec<index>(permutation.size());
         for (index i = 0; i < permutation.size(); ++i) {
             reverse[permutation[i]] = i;
@@ -320,7 +327,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      * 
      */
     void sort_columns_colexicographically() {
-        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda);
+        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda());
         array<index> new_data = array<index>(this->data.size());
         for(index i = 0; i < this->data.size(); i++) {
             new_data[i] = this->data[permutation[i]];
@@ -329,7 +336,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     }
 
     vec<index> sort_columns_colexicographically_with_output() {
-        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda);
+        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda());
         array<index> new_data = array<index>(this->data.size());
         for(index i = 0; i < this->data.size(); i++) {
             new_data[i] = this->data[permutation[i]];
@@ -434,8 +441,8 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
 
         auto column_degrees_lex = this->col_degrees;
         auto row_degrees_lex = this->row_degrees;
-        std::sort(column_degrees_lex.begin(), column_degrees_lex.end(), Degree_traits<r2degree>::lex_lambda);
-        std::sort(row_degrees_lex.begin(), row_degrees_lex.end(), Degree_traits<r2degree>::lex_lambda);
+        std::sort(column_degrees_lex.begin(), column_degrees_lex.end(), Degree_traits<r2degree>::lex_lambda());
+        std::sort(row_degrees_lex.begin(), row_degrees_lex.end(), Degree_traits<r2degree>::lex_lambda());
    
         x_grid.clear();
         y_grid.clear();
@@ -459,7 +466,7 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         merge_unique_elements<double>(column_degrees_lex, row_degrees_lex, x_grid, true);
 
         auto rows_degrees_colex = this->row_degrees;
-        std::sort(rows_degrees_colex.begin(), rows_degrees_colex.end(), Degree_traits<r2degree>::colex_lambda);
+        std::sort(rows_degrees_colex.begin(), rows_degrees_colex.end(), Degree_traits<r2degree>::colex_lambda());
         vec<index> column_permutation = this->sort_columns_colexicographically_with_output();
         merge_unique_elements<double>(this->col_degrees, rows_degrees_colex, y_grid, false);
 
@@ -605,7 +612,8 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
      * @return SparseMatrix<index> 
      */
     R2GradedSparseMatrix graded_kernel() {
-
+        assert(this->col_degrees.size() == this->get_num_cols());
+        assert(this->row_degrees.size() == this->get_num_rows());
         vec<index> column_permutation = this->compute_grid_representation();
         this->initialise_grid_scheduler();
         
@@ -673,71 +681,10 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         result.row_degrees = this->col_degrees;
     
         result.permute_rows_graded(column_permutation);
+
         return result;
     }
 
-
-    /**
-     * @brief Computes a minimal presentation from this presentation, 
-     * assumes a compatible ordering of the columns!
-     * TO-DO: This function simply does not
-     */
-    void minimize(){
-        // First do a check for row-column pairs (easy) and the "trivial" zero columns, 
-        // which can be removed by normal column reduction.
-        array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
-        vec<index> col_indices_to_remove;
-        vec<index> row_indices_to_remove;
-        for(index i = 0; i < this->num_cols; i++){
-            index p = this->col_last(i);
-            bool found = true;
-            while( p != -1 && multi_pivots[p].size() != 0 && found){
-                found = false;
-                for(index j : multi_pivots[p]){
-                    if( this->is_admissible_column_operation(j, i) ){
-                        this->col_op(j, i);
-                        found = true;
-                        p = this->col_last(i);
-                        break;
-                    }
-                }
-            }
-            if(p != -1){
-                multi_pivots[p].push_back(i);
-                // If after reduction the relation contains a generator of the same degree, 
-                // they form a pair which can be deleted.
-                // TO-DO: In fact any relation with an entry of the same degree should be superfluous.
-                if(this->col_degrees[i] == this->row_degrees[p]){
-                    col_indices_to_remove.push_back(i);
-                    row_indices_to_remove.push_back(p);
-                }
-            } else {
-                // Empty columns can also be removed
-                col_indices_to_remove.push_back(i);
-            }
-        }
-        this->delete_columns(col_indices_to_remove);
-        this->delete_rows(row_indices_to_remove);
-        // The above might miss those columns which can only be zeroes out via 
-        // Non-compaitble column operations. For these we need to compute the kernel
-        col_indices_to_remove.clear();
-        row_indices_to_remove.clear();
-        auto K = this->graded_kernel();
-        for(index i = 0; i < K.get_num_cols(); i++){
-            // For this to work, the rows of K must be sorted lexicographically
-            index p = K.col_last(i);
-            if(p == -1){
-                std::cerr << "Error: Found an empty column in the kernel during minimization. This can only happen if the kernel computation (mpfree adaptation) is not working." << std::endl;
-
-            } else {
-                if( Degree_traits<r2degree>::equals(K.col_degrees[i], K.row_degrees[p]) ){
-                    // This column can be removed
-                    col_indices_to_remove.push_back(p);
-                }
-            }
-        }
-        this->delete_columns(col_indices_to_remove);
-    }
 
     /**
      * @brief Inefficient - computes a minimization.
@@ -1128,6 +1075,7 @@ struct R2Resolution {
     std::array<double, 4> area_polynomial (const pair<r2degree>& bounds) const {
         assert(d1.get_num_rows() == 1);
         // TO-DO: Finish this.
+        return {0,0,0,0};
     }
 
     /**

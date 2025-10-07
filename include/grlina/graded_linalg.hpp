@@ -21,6 +21,7 @@
 
 
 #include <vector>
+#include <grlina/general.hpp>
 #include <grlina/sparse_matrix.hpp>
 #include <grlina/graded_matrix.hpp>
 #include <grlina/matrix_base.hpp>

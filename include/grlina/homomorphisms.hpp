@@ -39,7 +39,7 @@ namespace graded_linalg {
  * @return vec<DERIVED>
  */
 template <typename D, typename index, typename DERIVED>
-vec<DERIVED> hom_space_basis(
+vec<DERIVED> hom_space_basis_new(
     const GradedSparseMatrix<D, index, DERIVED>& A,
     const GradedSparseMatrix<D, index, DERIVED>& B, 
     bool use_hom_exactness = false ){
@@ -53,7 +53,7 @@ vec<DERIVED> hom_space_basis(
     if(! use_hom_exactness){
 
     vec<std::pair<index,index>> variable_positions; // Stores the position of the variables in the matrix Q
-   SparseMatrix<index> S(0,0);
+    SparseMatrix<index> S(0,0);
     S.data.reserve( A.get_num_rows() + B.get_num_rows() + 1);
     index S_index = 0;
 
@@ -611,6 +611,7 @@ Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index, DERIVED>& A, 
 
     //TO-DO: Finish this.
 }   
+
 
 } // graded_linalg
 

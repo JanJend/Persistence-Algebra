@@ -16,6 +16,7 @@
 #pragma once
 
 
+#include "grlina/column_types.hpp"
 #ifndef SPARSE_MATRIX_HPP
 #define SPARSE_MATRIX_HPP
 
@@ -563,6 +564,26 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     SparseMatrix(index n, vec<index> indicator) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(n, indicator) {rows_computed = false;}
 
     /**
+     *   To treat a sparse matrix as a big vector for reduction we will need this function.
+     *   In this way SparseMatrix becomes itself a sparse column type.
+     */
+    index last_entry_index() const{
+        for(index i = this->get_num_cols()-1; i >= 0; i-- ){
+            index p = this->col_last(i);
+            if( p != -1){
+                return i*this->get_num_rows() + p;
+            }
+        }
+        return -1;
+    }
+
+    bool is_nonzero_at(index p){
+        index col = p / this->get_num_cols();
+        index row = p % this->get_num_cols();
+        return this->is_nonzero_entry(col, row);
+    }
+
+    /**
      * @brief Sorts the entries of a column
      * 
      * @param i 
@@ -767,9 +788,9 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         for(index i = 0; i < this->num_cols; i++) {
             remove_intersection(this->data[i], row_indices_to_remove);
         }
+        auto it = row_indices_to_remove.begin();
         for(index j = 0; j < this->num_rows; j++) {
-            auto it = row_indices_to_remove.begin();
-            if(j == *it){
+            if(it != row_indices_to_remove.end() && j == *it){
                 it++;
             } else {
                 remaining_rows.push_back(j);
@@ -913,11 +934,11 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * 
      * @param threshold 
      */
-    void cull_columns(const index& threshold, bool from_end = true){
+    void cull_columns(const index& threshold, bool from_end){
         if(from_end){
-            this->num_rows -= threshold;
+            this->set_num_rows(this->get_num_rows() - threshold);
         } else {
-            this->num_rows = threshold;
+            this->set_num_rows(threshold);
         }
 
         for (index j = 0; j < this->num_cols; j++){
@@ -1304,6 +1325,14 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 
 }; // SparseMatrix;
 
+template< typename index>
+void add_to (const SparseMatrix<index>& A, SparseMatrix<index>& B){
+    assert(A.get_num_cols() == B.get_num_cols());
+    assert(A.get_num_rows() == B.get_num_rows());
+    for(index i = 0; i< A.get_num_cols(); i++){
+        Column_traits<vec<index>, index>::add_to(A.data[i],B.data[i]);
+    }
+}
 
 /**
  * @brief Assumes that M is already transposed, then multiplies as before.

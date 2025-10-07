@@ -253,7 +253,7 @@ struct DenseMatrix : public MatrixUtil<bitset, int, DenseMatrix>{
 }; // end of DenseMatrix
 
 
-std::vector<DenseMatrix > pivotsToEchelon(const boost::dynamic_bitset<> &pivots, std::vector<std::pair<int,int>> &positions ){
+inline std::vector<DenseMatrix > pivotsToEchelon(const boost::dynamic_bitset<> &pivots, std::vector<std::pair<int,int>> &positions ){
     std::vector<DenseMatrix> reducedMatrices;
     
     size_t n = pivots.size();
@@ -266,7 +266,7 @@ std::vector<DenseMatrix > pivotsToEchelon(const boost::dynamic_bitset<> &pivots,
     return reducedMatrices;
 }
 
-void pivotsToEchelon(std::vector<DenseMatrix>& result, const boost::dynamic_bitset<> &pivots, std::vector<std::pair<int,int>> &positions ){
+inline void pivotsToEchelon(std::vector<DenseMatrix>& result, const boost::dynamic_bitset<> &pivots, std::vector<std::pair<int,int>> &positions ){
     
     size_t n = pivots.size();
     size_t mul = positions.size();
@@ -281,7 +281,7 @@ void pivotsToEchelon(std::vector<DenseMatrix>& result, const boost::dynamic_bits
 
 
 // For a given bitset returns all non-set positions in a col-echelon matrix whose pivots are given by the input.
-std::vector<std::pair<int, int>> getEchelonPositions(const boost::dynamic_bitset<> &bitset) {
+inline std::vector<std::pair<int, int>> getEchelonPositions(const boost::dynamic_bitset<> &bitset) {
     size_t countOnes = 0;
     std::vector<std::pair<int, int>> positions;
 
@@ -297,7 +297,7 @@ std::vector<std::pair<int, int>> getEchelonPositions(const boost::dynamic_bitset
     return positions;
 }
 
-std::vector<DenseMatrix> all_proper_subspaces(int k){
+inline std::vector<DenseMatrix> all_proper_subspaces(int k){
     vec<bitset> pivots;
     vec<DenseMatrix> subspaces;
     for (int i = 1; i < (1ULL << k) - 1; ++i) {
@@ -333,7 +333,7 @@ using transition = std::pair<DenseMatrix, bitset>;
  * @param tree 
  * @param filename 
  */
-void saveDecompTree(const DecompTree& tree, const std::string& filename) {
+inline void saveDecompTree(const DecompTree& tree, const std::string& filename) {
     std::ofstream file(filename, std::ios::binary);
     if (!file.is_open()) {
         throw std::runtime_error("Unable to open file for writing: " + filename);
@@ -378,7 +378,7 @@ void saveDecompTree(const DecompTree& tree, const std::string& filename) {
  * @param filename 
  * @return DecompTree 
  */
-DecompTree loadDecompTree(const std::string& filename) {
+inline DecompTree loadDecompTree(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
 
     if (!file.is_open()) {
@@ -425,7 +425,7 @@ DecompTree loadDecompTree(const std::string& filename) {
  * 
  * @param tree 
  */
-void print_tree(DecompTree& tree){
+inline void print_tree(DecompTree& tree){
     int num_bits = 1;
     std::cout << "Printing tree with the following branches: " << std::endl;
     for(auto& [pivots_, branch] : tree){
@@ -456,7 +456,7 @@ void print_tree(DecompTree& tree){
  * @param transitions 
  * @param filename 
  */
-void save_transition_list(const std::vector<transition>& transitions, const std::string& filename) {
+inline void save_transition_list(const std::vector<transition>& transitions, const std::string& filename) {
     std::ofstream file(filename, std::ios::binary);
     if (!file.is_open()) {
         throw std::runtime_error("Unable to open file for writing: " + filename);
@@ -482,7 +482,7 @@ void save_transition_list(const std::vector<transition>& transitions, const std:
  * @param filename 
  * @return std::vector<transition> 
  */
-std::vector<transition> load_transition_list(const std::string& filename) {
+inline std::vector<transition> load_transition_list(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
     if (!file.is_open()) {
         throw std::runtime_error("Unable to open file " + filename + " for reading.");

@@ -320,7 +320,7 @@ class MatrixUtil{
      * @param i 
      * @return index 
      */
-    index col_last(index i) {
+    index col_last(index i) const {
         return CT::last_entry_index(data[i]);
     };
     
