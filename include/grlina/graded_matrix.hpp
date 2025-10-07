@@ -1057,11 +1057,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         DERIVED presentation = copy.graded_kernel();
         // To get the map to the basis, forget all the rows which correspong to relations
         presentation.cull_columns(num_new_gens, false);
-        if constexpr (requires (DERIVED& d) { d.minimize(); }) {
-            presentation.minimize();
-        } else {
-            presentation.semi_minimize();
-        }
+        presentation.minimize();
         return presentation;
     }
 
