@@ -604,15 +604,6 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     }
 
 
-    bool is_sorted() const {
-        for(index i = 0; i < this->num_cols; i++){
-            if(!std::is_sorted(this->data[i].begin(), this->data[i].end())){
-                return false;
-            }
-        }
-        return true;
-    }
-
     /**
      * @brief Computes all rows from column data in reverse order.
      * 

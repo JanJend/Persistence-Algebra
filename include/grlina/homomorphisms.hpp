@@ -613,7 +613,7 @@ Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index, DERIVED>& A, 
 }   
 
 
-} // graded_linalg
+} // namespace graded_linalg
 
 
 #endif // Homomorphisms.hpp

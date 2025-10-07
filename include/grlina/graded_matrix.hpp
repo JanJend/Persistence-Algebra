@@ -1175,16 +1175,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         return K;
     }
 
-    DERIVED submodule_generated_by(const DERIVED& new_generators) const {
-    /**
-     * @brief If this is a presentation and l, r encode submodules of the presented module,
-     * then this returns the intersection of the two submodules as a submodule.
-     * TO-DO: There is unnecessary copying if we do not need to keep the input data.
-     *
-     * @param l
-     * @param r
-     * @return DERIVED
-     */
+
     DERIVED submodule_intersection(const DERIVED& l, const DERIVED& r) const {
         assert(l.row_degrees == r.row_degrees);
         auto k = l.inverse_image_copy(static_cast<const DERIVED&>(*this), r);

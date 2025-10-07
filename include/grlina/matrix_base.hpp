@@ -1417,7 +1417,7 @@ bool compare_col_space(const DERIVED& A,const DERIVED& B){
 
 
 
-} // graded_linalg
+} // namespace graded_linalg
 
 
 #endif
