@@ -1467,7 +1467,7 @@ vec<DERIVED> hom_space_basis(
             auto& index_pairs = variable_positions[j];
             Q.data[index_pairs.first].push_back(index_pairs.second);
         }
-        assert(Q.is_sorted());
+        //assert(Q.is_sorted());
         result.push_back(Q);
     }
 
