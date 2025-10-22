@@ -48,8 +48,15 @@ template <typename T>
 using pair = std::pair<T, T>;
 template <typename T>
 using set = std::set<T>;
+template <typename index>
+using edge_list = vec<std::pair<index,index>>;
 
-
+template <typename index>
+void print_edge_list(const edge_list<index>& edges){
+    for(std::pair<index,index> e : edges){
+        std::cout << e.first << " -> " << e.second << std::endl;
+    }
+}
 
 template <typename D>
 struct Degree_traits {
@@ -355,7 +362,7 @@ std::vector<index> compute_topological_order(const Graph& g) {
 }
 
 /**
- * @brief Computes the Hasse Diagram of a sorted list of degrees fomring a Poset
+ * @brief Computes the Hasse Diagram of a sorted list of degrees forming a Poset
  * 
  * @tparam D needs to suport functions "smaller" and "equals"
  * @param degrees needs to be sorted in any linear extension of the order
