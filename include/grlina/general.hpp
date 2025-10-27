@@ -9,13 +9,19 @@
 #include <utility>
 #include <filesystem>
 
-inline std::string insert_suffix_before_extension(const std::string& filepath, const std::string& suffix) {
+inline std::string insert_suffix_before_extension(const std::string& filepath, const std::string& suffix, const std::string& new_extension = "") {
     std::filesystem::path path(filepath);
-    std::string stem = path.stem().string();             // filename without extension
-    std::string extension = path.extension().string();   // e.g., ".txt"
+    std::string stem = path.stem().string();  
+    std::string extension;      // filename without extension
+    if (!new_extension.empty()) {
+      extension = new_extension;
+    } else {
+        extension =  path.extension().string(); 
+    }
     std::filesystem::path new_path = path.parent_path() / (stem + suffix + extension);
     return new_path.string();
 }
+
 
 template <typename Func, typename... Args>
 auto timed_with_progress(const std::string &task_name, Func &&func,

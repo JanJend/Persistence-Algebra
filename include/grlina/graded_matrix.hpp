@@ -21,6 +21,7 @@
 #include <iostream>
 #include <grlina/sparse_matrix.hpp>
 #include <grlina/orders_and_graphs.hpp>
+#include <grlina/to_quiver.hpp>
 #include <string>
 #include <fstream>
 
@@ -1284,6 +1285,131 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     }
 
 
+    // The following functions are actually obsolete, tere are functional duplicates in other headers.
+    /**
+    * @brief Extracts the elements of a vector at the indices given in the second vector.
+    * 
+    * @param target 
+    * @param indices 
+    * @return vec<T> 
+    */
+    template <typename T>
+    vec<T> extractElements(const vec<T>& target, const vec<index>& indices) {
+    vec<T> result;
+    result.reserve(indices.size());
+    for (index i : indices) {
+        assert(i >= 0 && i < target.size() && "Index out of bounds");
+        result.push_back(target[i]);
+    }
+    return result;
+    }
+
+    /**
+    * @brief Get all indices for which an element in the first vector is contained in the second vector. Both inputs should be ordered.
+    * 
+    * @param target 
+    * @param subset 
+    * @return vec<index> 
+    */
+    vec<index> getIndicatorVector(vec<index> target, vec<index> subset){
+    vec<index> result;
+    auto itS = subset.begin();
+    for(index i = 0; i < target.size() ; i++){
+        if(itS != subset.end()){
+        if(*itS == target[i]){
+        result.push_back(i);
+        itS++;
+        }
+        }
+    }
+    assert(itS == subset.end() && "Not all elements of the subset were found in the target");
+    return result;
+    }
+    /**
+    * @brief The first vector in each argument is a set of row indices of the original matrix telling us which generators form a basis of the cokernel
+    * The second vector is a set of column indices of the cokernel matrix defining a section of the cokernel.
+    * 
+    * @param source 
+    * @param target 
+    * @return vec<index> 
+    */
+    vec<index> basisLifting(std::pair<vec<index>, vec<index>>& source, std::pair<vec<index>, vec<index>>& target){
+        //sanity check, comment out in real run
+        vec<index> subsetIndicator1 = GradedSparseMatrix::getIndicatorVector(target.first, source.first);
+        // Probably this doesnt need to be its own function
+        vec<index> result = GradedSparseMatrix::getIndicatorVector(target.first, GradedSparseMatrix::extractElements(source.first, source.second));
+        return result;
+    }
+
+	/**
+	 * @brief This function computes a quiver representation on the poset of unique degrees 
+     * appearing for the columns and rows of the matrix.
+	 */
+	QuiverRepresentation<index, D> induced_quiver_rep(
+        const vec<D> vertices = vec<D>(), const array<index> edges = array<index>()) {
+
+        assert(vertices.size() == edges.size());
+
+        if(vertices.size() == 0){
+            array<index> support_graph = get_support_graph();
+        }
+		
+        QuiverRepresentation<index, D> rep;
+        rep.degrees = vertices;
+        for(index i = 0; i < rep.degrees.size(); i++) {
+            for(index j : edges[i]){
+                rep.edges.push_back(std::make_pair(i, j));
+            }
+        }
+            
+		index num_vert = rep.degrees.size();
+		index num_edges = rep.edges.size();
+
+		// For each degree we want to store the cokernel, 
+		// the row-indices of the generators which form its domain 
+		// and a section of the cokernel given by column indices which are mapped to a basis
+		vec< SparseMatrix<index> > pointwise_Presentations;
+        vec< std::pair< vec<index> , vec<index>> > pointwise_base;
+		pointwise_Presentations.reserve(num_vert);
+        pointwise_base.reserve(num_vert);
+		rep.dimensionVector.reserve(num_vert);
+
+        // #pragma omp parallel for
+		for (index i = 0; i < num_vert; i++) {
+
+            SparseMatrix<index> S;
+            vec<index> gens;
+            std::tie(S, gens) = this->map_at_degree_pair(rep.degrees[i]);
+            S.column_reduction();
+            vec<index> basisLift;
+            pointwise_Presentations.emplace_back(S.coKernel(true, &basisLift));
+            pointwise_base.emplace_back(std::make_pair(gens, basisLift));
+			rep.dimensionVector.emplace_back(basisLift.size());
+		}
+
+        rep.matrices.reserve(num_edges);
+		for (index i = 0; i < num_edges; i++) {
+            index source = rep.edges[i].first;
+            index target = rep.edges[i].second;
+
+            auto sourceBasis = pointwise_base[source];
+            auto targetBasis = pointwise_base[target];
+
+            assert(pointwise_Presentations[source].get_num_cols() == sourceBasis.first.size());
+            assert(pointwise_Presentations[target].get_num_cols() == targetBasis.first.size());
+
+            vec<index> lift_of_basis = GradedSparseMatrix::basisLifting(sourceBasis, targetBasis);
+            rep.matrices.emplace_back( pointwise_Presentations[target].restricted_domain_copy(lift_of_basis) );
+        }
+    
+		for (index j = 0; j < num_edges; j++) { 
+            if(rep.matrices[j].get_num_cols() != rep.dimensionVector[rep.edges[j].first] || rep.matrices[j].get_num_rows() != rep.dimensionVector[rep.edges[j].second]){
+                throw std::runtime_error("Dimension mismatch in path action");
+            }
+        }      
+        return rep;
+	}
+
 }; // GradedSparseMatrix
 
 
@@ -1393,90 +1519,6 @@ inline std::ifstream check_matrix_file(const std::string& filepath) {
         std::cout << "Warning, extension does not match .scc, .firep, .txt, or no extension." << std::endl;
     }
     return file;
-}
-
-/**
- * @brief Returns the basis of Hom(A, B) as a vector of graded matrices.
- *
- * @tparam D
- * @tparam index
- * @tparam DERIVED
- * @param A
- * @param B
- * @return vec<DERIVED>
- */
-template <typename D, typename index, typename DERIVED>
-vec<DERIVED> hom_space_basis(
-    const GradedSparseMatrix<D, index, DERIVED>& A,
-    const GradedSparseMatrix<D, index, DERIVED>& B){
-
-    if(!A.rows_computed){
-        std::cout << "Warning: Rows of A must be computed before usage." << std::endl;
-    }
-
-    vec<DERIVED> result = vec<DERIVED>();
-    vec<std::pair<index,index>> variable_positions; // Stores the position of the variables in the matrix Q
-    SparseMatrix<index> S(0,0);
-    S.data.reserve( A.get_num_rows() + B.get_num_rows() + 1);
-    index S_index = 0;
-
-    for(index i = 0; i < A.get_num_rows(); i++) {
-        for(index j = 0; j < B.get_num_rows(); j++) {
-            if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.row_degrees[j])){
-                S.data.push_back(vec<index>());
-                variable_positions.push_back(std::make_pair(i, j));
-                for(auto rit = A._rows[i].rbegin(); rit != A._rows[i].rend(); rit++){
-                    auto& column_index = *rit;
-                    S.data[S_index].emplace_back(linearise_position_reverse_ext(column_index, j, A.get_num_cols(), B.get_num_rows()));
-                }
-                S_index++;
-            }
-        }
-    }
-
-    index row_op_threshold = S_index;
-    assert( variable_positions.size() == S_index );
-
-    if(row_op_threshold == 0){
-        // If there are no row-operations, then the hom-space is zero.
-        return result;
-    }
-
-
-    // Then all column-operations from B to A
-    for(index i = A.get_num_cols()-1; i > -1; i--){
-        for(index j = 0; j < B.get_num_cols(); j++){
-            if(B.is_admissible_column_operation(j, A.col_degrees[i])){
-                S.data.push_back(vec<index>());
-                for(index row_index : B.data[j]){
-                    S.data[S_index].emplace_back(linearise_position_reverse_ext(i, row_index, A.get_num_cols(), B.get_num_rows()));
-                }
-                S_index++;
-            }
-        }
-    }
-
-
-    S.compute_num_cols();
-    auto K = S.kernel();
-    K.cull_columns(row_op_threshold, false);
-    K.compute_num_cols();
-    K.column_reduction_triangular(true);
-
-    for(index i = 0; i < K.get_num_cols(); i++){
-        auto& current_map = K.data[i];
-        DERIVED Q(A.get_num_rows(), B.get_num_rows(),
-            vec< vec<int> >( A.get_num_rows(), vec<int>() ),
-            A.row_degrees, B.row_degrees);
-        for(index j : current_map){
-            auto& index_pairs = variable_positions[j];
-            Q.data[index_pairs.first].push_back(index_pairs.second);
-        }
-        //assert(Q.is_sorted());
-        result.push_back(Q);
-    }
-
-    return result;
 }
 
 

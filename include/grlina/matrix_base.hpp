@@ -440,6 +440,7 @@ class MatrixUtil{
         } 
     }
 
+    public:
    /**
     * @brief Brings Matrix in completly reduced Column Echelon form. Operations go *from* the active column.
     * 
@@ -457,6 +458,7 @@ class MatrixUtil{
             }
         }
     }
+    
 
     public:
     /**

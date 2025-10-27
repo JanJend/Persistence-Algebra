@@ -763,7 +763,6 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         return presentation;
     }   
 
-    
 
     pair<r2degree> bounding_box() const{
         r2degree min = {std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
@@ -794,6 +793,31 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         for(auto& deg : this->col_degrees){
             // 
         }
+    }
+    
+    /**
+     * @brief Computes an equidistant grid of n x n points in the bounding box of the degrees of the matrix.
+     * 
+     * @param n 
+     * @return vec<r2degree> 
+     */
+    vec<r2degree> get_equidistant_grid(const int& n) const {
+        pair<r2degree> box = this->bounding_box();
+        if(n == 0){
+            return {};
+        }
+        if(n == 1){
+            return {box.first};
+        }
+        double x_step = (box.second.first - box.first.first) / (n);
+        double y_step = (box.second.second - box.first.second) / (n);
+        vec<r2degree> grid;
+        for(int i = 0; i < n; i++){
+            for(int j = 0; j < n; j++){
+                grid.push_back({box.first.first + i * x_step, box.first.second + j * y_step});
+            }     
+        }  
+        return grid;
     }
 
 }; // R2GradedSparseMatrix
