@@ -886,7 +886,6 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
                 multi_pivots[p].push_back(i);
                 // If after reduction the relation contains a generator of the same degree, 
                 // they form a pair which can be deleted.
-                // TO-DO: In fact any relation with an entry of the same degree should be superfluous.
                 if(this->col_degrees[i] == this->row_degrees[p]){
                     col_indices_to_remove.push_back(i);
                     row_indices_to_remove.push_back(p);
@@ -1082,6 +1081,12 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         // Then check for empty columns
         // To-DO: need to compute kernel.
         return true;
+    }
+
+    void append_column(const vec<index>& column_data, const D& column_degree) {
+        this->data.push_back(column_data);
+        this->col_degrees.push_back(column_degree);
+        this->num_cols += 1;
     }
 
      /**

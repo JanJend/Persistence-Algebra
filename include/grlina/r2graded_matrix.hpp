@@ -25,8 +25,6 @@
 #include <vector>
 #include <string>
 
-
-
 namespace graded_linalg {
 
 using r2degree = std::pair<double, double>;
@@ -365,68 +363,68 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     private:
 
     template <typename T>
-void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
+    void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
                            const std::vector<std::pair<T, T>>& vec2,
                            std::vector<T>& out,
                            bool useFirst = true) {
-    auto it1 = vec1.begin();
-    auto it2 = vec2.begin();
-    T last_x = T();
-    bool has_last_x = false;
+        auto it1 = vec1.begin();
+        auto it2 = vec2.begin();
+        T last_x = T();
+        bool has_last_x = false;
 
-    while (it1 != vec1.end() || it2 != vec2.end()) {
-        T value;
+        while (it1 != vec1.end() || it2 != vec2.end()) {
+            T value;
 
-        if (it1 == vec1.end()) {
-            value = useFirst ? it2->first : it2->second;
-            if (!has_last_x || value != last_x) {
-                out.push_back(value);
-                last_x = value;
-                has_last_x = true;
-            }
-            ++it2;
-        } 
-        else if (it2 == vec2.end()) {
-            value = useFirst ? it1->first : it1->second;
-            if (!has_last_x || value != last_x) {
-                out.push_back(value);
-                last_x = value;
-                has_last_x = true;
-            }
-            ++it1;
-        } 
-        else {
-            T val1 = useFirst ? it1->first : it1->second;
-            T val2 = useFirst ? it2->first : it2->second;
-
-            if (val1 < val2) {
-                if (!has_last_x || val1 != last_x) {
-                    out.push_back(val1);
-                    last_x = val1;
-                    has_last_x = true;
-                }
-                ++it1;
-            } 
-            else if (val2 < val1) {
-                if (!has_last_x || val2 != last_x) {
-                    out.push_back(val2);
-                    last_x = val2;
+            if (it1 == vec1.end()) {
+                value = useFirst ? it2->first : it2->second;
+                if (!has_last_x || value != last_x) {
+                    out.push_back(value);
+                    last_x = value;
                     has_last_x = true;
                 }
                 ++it2;
+            } 
+            else if (it2 == vec2.end()) {
+                value = useFirst ? it1->first : it1->second;
+                if (!has_last_x || value != last_x) {
+                    out.push_back(value);
+                    last_x = value;
+                    has_last_x = true;
+                }
+                ++it1;
             } 
             else {
-                if (!has_last_x || val1 != last_x) {
-                    out.push_back(val1);
-                    last_x = val1;
-                    has_last_x = true;
+                T val1 = useFirst ? it1->first : it1->second;
+                T val2 = useFirst ? it2->first : it2->second;
+
+                if (val1 < val2) {
+                    if (!has_last_x || val1 != last_x) {
+                        out.push_back(val1);
+                        last_x = val1;
+                        has_last_x = true;
+                    }
+                    ++it1;
+                } 
+                else if (val2 < val1) {
+                    if (!has_last_x || val2 != last_x) {
+                        out.push_back(val2);
+                        last_x = val2;
+                        has_last_x = true;
+                    }
+                    ++it2;
+                } 
+                else {
+                    if (!has_last_x || val1 != last_x) {
+                        out.push_back(val1);
+                        last_x = val1;
+                        has_last_x = true;
+                    }
+                    ++it1;
+                    ++it2;
                 }
-                ++it1;
-                ++it2;
             }
         }
     }
-}
 
 
     public:
@@ -491,6 +489,19 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         return column_permutation;
     }
 
+    private:
+        pair<index> snap_degree_to_grid(const r2degree& degree, const vec<double>& x_grid, const vec<double>& y_grid) {
+            double& first = degree.first;
+            double& second = degree.second;
+            auto it_x = std::lower_bound(x_grid.begin(), x_grid.end(), first);
+            auto it_y = std::lower_bound(y_grid.begin(), y_grid.end(), second);
+            index x_index = (it_x != x_grid.begin()) ? std::distance(x_grid.begin(), it_x) - 1 : -1;
+            index y_index = (it_y != y_grid.begin()) ? std::distance(y_grid.begin(), it_y) - 1 : -1;
+            return {x_index, y_index};
+        }
+
+    public:
+
     /**
      * @brief Returns the indices of the closest smaller grid point or -1,-1 if to the left of the grid.
      * 
@@ -498,12 +509,41 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
      * @return pair<index> 
      */
     pair<index> get_closest_smaller_grid_point(r2degree& degree){
-        double& first = degree.first;
-        double& second = degree.second;
-        auto it_x = std::lower_bound(x_grid.begin(), x_grid.end(), first);
-        auto it_y = std::lower_bound(y_grid.begin(), y_grid.end(), second);
-        index x_index = (it_x != x_grid.begin()) ? std::distance(x_grid.begin(), it_x) - 1 : -1;
-        index y_index = (it_y != y_grid.begin()) ? std::distance(y_grid.begin(), it_y) - 1 : -1;
+        if(x_grid.empty() || y_grid.empty()){
+            std::cerr << "Grid representation was not computed. Calling compute_grid_representation()." << std::endl;
+            compute_grid_representation();
+        }
+        return snap_degree_to_grid(degree, x_grid, y_grid);
+    }
+
+    /** for any grid i:G \into R^2, if this is a presentation, 
+    * computes a presentation of i_! i^* X
+    * by snapping all degrees to the grid defined by x_grid and y_grid
+    * Then minimizes the resulting matrix to reduce the superfluous entries.
+     */
+    void snap_to_grid( vec<double>& new_x_grid, vec<double>& new_y_grid){
+
+        assert(!new_x_grid.empty() && !new_y_grid.empty());
+        index m = new_x_grid.size();
+        index n = new_y_grid.size();
+        for(index i = 0; i < this->get_num_cols(); i++){
+            auto snapped = snap_degree_to_grid(this->col_degrees[i], new_x_grid, new_y_grid);
+            if(snapped.first == m-1 && snapped.second == n-1){
+                this->data[i] = vec<index>(); // Column becomes zero
+            } else {
+                this->col_degrees[i] = {new_x_grid[snapped.first+1], new_y_grid[snapped.second+1]};
+            }
+        }
+
+        for(index i = 0; i < this->get_num_rows(); i++){
+            auto snapped = snap_degree_to_grid(this->row_degrees[i], new_x_grid, new_y_grid);
+            if(snapped.first == m-1 && snapped.second == n-1){
+                this->append_column(vec<index>({i}), r2degree{this->row_degrees[i].first, this->row_degrees[i].second});
+            } else {    
+                this->row_degrees[i] = {new_x_grid[snapped.first+1], new_y_grid[snapped.second+1]};
+            }
+        }
+        this->minimize_variant();
     }
 
     void print_grid(){
@@ -740,6 +780,20 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         }
 
         return {min, max};
+    }
+
+
+
+    /**
+     * @brief approximates the presented module by snapping to the input grid
+     * 
+     * @param grid_x 
+     * @param grid_y 
+     */
+    void grid_reduction(vec<r2degree>& grid_x, vec<r2degree>& grid_y){
+        for(auto& deg : this->col_degrees){
+            // 
+        }
     }
 
 }; // R2GradedSparseMatrix
