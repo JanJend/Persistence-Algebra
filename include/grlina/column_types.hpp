@@ -289,7 +289,7 @@ struct Column_traits<set<index>, index> {
         return (v.find(i) != v.end());
     }
 
-    static index last_entry_index(set<index>& v) {
+    static index last_entry_index(const set<index>& v) {
         if(v.size() == 0){
             return -1;
         } else {
@@ -350,7 +350,7 @@ struct Column_traits<bitset, index> {
         return v[i];
     }
 
-    static index last_entry_index(bitset& v) {
+    static index last_entry_index(const bitset& v) {
         for (int i = v.size() - 1; i >= 0; --i) {
             if (v[i]) {
                 return i;

@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     std::string filepath;
     r2degree degree;
     if (argc != 3) {
-        std::cerr << "Usage: " << argv[0] << " <file_path>" << " <degree>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <file_path>" << " x,y" << std::endl;
     } else {
         filepath = argv[1];
         degree = string_to_r2degree(argv[2]);
