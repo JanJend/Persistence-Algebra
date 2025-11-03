@@ -490,20 +490,27 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     }
 
     private:
-        pair<index> snap_degree_to_grid(const r2degree& degree, const vec<double>& x_grid, const vec<double>& y_grid) {
-            double& first = degree.first;
-            double& second = degree.second;
-            auto it_x = std::lower_bound(x_grid.begin(), x_grid.end(), first);
-            auto it_y = std::lower_bound(y_grid.begin(), y_grid.end(), second);
-            index x_index = (it_x != x_grid.begin()) ? std::distance(x_grid.begin(), it_x) - 1 : -1;
-            index y_index = (it_y != y_grid.begin()) ? std::distance(y_grid.begin(), it_y) - 1 : -1;
+
+        pair<index> snap_degree_to_grid_upper(const r2degree& degree, const vec<double>& x_grid, const vec<double>& y_grid) {
+            auto it_x = std::lower_bound(x_grid.begin(), x_grid.end(), degree.first);
+            auto it_y = std::lower_bound(y_grid.begin(), y_grid.end(), degree.second);
+            index x_index = std::distance(x_grid.begin(), it_x);
+            index y_index = std::distance(y_grid.begin(), it_y);
+            return {x_index, y_index};
+        }
+        
+        pair<index> snap_degree_to_grid_lower(const r2degree& degree, const vec<double>& x_grid, const vec<double>& y_grid) {
+            auto it_x = std::upper_bound(x_grid.begin(), x_grid.end(), degree.first);
+            auto it_y = std::upper_bound(y_grid.begin(), y_grid.end(), degree.second);
+            index x_index = std::distance(x_grid.begin(), it_x)-1;
+            index y_index = std::distance(y_grid.begin(), it_y)-1;
             return {x_index, y_index};
         }
 
     public:
 
     /**
-     * @brief Returns the indices of the closest smaller grid point or -1,-1 if to the left of the grid.
+     * @brief Returns the indices of the closest *smaller* grid point or -1 if to the left/bottom of the grid.
      * 
      * @param degree 
      * @return pair<index> 
@@ -513,36 +520,42 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
             std::cerr << "Grid representation was not computed. Calling compute_grid_representation()." << std::endl;
             compute_grid_representation();
         }
-        return snap_degree_to_grid(degree, x_grid, y_grid);
+        return snap_degree_to_grid_lower(degree, x_grid, y_grid);
     }
 
     /** for any grid i:G \into R^2, if this is a presentation, 
     * computes a presentation of i_! i^* X
     * by snapping all degrees to the grid defined by x_grid and y_grid
-    * Then minimizes the resulting matrix to reduce the superfluous entries.
+    * Highly inefficient implementation
      */
     void snap_to_grid( vec<double>& new_x_grid, vec<double>& new_y_grid){
 
         assert(!new_x_grid.empty() && !new_y_grid.empty());
         index m = new_x_grid.size();
         index n = new_y_grid.size();
+        vec<index> columns_to_remove = vec<index>();
+        vec<index> rows_to_remove = vec<index>();
         for(index i = 0; i < this->get_num_cols(); i++){
-            auto snapped = snap_degree_to_grid(this->col_degrees[i], new_x_grid, new_y_grid);
-            if(snapped.first == m-1 && snapped.second == n-1){
-                this->data[i] = vec<index>(); // Column becomes zero
+            auto snapped = snap_degree_to_grid_upper(this->col_degrees[i], new_x_grid, new_y_grid);
+            if(snapped.first == m || snapped.second == n){
+                columns_to_remove.push_back(i);
             } else {
-                this->col_degrees[i] = {new_x_grid[snapped.first+1], new_y_grid[snapped.second+1]};
+                this->col_degrees[i] = {new_x_grid[snapped.first], new_y_grid[snapped.second]};
             }
         }
 
         for(index i = 0; i < this->get_num_rows(); i++){
-            auto snapped = snap_degree_to_grid(this->row_degrees[i], new_x_grid, new_y_grid);
-            if(snapped.first == m-1 && snapped.second == n-1){
-                this->append_column(vec<index>({i}), r2degree{this->row_degrees[i].first, this->row_degrees[i].second});
-            } else {    
-                this->row_degrees[i] = {new_x_grid[snapped.first+1], new_y_grid[snapped.second+1]};
+            auto snapped = snap_degree_to_grid_upper(this->row_degrees[i], new_x_grid, new_y_grid);
+            if(snapped.first == m ||snapped.second == n){
+                rows_to_remove.push_back(i);
+            } else {
+                this->row_degrees[i] = {new_x_grid[snapped.first], new_y_grid[snapped.second]};
             }
         }
+        this->delete_columns(columns_to_remove);
+        this->delete_rows(rows_to_remove);
+        this->sort_columns_lexicographically();
+        this->sort_rows_lexicographically();
         this->minimize_variant();
     }
 
@@ -782,18 +795,6 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     }
 
 
-
-    /**
-     * @brief approximates the presented module by snapping to the input grid
-     * 
-     * @param grid_x 
-     * @param grid_y 
-     */
-    void grid_reduction(vec<r2degree>& grid_x, vec<r2degree>& grid_y){
-        for(auto& deg : this->col_degrees){
-            // 
-        }
-    }
     
     /**
      * @brief Computes an equidistant grid of n x n points in the bounding box of the degrees of the matrix.
@@ -819,6 +820,26 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         }  
         return grid;
     }
+
+    void snap_to_equidistant_grid(int n, bool end_inclusive = false){
+        pair<r2degree> box = this->bounding_box();
+        if(n == 0){
+            std::cerr << "Error: Cannot snap to an equidistant grid with 0 points." << std::endl;
+        } else {
+            if(end_inclusive){
+                n = n - 1;
+            }
+            double x_step = (box.second.first - box.first.first) / (n);
+            double y_step = (box.second.second - box.first.second) / (n);
+            vec<double> new_x_grid;
+            vec<double> new_y_grid;
+            for(int i = 0; i < n; i++){
+                new_x_grid.push_back(box.first.first + i * x_step);
+                new_y_grid.push_back(box.first.second + i * y_step);
+            }
+            this->snap_to_grid(new_x_grid, new_y_grid);
+        }
+    };
 
 }; // R2GradedSparseMatrix
 
