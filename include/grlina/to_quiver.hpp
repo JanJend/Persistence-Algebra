@@ -60,8 +60,87 @@ struct QuiverRepresentation {
         }
     }
 
-    QuiverRepresentation(vec<D> degrees, vec<index> dimensionVector, edge_list<index> edges, vec<SparseMatrix<index>> matrices) : 
+    QuiverRepresentation(vec<D> degrees, const vec<index>& dimensionVector, const edge_list<index>& edges, const vec<SparseMatrix<index>>& matrices) : 
     degrees(degrees), dimensionVector(dimensionVector), edges(edges), matrices(matrices) {}
+
+    template <typename OutStream>
+    void to_stream_simple(OutStream& outfile, const std::string& quiverName = "Q") const {
+        index num_vert = degrees.size();
+        index num_edges = edges.size();     
+        // Define the quiver
+        
+        outfile << quiverName << " := Quiver(" << num_vert << ", [ ";
+        // Write edges
+        for (index j = 0; j < num_edges; j++) {
+            index source = edges[j].first;
+            index target = edges[j].second;
+            // Write edge
+            outfile << "["  << source + 1 << "," << target + 1 << ", \"E" << j << "\"" << "], ";
+        }
+
+        outfile.seekp(-2, std::ios::end);  // Remove trailing comma
+        outfile << "]);" << std::endl;
+
+        // Define module
+        // syntax: M, [1,2,2, ..], [ .. ["b", [[1,0], [1,1]] ], ..] )
+        outfile << quiverName << ", [";
+        for (index i = 0; i < num_vert; i++) {
+            outfile << dimensionVector[i] << ",";
+        }
+        outfile.seekp(-1, std::ios::end);  // Remove trailing comma
+        outfile << "], [ ";
+
+        for (index j = 0; j < num_edges; j++) {
+            auto source = edges[j].first;
+            auto target = edges[j].second;
+            
+            const SparseMatrix<index>* current_mat_ptr = &matrices[j];
+            // We write our matrices column wise. If you want the row format, uncomment the next lines.
+            // SparseMatrix transposed = matrices[j].transposed_copy();
+            // current_mat_ptr = &transposed;
+            const auto& current_mat = *current_mat_ptr;
+
+            // Check dimensions again
+            if (current_mat.get_num_cols() != dimensionVector[source]) {
+                throw std::runtime_error("Dimension mismatch for source vertex " + std::to_string(source));
+            }
+            if (current_mat.get_num_rows() != dimensionVector[target]) {
+                throw std::runtime_error("Dimension mismatch for target vertex " + std::to_string(target));
+            }
+
+            if(dimensionVector[source] == 0 || dimensionVector[target] == 0){
+                continue;
+            }
+            // Write matrix at arrow; where each vector is a row
+
+            
+            outfile << "[\"E" << j << "\", [";
+            for (index i = 0; i < current_mat.get_num_cols(); i++) {
+                outfile << "[";
+                auto it = current_mat.data[i].begin();
+
+                for (index k = 0; k < current_mat.get_num_rows(); k++) {
+                    if (it != current_mat.data[i].end()) {
+                        if(*it == k){
+                            outfile << "1" << ",";
+                            ++it;
+                        } else {
+                            outfile << "0" << ",";
+                        }
+                    } else {
+                        outfile << "0" << ",";
+                    }
+                }
+                outfile.seekp(-1, std::ios::end);  // Remove trailing comma
+                outfile << "],";
+            }
+            outfile.seekp(-1, std::ios::end);  // Remove trailing comma
+            outfile << "] ], ";
+        }
+
+        outfile.seekp(-2, std::ios::end);  // Remove trailing comma
+        outfile << " ];" << std::endl;
+    }
 
     template <typename OutStream>
     void to_streamQPA(OutStream& outfile, const std::string& quiverName = "Q") {
@@ -79,9 +158,6 @@ struct QuiverRepresentation {
 
         // Define the quiver
         outfile << "# Dimension of Module: " << dimension << "\n";
-        outfile << "LoadPackage(\"qpa\");\n";
-        outfile << "start_read := Runtime();  # Record the starting time\n";
-        
         outfile << quiverName << " := Quiver(" << num_vert << ", [ ";
         
 
@@ -171,6 +247,9 @@ struct QuiverRepresentation {
             std::cerr << "Error opening file at path: " << scriptPath << std::endl;
 
         }
+        outfile << "LoadPackage(\"qpa\");\n";
+        outfile << "start_read := Runtime();  # Record the starting time\n";
+
         to_streamQPA(outfile, quiverName);
         
         outfile << "List" << quiverName << " := BlockDecompositionOfModule(M" << quiverName << ");" << std::endl;
