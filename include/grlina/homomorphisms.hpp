@@ -292,7 +292,100 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimise
 }
 
 
+/**
+ * @brief Algorithm A of "Homomorphisms of Persistence Modules"
+ * Returns a vector of matrices Q which form a basis of Hom(A, B), where Q is a map on the generators. 
+ * make sure that the rows of A are computed.
+ * if row_indices
+ * @param A 
+ * @param B 
+ * @param row_indices If the row indices of B are shifted, this vector contains the shift.
+ * @return vec<SparseMatrix<index>> 
+ */
+template <typename D, typename index, typename DERIVED>
+std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_restriction(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, 
+    const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>())  {
+    
+    assert(A.rows_computed);
 
+    vec<SparseMatrix<index>> result;
+    vec<std::pair<index,index>> variable_positions; // Stores the position of the variables in the matrix Q
+    SparseMatrix<index> S(0,0);
+    S.data.reserve( A.get_num_rows() + B.get_num_rows() + 1);
+    index S_index = 0;
+
+    // TO-DO: Right now we compute map_at_degree possibly multiple times! This could be optimised.
+    for(index i = 0; i < A.get_num_rows(); i++) {
+        // Compute the target space B_alpha for each generator of A to minimise the number of variables.
+        auto [B_alpha, rows_alpha] = B.map_at_degree_pair(A.row_degrees[i], false);
+        vec<index> basislift;
+        if(row_indices_B.size() != 0){
+            basislift = B_alpha.coKernel_basis(rows_alpha, row_indices_B );
+        } else {
+            // This is broken, fix TO-DO:
+            basislift = B_alpha.coKernel_basis(rows_alpha);
+        }
+
+        // Then add the effect of all row-operations from A to B (modulo the image of B).
+        for(index j : basislift) {
+            S.data.push_back(vec<index>());
+    	    variable_positions.push_back(std::make_pair(i, j));
+            for(auto rit = A._rows[i].rbegin(); rit != A._rows[i].rend(); rit++){
+                auto& column_index = *rit;
+                S.data[S_index].emplace_back(linearise_position_reverse_ext(column_index, j, A.get_num_cols(), B.get_num_rows()));
+            }
+            S_index++;
+        }
+    }
+    
+    index row_op_threshold = S_index;
+    assert( variable_positions.size() == S_index );
+
+    if(row_op_threshold == 0){
+        // If there are no row-operations, then the hom-space is zero.
+        return std::make_pair( SparseMatrix<index>(0,0), variable_positions);
+    }
+
+    std::unordered_map<index, index> row_map;
+    if(row_indices_B.size() != 0){
+        row_map = shiftIndicesMap(row_indices_B );
+    }
+
+    DERIVED B_copy = B;
+    DERIVED O = B.graded_kernel();
+    // Then all column-operations from B to A, again restricted by the basislift
+    for(index i = A.get_num_cols()-1; i > -1; i--){
+
+        // Compute the target space O_alpha for each relation of A to minimise the number of variables.
+        auto [O_alpha, rows_alpha] = O.map_at_degree_pair(A.col_degrees[i], false);
+        vec<index> basislift;
+        basislift = O_alpha.coKernel_basis(rows_alpha);
+
+
+        //TO-DO everything from here on is just copy paste so far.
+        
+         // Then add the effect of all row-operations from A to B (modulo the image of B).
+        for(index j : basislift) {
+            S.data.push_back(vec<index>());
+            for(index row_index : B.data[j]){
+                if(row_indices_B.size() != 0){
+                    S.data[S_index].emplace_back(linearise_position_reverse_ext(i, row_map[row_index], A.get_num_cols(), B.get_num_rows()));
+                } else {
+                    S.data[S_index].emplace_back(linearise_position_reverse_ext(i, row_index, A.get_num_cols(), B.get_num_rows()));
+                }
+            }
+            S_index++;
+        }
+    }
+
+    S.compute_num_cols();
+    auto K = S.kernel();
+    K.cull_columns(row_op_threshold, false);
+    K.compute_num_cols();
+    K.column_reduction_triangular(true);
+
+    return std::make_pair(K, variable_positions);
+}
 
 /**
  * @brief Returns a vector of matrices Q which form a basis of Hom(A, B), where Q is a map on the generators. 
