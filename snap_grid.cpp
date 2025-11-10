@@ -32,6 +32,7 @@ int main(int argc, char** argv) {
     if (argc < 3 || argc > 4) {
         std::cerr << "Usage: " << argv[0] << " <file_path> [grid_size] [output_path] \n";
         std::cerr << "  output_path = optional output file path." << std::endl;
+        return 1;
     } else {
         filepath = argv[1];
         input_path = std::filesystem::path(filepath);
@@ -54,7 +55,6 @@ int main(int argc, char** argv) {
         std::string modified_path = insert_suffix_before_extension(filepath, suffix);
         output_path = std::filesystem::path(modified_path);
     }
-    input_path = "/home/wsljan/MP-Workspace/Skyscraper-Invariant/example_files/indecomps/torus_dim4_1.scc";
     snap_presentation(input_path, output_path, grid_size);
     return 0;
 }

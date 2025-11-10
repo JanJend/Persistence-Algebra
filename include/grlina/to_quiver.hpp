@@ -84,12 +84,14 @@ struct QuiverRepresentation {
         // Define module
         // syntax: M, [1,2,2, ..], [ .. ["b", [[1,0], [1,1]] ], ..] )
         outfile << quiverName << ", [";
+        // dimension vector
         for (index i = 0; i < num_vert; i++) {
             outfile << dimensionVector[i] << ",";
         }
         outfile.seekp(-1, std::ios::end);  // Remove trailing comma
         outfile << "], [ ";
-
+        // matrices at edges
+        bool remove_comma = false;
         for (index j = 0; j < num_edges; j++) {
             auto source = edges[j].first;
             auto target = edges[j].second;
@@ -110,6 +112,8 @@ struct QuiverRepresentation {
 
             if(dimensionVector[source] == 0 || dimensionVector[target] == 0){
                 continue;
+            } else {
+                remove_comma = true;
             }
             // Write matrix at arrow; where each vector is a row
 
@@ -137,8 +141,9 @@ struct QuiverRepresentation {
             outfile.seekp(-1, std::ios::end);  // Remove trailing comma
             outfile << "] ], ";
         }
-
-        outfile.seekp(-2, std::ios::end);  // Remove trailing comma
+        if(remove_comma){
+            outfile.seekp(-2, std::ios::end);  // Remove trailing comma
+        }
         outfile << " ];" << std::endl;
     }
 
