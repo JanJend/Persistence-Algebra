@@ -897,6 +897,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             }
         }
         this->delete_columns(col_indices_to_remove);
+        std::sort(row_indices_to_remove.begin(), row_indices_to_remove.end());
         this->delete_rows(row_indices_to_remove);
         // The above might miss those columns which can only be zeroes out via 
         // Non-compaitble column operations. For these we need to compute the kernel
@@ -1174,7 +1175,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         index row_temp = copy.num_cols;
         copy.append_matrix(S);
         copy.append_matrix(M);
-        auto K = copy.graded_kernel();
+        auto K = static_cast<DERIVED*>(this)->graded_kernel();
         K.cull_columns(row_temp, false);
         K.column_reduction_graded_w_deletion();
         // TO-DO: could also fully minimize if we want to?
@@ -1429,7 +1430,10 @@ template <typename D, typename DERIVED>
 DERIVED shifted_identity( vec<D>& generators, const D& epsilon) {
     DERIVED result(generators.size(),generators.size(), "Identity");
     result.col_degrees = generators;
-    result.row_degrees = generators - epsilon;
+    result.row_degrees = generators;
+    for( D& d : result.col_degrees ) {
+        Degree_traits<D>::add(epsilon, d);
+    }
     return result;
 }
 

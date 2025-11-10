@@ -39,8 +39,5 @@ int main(int argc, char** argv) {
 
     endomorphism_sizes(input_path);
     
-
-    
-    
     return 0;
 } // main
