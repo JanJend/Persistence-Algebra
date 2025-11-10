@@ -28,6 +28,7 @@
 namespace graded_linalg {
 
 
+
 /**
  * @brief Returns the basis of Hom(A, B) as a vector of graded matrices.
  *
