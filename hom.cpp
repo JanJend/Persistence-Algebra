@@ -12,6 +12,11 @@ void compute_hom_space(std::filesystem::path input_path_A, std::filesystem::path
     R2GradedSparseMatrix<int> A = R2GradedSparseMatrix<int>(input_path_A .string());
     R2GradedSparseMatrix<int> B = R2GradedSparseMatrix<int>(input_path_B .string());
 
+    A.sort_columns_lexicographically();
+    B.sort_columns_lexicographically();
+    A.sort_rows_lexicographically();
+    B.sort_rows_lexicographically();
+
     A.compute_rows_forward();
 
     aida_result hom_space_full;
@@ -48,6 +53,8 @@ int main(int argc, char** argv) {
 
     if (argc != 3) {
         std::cerr << "Usage: " << argv[0] << " <file_path_A> <file_path_B>" << std::endl;
+        filepath_A = "/home/wsljan/MP-Workspace/Persistence-Algebra/test_presentations/toy_example_4.scc";
+        filepath_B = "/home/wsljan/MP-Workspace/Persistence-Algebra/test_presentations/toy_example_4.scc";
     } else {
         filepath_A = argv[1];
         filepath_B = argv[2];

@@ -155,6 +155,7 @@ vec<DERIVED> hom_space_basis_new(
         vec< std::pair<vec<index>, vec<index>> > B_local_basislifts =  vec< std::pair<vec<index>, vec<index>> >();
         B_local_basislifts.reserve(A.get_num_rows() + A.get_num_cols());
 
+        // Setting up all structure maps for coker B
         array<index> S_column_partition = array<index>();
         index S_num_col = 0;
         for(size_t p = 0; p < A.get_num_rows() + A.get_num_cols(); p++){
@@ -176,6 +177,7 @@ vec<DERIVED> hom_space_basis_new(
         index S_column_counter = 0;
         index S_row_counter = 0;
         
+        // building the matrix A^t \otimes B_*
         for(size_t i = 0; i < A.get_num_rows(); i++){
             std::pair< vec<index>, vec<index> >& sourceBasis = B_local_basislifts[i];
             assert(B_local_spaces[i].get_num_cols() == sourceBasis.first.size());
@@ -190,6 +192,7 @@ vec<DERIVED> hom_space_basis_new(
                     continue;
                 } else {
                 assert(*itA == j);    
+                itA++;
                 index j_shift = A.get_num_rows()+j;
 				auto& targetBasis = B_local_basislifts[j_shift];
                 auto& targetSpace = B_local_spaces[j_shift];
@@ -216,6 +219,7 @@ vec<DERIVED> hom_space_basis_new(
         }
         S.set_num_rows(S_row_counter);
         SparseMatrix<index> K = S.kernel();
+        // Translating the vectors to matrices.
         // TO-DO: The following could easily be parallelised
         for(auto f_vec : K.data){
             DERIVED new_Q(A.get_num_rows(), B.get_num_rows(), A.row_degrees, B.row_degrees);
