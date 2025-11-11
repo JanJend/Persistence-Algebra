@@ -1152,6 +1152,19 @@ class MatrixUtil{
         return basis;
     }
 
+    vec<index> coKernel_basis_local(const vec<index>& row_indices, const bool& no_reduction = false){
+        vec<index> basis;
+        if(!no_reduction){
+            column_reduction();
+        }
+        for(index i : row_indices){
+            if(pivots.count(i) == 0){
+                basis.push_back(i);
+            }
+        }
+        return basis;
+    }
+
     /**
      * @brief Computes a set of row indices whose images under the quotient map form a basis of the cokernel.
      *          Equivalently, the set of row indices which are not pivots after column-reduction.

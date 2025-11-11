@@ -224,6 +224,18 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         return *this;
     }
 
+    R2GradedSparseMatrix& operator = (const GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>& other) {
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>::assign(other);
+        return *this;
+    }
+
+    R2GradedSparseMatrix& operator = (GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>&& other) {
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>::assign(std::move(other));
+        return *this;
+    }
+
+
+
     R2GradedSparseMatrix(index cols, index rows) : 
         GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(cols, rows) {}
     R2GradedSparseMatrix(index n, vec<index> indicator) : 
@@ -243,6 +255,9 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(std::move(other)) {
     } // Move constructor
 
+    R2GradedSparseMatrix(const GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix>& other) {
+        this->assign(other);
+    } // Copy constructor from GradedSparseMatrix
     R2GradedSparseMatrix( const SparseMatrix<index>& other) : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(other.get_num_cols(), other.get_num_rows()) {
         this->data = other.data;
     } // Copy constructor from SparseMatrix
@@ -670,7 +685,6 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         vec<index> column_permutation = this->compute_grid_representation();
         this->initialise_grid_scheduler();
         
-
         pq_row.resize(this->y_grid.size());
         // This is the "slave" matrix in mpfree
         SparseMatrix<index> col_operations = SparseMatrix<index>(this->get_num_cols(), this->get_num_cols(), "Identity");

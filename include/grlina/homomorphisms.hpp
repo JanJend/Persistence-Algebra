@@ -113,7 +113,9 @@ vec<DERIVED> hom_space_basis_new(
         assert(Q.is_sorted_sparse());
         result.push_back(Q);
     } 
-    
+
+    // Although this function contains "basis", the reduction to make it one is actually missing
+
     //  If the bool is true, next use Hom( -, coker B) on the presentation A to get Hom(coker A, coker B)_0 as the kernel of 
     //  Hom(A.target, coker B)_0 -(A^t)-> Hom(A.domain, coker B)_0
     } else {
@@ -235,8 +237,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimise
         if(row_indices_B.size() != 0){
             basislift = B_alpha.coKernel_basis(rows_alpha, row_indices_B );
         } else {
-            // This is broken, fix TO-DO:
-            basislift = B_alpha.coKernel_basis(rows_alpha);
+            basislift = B_alpha.coKernel_basis_local(rows_alpha);
         }
 
         // Then add the effect of all row-operations from A to B (modulo the image of B).
@@ -322,8 +323,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
         if(row_indices_B.size() != 0){
             basislift = B_alpha.coKernel_basis(rows_alpha, row_indices_B );
         } else {
-            // This is broken, fix TO-DO:
-            basislift = B_alpha.coKernel_basis(rows_alpha);
+            basislift = B_alpha.coKernel_basis_local(rows_alpha);
         }
 
         // Then add the effect of all row-operations from A to B (modulo the image of B).
@@ -350,17 +350,14 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
     if(row_indices_B.size() != 0){
         row_map = shiftIndicesMap(row_indices_B );
     }
-
     DERIVED B_copy = B;
-    DERIVED O = B.graded_kernel();
+    DERIVED O = B_copy.graded_kernel();
     // Then all column-operations from B to A, again restricted by the basislift
     for(index i = A.get_num_cols()-1; i > -1; i--){
 
         // Compute the target space O_alpha for each relation of A to minimise the number of variables.
         auto [O_alpha, rows_alpha] = O.map_at_degree_pair(A.col_degrees[i], false);
-        vec<index> basislift;
-        basislift = O_alpha.coKernel_basis(rows_alpha);
-
+        vec<index> basislift = O_alpha.coKernel_basis_local(rows_alpha);
 
         //TO-DO everything from here on is just copy paste so far.
         
@@ -382,9 +379,28 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
     auto K = S.kernel();
     K.cull_columns(row_op_threshold, false);
     K.compute_num_cols();
+    // In theory, we do not need to reduce the matrix again.
+    int test = K.get_num_cols();
     K.column_reduction_triangular(true);
+    assert(test == K.get_num_cols());
 
     return std::make_pair(K, variable_positions);
+}
+
+template <typename index>
+vec<index>index_pair_to_position(index row_index, const vec<index>& row_indices, const vec<std::pair<index,index>>& variable_positions){
+    vec<index> result;
+    auto it = row_indices.begin();
+    for(index j = 0; j < variable_positions.size() && it != row_indices.end(); j++){
+        auto& index_pair = variable_positions[j];
+        if(index_pair.first == row_index){
+            if(*it == index_pair.second){
+                result.push_back(j);
+                it++;
+            }
+        }
+    }
+    return result;
 }
 
 /**
@@ -397,7 +413,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
  * @return vec<SparseMatrix<index>> 
  */
 template <typename D, typename index, typename DERIVED>
-std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, 
+std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, const bool reduce = true,
     const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>())  {
     
     assert(A.rows_computed);
@@ -458,18 +474,28 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space(const Gr
     K.cull_columns(row_op_threshold, false);
     K.compute_num_cols();
     K.column_reduction_triangular(true);
-
+    if(reduce){
+        SparseMatrix<index> N_bar = SparseMatrix<index>(0,K.get_num_cols());
+        for(index i = 0; i < A.get_num_rows(); i++){
+            for(index j = 0; j < B.get_num_cols(); j++){
+                if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.col_degrees[j])){
+                    // Add a new homotopy
+                    vec<index> h = index_pair_to_position(i, B.data[j], variable_positions);
+                    N_bar.data.push_back(h);
+                }
+            }
+        }
+        N_bar.compute_num_cols();
+        N_bar.reduce_fully(K);
+        K.column_reduction_triangular(true);
+    }
     return std::make_pair(K, variable_positions);
 }
 
 /**
- * @brief Returns a vector of matrices Q which form a basis of Hom(A, B), where Q is a map on the generators. 
- * 
- * @param A 
- * @param B 
- * @param row_indices If the row indices of B are shifted, this vector contains the shift.
- * @return vec<SparseMatrix<index>> 
- */
+ * @brief Returns a vector of matrices Q which form a basis of Hom(C, B), where Q is a map on the generators. 
+ * C, B are both blocks in the large matrix A. Used in AIDA.
+*/
 template <typename D, typename index, typename DERIVED>
 std::pair< SparseMatrix<index>, vec<std::pair<index, index> > > block_hom_space_without_optimisation(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& C, const GradedSparseMatrix<D, index, DERIVED>& B,
         vec<index>& C_rows, vec<index>& B_rows, bool system_size = false)  { 

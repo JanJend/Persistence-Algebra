@@ -301,6 +301,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         while (rel_counter < num_rel + num_gen) {
             if(!std::getline(file_stream, line)){
                 std::cout << "Error: Unexpected end of file. \n Make sure that the dimensions of the file are correctly given at the beginning of the file." << std::endl;
+            } else if (line.empty()) {
+                std::cout << "Error: Encountered an empty line in the file." << std::endl;
             }
             std::pair<D, std::vector<index>> line_data;
             if (rel_counter < num_rel) {
