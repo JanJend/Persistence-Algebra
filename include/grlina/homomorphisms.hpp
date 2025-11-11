@@ -179,6 +179,7 @@ vec<DERIVED> hom_space_basis_new(
         
         // building the matrix A^t \otimes B_*
         for(size_t i = 0; i < A.get_num_rows(); i++){
+            S_row_counter = 0;
             std::pair< vec<index>, vec<index> >& sourceBasis = B_local_basislifts[i];
             assert(B_local_spaces[i].get_num_cols() == sourceBasis.first.size());
             assert(B_local_spaces[i].get_num_rows() == sourceBasis.second.size());

@@ -53,8 +53,8 @@ int main(int argc, char** argv) {
 
     if (argc != 3) {
         std::cerr << "Usage: " << argv[0] << " <file_path_A> <file_path_B>" << std::endl;
-        filepath_A = "/home/wsljan/MP-Workspace/Persistence-Algebra/test_presentations/toy_example_4.scc";
-        filepath_B = "/home/wsljan/MP-Workspace/Persistence-Algebra/test_presentations/toy_example_4.scc";
+        filepath_A = "/home/wsljan/MP-Workspace/Persistence-Algebra/test_presentations/toy_example_5_cut_A.scc";
+        filepath_B = "/home/wsljan/MP-Workspace/Persistence-Algebra/test_presentations/toy_example_5_cut.scc";
     } else {
         filepath_A = argv[1];
         filepath_B = argv[2];
