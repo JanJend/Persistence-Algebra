@@ -28,6 +28,21 @@
 namespace graded_linalg {
 
 
+template <typename index>
+vec<index>index_pair_to_position(index row_index, const vec<index>& row_indices, const vec<std::pair<index,index>>& variable_positions){
+    vec<index> result;
+    auto it = row_indices.begin();
+    for(index j = 0; j < variable_positions.size() && it != row_indices.end(); j++){
+        auto& index_pair = variable_positions[j];
+        if(index_pair.first == row_index){
+            if(*it == index_pair.second){
+                result.push_back(j);
+                it++;
+            }
+        }
+    }
+    return result;
+}
 
 /**
  * @brief Returns the basis of Hom(A, B) as a vector of graded matrices.
@@ -101,6 +116,23 @@ vec<DERIVED> hom_space_basis_new(
     K.compute_num_cols();
     K.column_reduction_triangular(true);
 
+    bool reduce = true;
+    if(reduce){
+        SparseMatrix<index> N_bar = SparseMatrix<index>(0,K.get_num_cols());
+        for(index i = 0; i < A.get_num_rows(); i++){
+            for(index j = 0; j < B.get_num_cols(); j++){
+                if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.col_degrees[j])){
+                    // Add a new homotopy
+                    vec<index> h = index_pair_to_position(i, B.data[j], variable_positions);
+                    N_bar.data.push_back(h);
+                }
+            }
+        }
+        N_bar.compute_num_cols();
+        N_bar.reduce_fully(K);
+        K.column_reduction_triangular(true);
+    }
+
     for(index i = 0; i < K.get_num_cols(); i++){
         auto& current_map = K.data[i];
         DERIVED Q(A.get_num_rows(), B.get_num_rows(),
@@ -113,8 +145,6 @@ vec<DERIVED> hom_space_basis_new(
         assert(Q.is_sorted_sparse());
         result.push_back(Q);
     } 
-
-    // Although this function contains "basis", the reduction to make it one is actually missing
 
     //  If the bool is true, next use Hom( -, coker B) on the presentation A to get Hom(coker A, coker B)_0 as the kernel of 
     //  Hom(A.target, coker B)_0 -(A^t)-> Hom(A.domain, coker B)_0
@@ -151,6 +181,7 @@ vec<DERIVED> hom_space_basis_new(
             assert(B_local_spaces[i].get_num_cols() == sourceBasis.first.size());
             assert(B_local_spaces[i].get_num_rows() == sourceBasis.second.size());
             auto itA = A._rows[i].begin();
+            // The following will store the global indices corresponding to a basis of Y_(deg g_i)
             S_column_partition.push_back(vec_restriction(sourceBasis.first, sourceBasis.second));
             for(size_t j = 0; j < A.get_num_cols(); j++){
                 if(itA == A._rows[i].end()){
@@ -186,20 +217,24 @@ vec<DERIVED> hom_space_basis_new(
         S.set_num_rows(S_row_counter);
         SparseMatrix<index> K = S.kernel();
         // TO-DO: The following could easily be parallelised
-        for(auto vector : K.data){
-            result.emplace_back(R2GradedSparseMatrix<index>(A.get_num_rows(), B.get_num_rows(), A.row_degrees, B.row_degrees));
-            auto& m = result.back().data;
-            auto it = vector.begin();
+        for(auto f_vec : K.data){
+            DERIVED new_Q(A.get_num_rows(), B.get_num_rows(), A.row_degrees, B.row_degrees);
+            result.emplace_back(std::move(new_Q));
+            auto& Q = result.back().data;
+            Q.resize(A.get_num_rows());
+            auto it = f_vec.begin();
             index column_counter = 0;
-            //TO-DO check this loop in debugger, this is for sure going wrong.
+            // We need to advance the iterator for the next block of size S_column_partition[i]
             for(index i = 0; i < A.get_num_rows(); i++){
-                while(it != vector.end() && *it <= column_counter + S_column_partition[i].size()){
-                    m[i].push_back(S_column_partition[i][*it -column_counter]);
+                index block_end = column_counter + S_column_partition[i].size();
+                while(it != f_vec.end() && *it <= block_end){
+                    Q[i].push_back(S_column_partition[i][*it - column_counter]);
+                    it++;
                 }
-                if( it == vector.end()){
+                if( it == f_vec.end()){
                     break;
                 }
-                column_counter + S_column_partition[i].size();
+                column_counter += S_column_partition[i].size();
             }
         }
     }
@@ -387,21 +422,6 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
     return std::make_pair(K, variable_positions);
 }
 
-template <typename index>
-vec<index>index_pair_to_position(index row_index, const vec<index>& row_indices, const vec<std::pair<index,index>>& variable_positions){
-    vec<index> result;
-    auto it = row_indices.begin();
-    for(index j = 0; j < variable_positions.size() && it != row_indices.end(); j++){
-        auto& index_pair = variable_positions[j];
-        if(index_pair.first == row_index){
-            if(*it == index_pair.second){
-                result.push_back(j);
-                it++;
-            }
-        }
-    }
-    return result;
-}
 
 /**
  * @brief Returns a vector of matrices Q which form a basis of Hom(A, B), where Q is a map on the generators. 

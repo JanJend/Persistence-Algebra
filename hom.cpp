@@ -20,26 +20,23 @@ void compute_hom_space(std::filesystem::path input_path_A, std::filesystem::path
     vec<R2GradedSparseMatrix<int>> hom_space_new;
 
     // Full linear system
-    if(type == 0 || compare){
-        hom_space_full = hom_space_no_opt<r2degree, int, R2GradedSparseMatrix<int>>(A, B);
-        std::cout << "After full linear system, dim hom: " << hom_space_full.first.get_num_cols() << std::endl;
-    }  
-    if(type == 1 || compare){
-        hom_space_semi_restriction = hom_space_optimised<r2degree, int, R2GradedSparseMatrix<int>>(A,B);
-        std::cout << "After semi restriction, dim hom: " << hom_space_semi_restriction.first.get_num_cols() << std::endl;
-    } 
-    if(type == 2 || compare){
-        hom_space_full_rest = hom_space_full_restriction<r2degree, int, R2GradedSparseMatrix<int>>(A,B);
-        std::cout << "After full restriction, dim hom: " << hom_space_full_rest.first.get_num_cols() << std::endl;
-    } 
-    if (compare){
-        auto hom_space_vec = hom_space_basis_new<r2degree, int, R2GradedSparseMatrix<int>>(A,B,false);
-        std::cout << "After hom_space_basis, dim hom: " << hom_space_vec.size() << std::endl;
-    }
-    if(type == 3){
+    if(type == 0|| compare){
         hom_space_new = hom_space_basis_new<r2degree, int, R2GradedSparseMatrix<int>>(A,B, true);
         std::cout << "After hom-exact, dim hom: " << hom_space_new.size() << std::endl;
     }
+    if(type == 1 || compare){
+        hom_space_full = hom_space_no_opt<r2degree, int, R2GradedSparseMatrix<int>>(A, B);
+        std::cout << "After full linear system, dim hom: " << hom_space_full.first.get_num_cols() << std::endl;
+    }  
+    if(type == 2 || compare){
+        hom_space_semi_restriction = hom_space_optimised<r2degree, int, R2GradedSparseMatrix<int>>(A,B);
+        std::cout << "After semi restriction, dim hom: " << hom_space_semi_restriction.first.get_num_cols() << std::endl;
+    } 
+    if(type == 3 || compare){
+        hom_space_full_rest = hom_space_full_restriction<r2degree, int, R2GradedSparseMatrix<int>>(A,B);
+        std::cout << "After full restriction, dim hom: " << hom_space_full_rest.first.get_num_cols() << std::endl;
+    } 
+    
         
 }
 
@@ -51,8 +48,6 @@ int main(int argc, char** argv) {
 
     if (argc != 3) {
         std::cerr << "Usage: " << argv[0] << " <file_path_A> <file_path_B>" << std::endl;
-        filepath_A = "/home/wsljan/MP-Workspace/Persistence-Algebra/test_presentations/full_rips_size_1_instance_5_min_pres.scc";
-        filepath_B = "/home/wsljan/MP-Workspace/Persistence-Algebra/test_presentations/full_rips_size_1_instance_5_min_pres.scc";
     } else {
         filepath_A = argv[1];
         filepath_B = argv[2];
