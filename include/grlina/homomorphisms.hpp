@@ -30,7 +30,6 @@
 
 namespace graded_linalg {
 
-using namespace boost;
 
 template <typename index>
 std::vector<index> generate_random_indices(index number, index range) {
@@ -317,7 +316,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimise
     const bool info = false)  {
     
     assert(A.rows_computed);
-    timer::cpu_timer timer;
+    boost::timer::cpu_timer timer;
     if(info)
         timer.start();
 
@@ -444,7 +443,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
     const bool info = false)  {
     
     assert(A.rows_computed);
-    timer::cpu_timer timer;
+    boost::timer::cpu_timer timer;
     if(info)
         timer.start();
 
@@ -562,7 +561,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
 template <typename D, typename index, typename DERIVED>
 vec<index> no_opt_system_info(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B){
     assert(A.rows_computed);
-    timer::cpu_timer timer;
+    boost::timer::cpu_timer timer;
     
     timer.start();
     vec<index> result = vec<index>();
@@ -647,7 +646,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(c
     const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>(), const bool info = false)  {
     
     assert(A.rows_computed);
-    timer::cpu_timer timer;
+    boost::timer::cpu_timer timer;
     if(info)
         timer.start();
     vec<SparseMatrix<index>> result;
