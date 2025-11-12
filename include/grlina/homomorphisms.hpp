@@ -15,18 +15,35 @@
 
 #pragma once
 
-#include "grlina/r2graded_matrix.hpp"
-#include "grlina/sparse_matrix.hpp"
-#include <cstdlib>
-#include <utility>
+
 #ifndef HOMOMORPHISMS_HPP
 #define HOMOMORPHISMS_HPP
 
 #include <grlina/graded_matrix.hpp>
-
+#include "grlina/r2graded_matrix.hpp"
+#include "grlina/sparse_matrix.hpp"
+#include <cstdlib>
+#include <utility>
+#include <random>
+#include <vector>
+#include <boost/timer/timer.hpp>
 
 namespace graded_linalg {
 
+using namespace boost;
+
+template <typename index>
+std::vector<index> generate_random_indices(index number, index range) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<index> dist(0, range - 1);
+    
+    std::vector<index> result(number);
+    for (index i = 0; i < number; ++i) {
+        result[i] = dist(gen);
+    }
+    return result;
+}
 
 template <typename index>
 vec<index>index_pair_to_position(index row_index, const vec<index>& row_indices, const vec<std::pair<index,index>>& variable_positions){
@@ -58,8 +75,13 @@ template <typename D, typename index, typename DERIVED>
 vec<DERIVED> hom_space_basis_new(
     const GradedSparseMatrix<D, index, DERIVED>& A,
     const GradedSparseMatrix<D, index, DERIVED>& B, 
-    bool use_hom_exactness = false ){
+    bool use_hom_exactness = false,
+    const bool info = false) {
 
+    boost::timer::cpu_timer timer;
+    if(info){
+        timer.start();
+    }
     vec<DERIVED> result = vec<DERIVED>();
     if(!A.rows_computed){
         std::cerr << "Warning: Rows of A must be computed before usage." << std::endl;
@@ -109,6 +131,7 @@ vec<DERIVED> hom_space_basis_new(
         }
     }
 
+    
 
     S.compute_num_cols();
     auto K = S.kernel();
@@ -190,6 +213,9 @@ vec<DERIVED> hom_space_basis_new(
                 if(itA == A._rows[i].end()){
                     break;
                 } else if (*itA > j) {
+                    index j_shift = A.get_num_rows()+j;
+				    auto& targetBasis = B_local_basislifts[j_shift];
+                    S_row_counter += targetBasis.second.size();
                     continue;
                 } else {
                 assert(*itA == j);    
@@ -219,7 +245,35 @@ vec<DERIVED> hom_space_basis_new(
             S_column_counter += S_column_partition[i].size();
         }
         S.set_num_rows(S_row_counter);
+
+        if(info){
+            timer.stop();
+            std::cout << "Time to set up the system: " << timer.format(10) << std::endl;
+            timer.start();
+            std::cout << "Alg B system size: " << S.get_num_cols() << " variables and " << S.get_num_rows() << " equations" << std::endl;
+            vec<index> samples = generate_random_indices<index>(50, S.get_num_cols());
+            double average_fill = 0.0;
+            for(auto s : samples){
+                average_fill += (double) S.data[s].size();
+            }
+            average_fill /= samples.size();
+            double fill_ratio = average_fill / (double) S.get_num_rows();
+            std::cout << "Average #entries per column: " << average_fill << std::endl;
+            std::cout << "Fill ratio: " << fill_ratio << std::endl;
+        }
+
         SparseMatrix<index> K = S.kernel();
+
+        if(info){
+            timer.stop();
+            std::cout << "Time to compute the kernel: " << timer.format(10) << std::endl;
+            std::cout << "Dimension of hom-space: " << K.get_num_cols() << std::endl;
+        }
+
+        if(K.get_num_cols() > 100.000){
+            std::cout << " Hom-space is too large to convert to a vector of matrices." << std::endl;
+            return result;
+        }
         // Translating the vectors to matrices.
         // TO-DO: The following could easily be parallelised
         for(auto f_vec : K.data){
@@ -259,9 +313,13 @@ vec<DERIVED> hom_space_basis_new(
  */
 template <typename D, typename index, typename DERIVED>
 std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimised(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, 
-    const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>())  {
+    const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>(),
+    const bool info = false)  {
     
     assert(A.rows_computed);
+    timer::cpu_timer timer;
+    if(info)
+        timer.start();
 
     vec<SparseMatrix<index>> result;
     vec<std::pair<index,index>> variable_positions; // Stores the position of the variables in the matrix Q
@@ -322,12 +380,49 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimise
         }
     }
 
-
     S.compute_num_cols();
+
+    if(info){
+        index equation_counter = 0;
+        for(index i = 0; i < A.get_num_cols(); i++){
+            for(index j = 0; j < B.get_num_rows(); j++){
+                if(Degree_traits<D>::greater_equal(A.col_degrees[i], B.row_degrees[j])){
+                    equation_counter++;
+                }
+            }
+        }
+        timer.stop();
+        std::cout << "Time to set up the system: " << timer.format(10) << std::endl;
+        timer.start();
+        std::cout << "Semi-restricted system size: " << S.get_num_cols() << " variables and " << equation_counter << " equations" << std::endl;
+        vec<index> samples = generate_random_indices<index>(50, S.get_num_cols());
+        double average_fill = 0.0;
+        for(auto s : samples){
+            average_fill += (double) S.data[s].size();
+        }
+        average_fill /= samples.size();
+        double fill_ratio = average_fill / (double) equation_counter;
+        std::cout << "Average #entries per column: " << average_fill << std::endl;
+        std::cout << "Fill ratio: " << fill_ratio << std::endl;
+    }
+
     auto K = S.kernel();
     K.cull_columns(row_op_threshold, false);
     K.compute_num_cols();
+
+    if(info){
+        timer.stop();
+        std::cout << "Time to compute the kernel: " << timer.format(10) << std::endl;
+        timer.start();
+    }
+
     K.column_reduction_triangular(true);
+
+    if(info){
+        timer.stop();
+        std::cout << "Time to reduce the kernel: " << timer.format(10) << std::endl;
+        std::cout << "Dimension of hom-space: " << K.get_num_cols() << std::endl;
+    }
 
     return std::make_pair(K, variable_positions);
 }
@@ -345,9 +440,13 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimise
  */
 template <typename D, typename index, typename DERIVED>
 std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_restriction(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, 
-    const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>())  {
+    const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>(),
+    const bool info = false)  {
     
     assert(A.rows_computed);
+    timer::cpu_timer timer;
+    if(info)
+        timer.start();
 
     vec<SparseMatrix<index>> result;
     vec<std::pair<index,index>> variable_positions; // Stores the position of the variables in the matrix Q
@@ -398,8 +497,6 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
         // Compute the target space O_alpha for each relation of A to minimise the number of variables.
         auto [O_alpha, rows_alpha] = O.map_at_degree_pair(A.col_degrees[i], false);
         vec<index> basislift = O_alpha.coKernel_basis_local(rows_alpha);
-
-        //TO-DO everything from here on is just copy paste so far.
         
          // Then add the effect of all row-operations from A to B (modulo the image of B).
         for(index j : basislift) {
@@ -416,13 +513,48 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
     }
 
     S.compute_num_cols();
+
+    if(info){
+        index equation_counter = 0;
+        for(index i = 0; i < A.get_num_cols(); i++){
+            for(index j = 0; j < B.get_num_rows(); j++){
+                if(Degree_traits<D>::greater_equal(A.col_degrees[i], B.row_degrees[j])){
+                    equation_counter++;
+                }
+            }
+        }
+        timer.stop();
+        std::cout << "Time to set up the system: " << timer.format(10) << std::endl;
+        timer.start();
+        std::cout << "Fully restricted system size: " << S.get_num_cols() << " variables and " << equation_counter << " equations" << std::endl;
+        vec<index> samples = generate_random_indices<index>(50, S.get_num_cols());
+        double average_fill = 0.0;
+        for(auto s : samples){
+            average_fill += (double) S.data[s].size();
+        }
+        average_fill /= samples.size();
+        double fill_ratio = average_fill / (double) equation_counter;
+        std::cout << "Average #entries per column: " << average_fill << std::endl;
+        std::cout << "Fill ratio: " << fill_ratio << std::endl;
+    }
+
+
     auto K = S.kernel();
+
+    if(info){
+        timer.stop();
+        std::cout << "Time to compute the kernel: " << timer.format(10) << std::endl;
+        timer.start();
+    }
+
     K.cull_columns(row_op_threshold, false);
     K.compute_num_cols();
-    // In theory, we do not need to reduce the matrix again.
-    int test = K.get_num_cols();
-    K.column_reduction_triangular(true);
-    assert(test == K.get_num_cols());
+
+    if(info){
+        timer.stop();
+        std::cout << "Time to reduce the kernel: " << timer.format(10) << std::endl;
+        std::cout << "Dimension of hom-space: " << K.get_num_cols() << std::endl;
+    }
 
     return std::make_pair(K, variable_positions);
 }
@@ -439,10 +571,12 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
  */
 template <typename D, typename index, typename DERIVED>
 std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, const bool reduce = true,
-    const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>())  {
+    const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>(), const bool info = false)  {
     
     assert(A.rows_computed);
-
+    timer::cpu_timer timer;
+    if(info)
+        timer.start();
     vec<SparseMatrix<index>> result;
     vec<std::pair<index,index>> variable_positions; // Stores the position of the variables in the matrix Q
     SparseMatrix<index> S(0,0);
@@ -495,10 +629,41 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(c
 
 
     S.compute_num_cols();
+
+    if(info){
+        index equation_counter = 0;
+        for(index i = 0; i < A.get_num_cols(); i++){
+            for(index j = 0; j < B.get_num_rows(); j++){
+                if(Degree_traits<D>::greater_equal(A.col_degrees[i], B.row_degrees[j])){
+                    equation_counter++;
+                }
+            }
+        }
+        timer.stop();
+        std::cout << "Time to set up the system: " << timer.format(10) << std::endl;
+        timer.start();
+        std::cout << "Non-optimised system size: " << S.get_num_cols() << " variables and " << equation_counter << " equations" << std::endl;
+        vec<index> samples = generate_random_indices<index>(50, S.get_num_cols());
+        double average_fill = 0.0;
+        for(auto s : samples){
+            average_fill += (double) S.data[s].size();
+        }
+        average_fill /= samples.size();
+        double fill_ratio = average_fill / (double) equation_counter;
+        std::cout << "Average #entries per column: " << average_fill << std::endl;
+        std::cout << "Fill ratio: " << fill_ratio << std::endl;
+    }
+
     auto K = S.kernel();
     K.cull_columns(row_op_threshold, false);
     K.compute_num_cols();
     K.column_reduction_triangular(true);
+    if(info){
+        timer.stop();
+        std::cout << "Time to compute the kernel: " << timer.format(10) << std::endl;
+        std::cout << "Dimension of hom-space before reduction: " << K.get_num_cols() << std::endl;
+        timer.start();
+    }
     if(reduce){
         SparseMatrix<index> N_bar = SparseMatrix<index>(0,K.get_num_cols());
         for(index i = 0; i < A.get_num_rows(); i++){
@@ -513,6 +678,10 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(c
         N_bar.compute_num_cols();
         N_bar.reduce_fully(K);
         K.column_reduction_triangular(true);
+        if(info){
+            timer.stop();
+            std::cout << "Time to reduce to basis: " << timer.format(10) << std::endl;
+        }
     }
     return std::make_pair(K, variable_positions);
 }
