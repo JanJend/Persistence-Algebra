@@ -18,7 +18,7 @@ for file in "$FOLDER"/*.scc "$FOLDER"/*.firep; do
     echo "" >> "$OUTPUT"
     echo '```' >> "$OUTPUT"
     
-    "$PROGRAM" "$file" "$file" -1 1 >> "$OUTPUT" 2>&1
+    "$PROGRAM" "$file" "$file" -2 1 >> "$OUTPUT" 2>&1
     
     echo '```' >> "$OUTPUT"
     echo "" >> "$OUTPUT"

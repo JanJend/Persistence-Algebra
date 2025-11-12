@@ -39,7 +39,7 @@ void compute_hom_space(std::filesystem::path input_path_A, std::filesystem::path
         hom_space_full = hom_space_no_opt<r2degree, int, R2GradedSparseMatrix<int>>(A, B, true, vec<int>(), vec<int>(), info);
         std::cout << "After full linear system, dim hom: " << hom_space_full.first.get_num_cols() 
                   << ", time: " << timer.format() << std::endl;
-    } else if (type == -2 && info){
+    } else if ( (type == -2) || (type = -3)){
         vec<int> system_size = no_opt_system_info<r2degree, int, R2GradedSparseMatrix<int>>(A, B);
     }
     // Semi-restriction
@@ -76,6 +76,8 @@ int main(int argc, char** argv) {
             filepath_B = "/home/wsljan/MP-Workspace/data/hypoxic_regions/hypoxic_FoxP3_dim1_100x100.scc";
             type = -2;
             info = true;
+        } else {
+            return 1;
         }
     } else {
         filepath_A = argv[1];
