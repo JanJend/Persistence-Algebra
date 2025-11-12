@@ -559,6 +559,79 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
     return std::make_pair(K, variable_positions);
 }
 
+template <typename D, typename index, typename DERIVED>
+vec<index> no_opt_system_info(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B){
+    assert(A.rows_computed);
+    timer::cpu_timer timer;
+    
+    timer.start();
+    vec<index> result = vec<index>();
+
+    vec<std::pair<index,index>> variable_positions; // Stores the position of the variables in the matrix Q
+    SparseMatrix<index> S(0,0);
+    S.data.reserve( A.get_num_rows() + B.get_num_rows() + 1);
+    index S_index = 0;
+
+    for(index i = 0; i < A.get_num_rows(); i++) {
+        for(index j = 0; j < B.get_num_rows(); j++) {
+            if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.row_degrees[j])){
+                S.data.push_back(vec<index>());
+                variable_positions.push_back(std::make_pair(i, j));
+                for(auto rit = A._rows[i].rbegin(); rit != A._rows[i].rend(); rit++){
+                    auto& column_index = *rit;
+                    S.data[S_index].emplace_back(linearise_position_reverse_ext(column_index, j, A.get_num_cols(), B.get_num_rows()));
+                }
+                S_index++;
+            } 
+        }
+    }
+    
+    index row_op_threshold = S_index;
+    assert( variable_positions.size() == S_index );
+
+
+    // Then all column-operations from B to A
+    for(index i = A.get_num_cols()-1; i > -1; i--){
+        for(index j = 0; j < B.get_num_cols(); j++){
+            if(B.is_admissible_column_operation(j, A.col_degrees[i])){
+                S.data.push_back(vec<index>());
+                for(index row_index : B.data[j]){
+                    S.data[S_index].emplace_back(linearise_position_reverse_ext(i, row_index, A.get_num_cols(), B.get_num_rows()));        
+                }
+                S_index++;
+            }
+        }
+    }
+
+
+    S.compute_num_cols();
+
+
+        index equation_counter = 0;
+        for(index i = 0; i < A.get_num_cols(); i++){
+            for(index j = 0; j < B.get_num_rows(); j++){
+                if(Degree_traits<D>::greater_equal(A.col_degrees[i], B.row_degrees[j])){
+                    equation_counter++;
+                }
+            }
+        }
+        result.push_back(S.get_num_cols());
+        result.push_back(equation_counter);
+        timer.stop();
+        std::cout << "Time to set up the system: " << timer.format(10) << std::endl;
+        timer.start();
+        std::cout << "Non-optimised system size: " << S.get_num_cols() << " variables and " << equation_counter << " equations" << std::endl;
+        vec<index> samples = generate_random_indices<index>(50, S.get_num_cols());
+        double average_fill = 0.0;
+        for(auto s : samples){
+            average_fill += (double) S.data[s].size();
+        }
+        average_fill /= samples.size();
+        double fill_ratio = average_fill / (double) equation_counter;
+        std::cout << "Average #entries per column: " << average_fill << std::endl;
+        std::cout << "Fill ratio: " << fill_ratio << std::endl;
+    return result;
+}
 
 /**
  * @brief Returns a vector of matrices Q which form a basis of Hom(A, B), where Q is a map on the generators. 
