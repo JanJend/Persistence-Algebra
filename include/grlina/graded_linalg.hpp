@@ -176,6 +176,55 @@ void write_vector_to_file(const std::vector<T>& vec, const std::string& folder, 
 }
 
 /**
+ * @brief Constructs matrices from stream with header and type annotations
+ *
+ * @param matrices vector to store the constructed matrices
+ * @param file_stream input stream with format: header, count, then (type, matrix) pairs
+ * @param lex_sort whether to sort lexicographically
+ * @param compute_batches whether to compute the column batches and k_max
+ * @param matrix_types optional vector to store the type of each matrix (e.g., "cyclic")
+ */
+template <typename index, typename InputStream>
+void read_sccsum(
+    std::vector<R2GradedSparseMatrix<index>>& matrices, 
+    InputStream& file_stream, 
+    bool lex_sort = false, 
+    bool compute_batches = false,
+    std::vector<std::string>* matrix_types = nullptr) {
+    
+    // Read and validate header
+    std::string header;
+    std::getline(file_stream, header);
+    if (header != "scc2020sum") {
+        throw std::runtime_error("Invalid header: expected 'scc2020sum', got '" + header + "'");
+    }
+    
+    // Read matrix count
+    size_t count;
+    file_stream >> count;
+    file_stream.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    
+    matrices.reserve(count);
+    if (matrix_types) {
+        matrix_types->reserve(count);
+    }
+    
+    for (size_t i = 0; i < count; ++i) {
+        // Read type line
+        std::string type;
+        std::getline(file_stream, type);
+        
+        if (matrix_types) {
+            matrix_types->push_back(type);
+        }
+        
+        // Construct matrix from stream
+        R2GradedSparseMatrix<index> matrix(file_stream, lex_sort, compute_batches);
+        matrices.push_back(std::move(matrix));
+    }
+}
+
+/**
  * @brief Writes a vector of sets of numbers to a .txt file.
  * 
  * @tparam T 
