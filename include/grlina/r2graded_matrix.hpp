@@ -61,6 +61,10 @@ inline r2degree operator*(const r2degree& p, double scalar) {
 return {p.first * scalar, p.second * scalar};
 }
 
+inline r2degree operator/(const r2degree& p, double scalar) {
+    return {p.first / scalar, p.second / scalar};
+}
+
 template<>
 struct Degree_traits<r2degree> {
     static bool equals(const r2degree& lhs, const r2degree& rhs) {
@@ -540,8 +544,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
 
     /** for any grid i:G \into R^2, if this is a presentation, 
     * computes a presentation of i_! i^* X
-    * by snapping all degrees to the grid defined by x_grid and y_grid
-    * Highly inefficient implementation
+    * by snapping all degrees to the next larger degree in x_grid x y_grid
+    * (Highly inefficient implementation)
      */
     void snap_to_grid( vec<double>& new_x_grid, vec<double>& new_y_grid){
 
@@ -571,7 +575,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         this->delete_rows(rows_to_remove);
         this->sort_columns_lexicographically();
         this->sort_rows_lexicographically();
-        this->minimize_variant();
+        this->minimize();
     }
 
     void print_grid(){
@@ -840,16 +844,17 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         if(n == 0){
             std::cerr << "Error: Cannot snap to an equidistant grid with 0 points." << std::endl;
         } else {
+            r2degree step;
             if(end_inclusive){
-                n = n - 1;
+                step = (box.second - box.first) / (n - 1);
+            } else {
+                step = (box.second - box.first) / (n);
             }
-            double x_step = (box.second.first - box.first.first) / (n);
-            double y_step = (box.second.second - box.first.second) / (n);
             vec<double> new_x_grid;
             vec<double> new_y_grid;
             for(int i = 0; i < n; i++){
-                new_x_grid.push_back(box.first.first + i * x_step);
-                new_y_grid.push_back(box.first.second + i * y_step);
+                new_x_grid.push_back(box.first.first + i * step.first);
+                new_y_grid.push_back(box.first.second + i * step.second);
             }
             this->snap_to_grid(new_x_grid, new_y_grid);
         }

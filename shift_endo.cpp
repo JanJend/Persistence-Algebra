@@ -18,7 +18,7 @@ void endomorphism_sizes(std::filesystem::path input_path) {
         presentation.sort_rows_lexicographically();
         pres_shift.shift({eps, eps});
         presentation.compute_rows_forward();
-        auto endos = hom_space_basis(presentation, pres_shift);
+        auto endos = hom_space_basis_new(presentation, pres_shift, true);
         std::cout << "Epsilon: " << eps << " Number of endomorphisms: " << endos.size() << std::endl;
     }
 }

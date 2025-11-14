@@ -26,9 +26,9 @@ include_directories(include)
 include_directories(${Boost_INCLUDE_DIRS})
 
 
-add_executable(endo endo.cpp)
-target_link_libraries(endo ${Boost_LIBRARIES})
-set_target_properties(endo PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
+add_executable(shift_endo shift_endo.cpp)
+target_link_libraries(shift_endo ${Boost_LIBRARIES})
+set_target_properties(shift_endo PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
 add_executable(hom hom.cpp)
 target_link_libraries(hom ${Boost_LIBRARIES})
@@ -50,11 +50,11 @@ add_executable(snap_grid snap_grid.cpp)
 target_link_libraries(snap_grid ${Boost_LIBRARIES})
 set_target_properties(snap_grid PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
-add_executable(submodule submodule.cpp)
-target_link_libraries(submodule ${Boost_LIBRARIES})
-set_target_properties(submodule PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
+add_executable(submodule_at submodule_at.cpp)
+target_link_libraries(submodule_at ${Boost_LIBRARIES})
+set_target_properties(submodule_at PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
-install(TARGETS endo hom minimize pres_to_quiver resolution snap_grid submodule
+install(TARGETS shift_endo hom minimize pres_to_quiver resolution snap_grid submodule_at
     RUNTIME DESTINATION bin
 )
 
