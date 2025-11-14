@@ -202,7 +202,6 @@ void read_sccsum(
     // Read matrix count
     size_t count;
     file_stream >> count;
-    file_stream.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     
     matrices.reserve(count);
     if (matrix_types) {
@@ -210,18 +209,18 @@ void read_sccsum(
     }
     
     for (size_t i = 0; i < count; ++i) {
-        // Read type line
-        std::string type;
-        std::getline(file_stream, type);
-        
-        if (matrix_types) {
-            matrix_types->push_back(type);
-        }
-        
-        // Construct matrix from stream
-        R2GradedSparseMatrix<index> matrix(file_stream, lex_sort, compute_batches);
-        matrices.push_back(std::move(matrix));
+    // Skip empty lines and read type
+    std::string type;
+    while (std::getline(file_stream, type) && type.empty()) {}
+    
+    if (matrix_types) {
+        matrix_types->push_back(type);
     }
+    
+    // Construct matrix from stream
+    R2GradedSparseMatrix<index> matrix(file_stream, lex_sort, compute_batches);
+    matrices.push_back(std::move(matrix));
+}
 }
 
 /**

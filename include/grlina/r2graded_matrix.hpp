@@ -860,6 +860,29 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         }
     };
 
+    void cut_above(double x_cutoff, double y_cutoff){
+        auto box = this->bounding_box();
+        r2degree diagonal = box.second - box.first;
+        auto max_degree_x = box.first.first + x_cutoff * diagonal.first;
+        auto max_degree_y = box.first.second + y_cutoff * diagonal.second;
+        vec<index> rows_to_remove;
+        vec<index> cols_to_remove;
+        for(index i = 0; i < this->get_num_cols(); i++){
+            if(this->col_degrees[i].first > max_degree_x || this->col_degrees[i].second > max_degree_y){
+                cols_to_remove.push_back(i);
+            }
+        }
+
+        for(index i = 0; i < this->get_num_rows(); i++){
+            if(this->row_degrees[i].first > max_degree_x || this->row_degrees[i].second > max_degree_y){
+                rows_to_remove.push_back(i);
+            }
+        }
+
+        this->delete_columns(cols_to_remove);
+        this->delete_rows(rows_to_remove);
+    };
+
 }; // R2GradedSparseMatrix
 
 template<typename index>

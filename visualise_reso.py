@@ -41,10 +41,8 @@ def Hilbert_function(generators, relations, syzygies=None, resolution=(500, 500)
 
         # Add padding only if auto mode
         padding = 0.1
-        x_min -= padding
         x_max += padding
-        y_min -= padding
-        y_max += padding * 2
+        y_max += padding 
 
     
 
