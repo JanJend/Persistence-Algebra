@@ -17,6 +17,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 # Set debug flags
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+
 # Add _debug suffix to executables in Debug mode
 set(CMAKE_DEBUG_POSTFIX "_debug")
 

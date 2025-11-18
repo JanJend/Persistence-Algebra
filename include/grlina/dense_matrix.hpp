@@ -310,6 +310,37 @@ inline std::vector<DenseMatrix> all_proper_subspaces(int k){
     return subspaces;
 }
 
+inline std::vector<DenseMatrix> grassmannian(int k, int n){
+    vec<bitset> pivots;
+    vec<DenseMatrix> subspaces;
+    for (int i = 0; i < (1ULL << k); ++i) {
+        bitset b(k, i);
+        if(b.count() == n){
+            pivots.emplace_back(b);
+        }
+    }
+    for( bitset& b : pivots){
+        auto positions = getEchelonPositions(b);
+        pivotsToEchelon(subspaces, b, positions);
+    }
+    return subspaces;
+}
+
+inline std::vector<DenseMatrix> grassmannian_union(int k, int n)
+    vec<bitset> pivots;
+    vec<DenseMatrix> subspaces;
+    for (int i = 0; i < (1ULL << k); ++i) {
+        bitset b(k, i);
+        if(b.count() <= n){
+            pivots.emplace_back(b);
+        }
+    }
+    for( bitset& b : pivots){
+        auto positions = getEchelonPositions(b);
+        pivotsToEchelon(subspaces, b, positions);
+    }
+    return subspaces;
+}
 
 // A pair of DenseMatrices - the two subspaces of a decomposition.
 using VecDecomp = std::pair<DenseMatrix, DenseMatrix>;

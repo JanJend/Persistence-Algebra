@@ -34,7 +34,6 @@
 
 namespace graded_linalg {
 
-
 /**
  * @brief Converts a dense matrix to a sparse matrix
  * 
@@ -75,6 +74,29 @@ void fill_up_subspaces (vec<vec<SparseMatrix<index>>>& subspaces, index k ){
         subspaces.push_back(vec<SparseMatrix<index>>());
         vec<DenseMatrix> i_spaces = all_proper_subspaces(i+1);
         for(DenseMatrix matrix : i_spaces){
+            subspaces[i].emplace_back(sparse_from_dense<index>(matrix));
+        }
+    }
+}
+
+template <typename index>
+vec<vec<SparseMatrix<index>>> all_sparse_grassmannian(index k, index n){
+    vec<vec<SparseMatrix<index>>> result = vec<vec<SparseMatrix<index>>>(k);
+    for(index i = 0; i < k; i++){
+        vec<DenseMatrix> U_Gr_i_n = grassmannian_union(i+1, n);
+        for(DenseMatrix matrix : U_Gr_i_n){
+            result[i].emplace_back(sparse_from_dense<index>(matrix));
+        }
+    }
+    return result;
+}
+
+template <typename index>
+void fill_up_grassmannian (vec<vec<SparseMatrix<index>>>& subspaces, index k, index n){
+    for(index i = subspaces.size(); i < k; i++){
+        subspaces.push_back(vec<SparseMatrix<index>>());
+        vec<DenseMatrix> U_Gr_i_n = grassmannian_union(i+1, n);
+        for(DenseMatrix matrix : U_Gr_i_n){
             subspaces[i].emplace_back(sparse_from_dense<index>(matrix));
         }
     }
