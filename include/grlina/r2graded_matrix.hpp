@@ -1035,7 +1035,8 @@ struct R2Resolution {
         : d1(d1) {
             // Kernel computation is easy if the presentation is minimal, sorted, and has one generator.
             if(is_minimal && d1.get_num_rows() == 1){
-                // assert sored! Todo
+                // assert sorted! Todo
+                // This doesnt look right at the moment.
                 d2 = R2GradedSparseMatrix<index>(d1.get_num_cols()-1, d1.get_num_cols());
                 d2.data = vec< vec<index> >(d1.get_num_cols()-1);
                 d2.row_degrees = d1.col_degrees;
@@ -1066,7 +1067,7 @@ struct R2Resolution {
 
         // Write the header lines
         output_stream << "scc2020" << std::endl;
-        output_stream << "3" << std::endl;
+        output_stream << "2" << std::endl;
         output_stream << this->d2.get_num_cols() << " " << this->d2.get_num_rows() << " " << this->d1.get_num_rows() << std::endl;
 
         // Write the syzygies
@@ -1097,7 +1098,6 @@ struct R2Resolution {
     }
 
     
-    
     /**
      * @brief Writes the R^2 resolution to an output stream.
      * 
@@ -1109,114 +1109,6 @@ struct R2Resolution {
         index num_chains_1 = d1.num_cols_before(alpha);
         index num_chains_2 = d2.num_cols_before(alpha);
         return num_chains_0 - num_chains_1 + num_chains_2;
-    }
-
-    /**
-     * @brief Only works for modules with all generators at a single degree
-     *  TO-DO: Log transform on the scale parameter. What to do on density?
-     * @return double 
-     */
-    double area () const {
-        auto [min, max] = d1.bounding_box();
-        double base_area = d1.get_num_rows()*(max.first - min.first) * (max.second - min.second);
-        for(const auto& degree : d1.col_degrees){
-            base_area -= (max.first - degree.first) * (max.second - degree.second);
-        }
-        for(const auto& degree : d2.col_degrees){
-            base_area += (max.first - degree.first) * (max.second - degree.second);
-        }
-        return base_area;
-    }
-
-
-    /**
-     * @brief Only works for modules with all generators at a single degree
-     * @return double 
-     */
-    double area (const r2degree& bound) const {
-        auto [min, max] = d1.bounding_box();
-        max = bound;
-        double base_area = d1.get_num_rows()*(max.first - min.first) * (max.second - min.second);
-        for(const auto& degree : d1.col_degrees){
-            base_area -= (max.first - degree.first) * (max.second - degree.second);
-        }
-        for(const auto& degree : d2.col_degrees){
-            base_area += (max.first - degree.first) * (max.second - degree.second);
-        }
-        return base_area;
-    }
-
-    /**
-     * @brief Only works for modules with all generators at a single degree
-     * Normalised so that the area of the free module is 1.
-     *  TO-DO: Log transform on the scale parameter. What to do on density?
-     * @return double 
-     */
-    double area (const pair<r2degree>& bounds) const {
-        //TO-DO: Actually only need to compute the minimal element here.
-        auto [min, max] = d1.bounding_box();
-        max = bounds.second;
-        assert(max.first >= min.first);
-        assert(max.second >= min.second);
-        r2degree range = bounds.second-bounds.first;
-        double range_area = range.first * range.second;
-        double base_area = d1.get_num_rows() * (max.first - min.first) * (max.second - min.second);
-        for(const auto& degree : d1.col_degrees){
-            assert(degree.first <= max.first);
-            assert(degree.second <= max.second);
-            assert(degree.first >= min.first);
-            assert(degree.second >= min.second);
-            base_area -= (max.first - degree.first) * (max.second - degree.second);
-        }
-        for(const auto& degree : d2.col_degrees){
-            assert(degree.first <= max.first);
-            assert(degree.second <= max.second);
-            assert(degree.first >= min.first);
-            assert(degree.second >= min.second);
-            base_area += (max.first - degree.first) * (max.second - degree.second);
-        }
-        double normalised_area = base_area/range_area;
-        return normalised_area;
-    }
-
-    double slope () const {
-        double area = this->area();
-        if(area == 0){
-            std::cerr << "Area is zero, slope will be infinite. Consider passing a bound." << std::endl;
-        }
-        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
-        return slope_value;
-    }
-
-    double slope (const r2degree& bound) const {
-        double area = this->area(bound);
-        if(area == 0){
-            std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
-        }
-        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
-        return slope_value;
-    }
-
-    double slope (const pair<r2degree>& bounds) const {
-        double area = this->area(bounds);
-        if(area == 0){
-            std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
-        }
-        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
-        return slope_value;
-    }
-
-    /**
-     * @brief Returns a polynomial a[0] + a[1]*x + a[2]*y + a[3]*x*y
-     * which gives the area of the module after shifting the (assumed to be) single generator by (x,y)
-     * 
-     * @param bounds 
-     * @return std::array<double, 4> 
-     */
-    std::array<double, 4> area_polynomial (const pair<r2degree>& bounds) const {
-        assert(d1.get_num_rows() == 1);
-        // TO-DO: Finish this.
-        return {0,0,0,0};
     }
 
     /**

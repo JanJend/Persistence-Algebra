@@ -379,7 +379,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      *
      */
     template <typename OutStream>
-    void to_stream(OutStream& out, bool header=true){
+    void to_stream(OutStream& out, bool header=true) const {
 
         // Set the precision for floating-point output
         out << std::fixed << std::setprecision(17);

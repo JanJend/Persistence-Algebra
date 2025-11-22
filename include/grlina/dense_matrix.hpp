@@ -310,6 +310,19 @@ inline std::vector<DenseMatrix> all_proper_subspaces(int k){
     return subspaces;
 }
 
+inline std::vector<DenseMatrix> all_subspaces(int k){
+    vec<bitset> pivots;
+    vec<DenseMatrix> subspaces;
+    for (int i = 0; i < (1ULL << k); ++i) {
+        pivots.emplace_back(bitset(k, i));
+    }
+    for( bitset& b : pivots){
+        auto positions = getEchelonPositions(b);
+        pivotsToEchelon(subspaces, b, positions);
+    }
+    return subspaces;
+}
+
 inline std::vector<DenseMatrix> grassmannian(int k, int n){
     vec<bitset> pivots;
     vec<DenseMatrix> subspaces;
@@ -326,7 +339,7 @@ inline std::vector<DenseMatrix> grassmannian(int k, int n){
     return subspaces;
 }
 
-inline std::vector<DenseMatrix> grassmannian_union(int k, int n)
+inline std::vector<DenseMatrix> grassmannian_union(int k, int n){
     vec<bitset> pivots;
     vec<DenseMatrix> subspaces;
     for (int i = 0; i < (1ULL << k); ++i) {

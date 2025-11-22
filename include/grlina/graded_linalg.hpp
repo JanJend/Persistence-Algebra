@@ -69,7 +69,22 @@ vec<vec<SparseMatrix<index>>> all_sparse_proper_subspaces(index k){
 }
 
 template <typename index>
+vec<vec<SparseMatrix<index>>> all_sparse_subspaces(index k){
+    vec<vec<SparseMatrix<index>>> result = vec<vec<SparseMatrix<index>>>(k);
+    for(index i = 0; i < k; i++){
+    
+        vec<DenseMatrix> i_spaces = all_subspaces(i+1);
+        for(DenseMatrix matrix : i_spaces){
+            result[i].emplace_back(sparse_from_dense<index>(matrix));
+        }
+    }
+    return result;
+}
+
+
+template <typename index>
 void fill_up_subspaces (vec<vec<SparseMatrix<index>>>& subspaces, index k ){
+
     for(index i = subspaces.size(); i < k; i++){
         subspaces.push_back(vec<SparseMatrix<index>>());
         vec<DenseMatrix> i_spaces = all_proper_subspaces(i+1);
@@ -80,7 +95,7 @@ void fill_up_subspaces (vec<vec<SparseMatrix<index>>>& subspaces, index k ){
 }
 
 template <typename index>
-vec<vec<SparseMatrix<index>>> all_sparse_grassmannian(index k, index n){
+vec<vec<SparseMatrix<index>>> all_sparse_grassmannians(index k, index n){
     vec<vec<SparseMatrix<index>>> result = vec<vec<SparseMatrix<index>>>(k);
     for(index i = 0; i < k; i++){
         vec<DenseMatrix> U_Gr_i_n = grassmannian_union(i+1, n);
@@ -92,7 +107,7 @@ vec<vec<SparseMatrix<index>>> all_sparse_grassmannian(index k, index n){
 }
 
 template <typename index>
-void fill_up_grassmannian (vec<vec<SparseMatrix<index>>>& subspaces, index k, index n){
+void fill_up_grassmannians (vec<vec<SparseMatrix<index>>>& subspaces, index k, index n){
     for(index i = subspaces.size(); i < k; i++){
         subspaces.push_back(vec<SparseMatrix<index>>());
         vec<DenseMatrix> U_Gr_i_n = grassmannian_union(i+1, n);
