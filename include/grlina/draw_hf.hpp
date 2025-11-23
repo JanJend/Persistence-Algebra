@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <string>
 
-//TO-DO: this is ai translated, check if it does what it should
+//TO-DO: this is ai translated from the python file, check if it does what it should
 
 template<typename index>
 void save_hilbert_png(const R2Resolution<index>& resolution, 

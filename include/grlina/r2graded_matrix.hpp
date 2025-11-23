@@ -1054,6 +1054,25 @@ struct R2Resolution {
             }
         }
     
+    // Copy constructor
+    R2Resolution(const R2Resolution& other) 
+        : d1(other.d1), d2(other.d2) {
+    }
+    
+    // Copy assignment
+    R2Resolution& operator=(const R2Resolution& other){
+        if (this != &other) {
+            d1 = other.d1;
+            d2 = other.d2;
+        }
+        return *this;
+    }
+    
+    // Move constructor
+    R2Resolution(R2Resolution&& other) = default;
+    
+    // Move assignment
+    R2Resolution& operator=(R2Resolution&& other) = default;
 
     /**
      * @brief Writes the R^2 resolution to an output stream.

@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
             return 1;
         }
     } else {
-        std::string suffix = "_" + std::to_string(grid_size) + "x" + std::to_string(grid_size) + "_snapped";
+        std::string suffix = "_" + std::to_string(grid_size) + "x" + std::to_string(grid_size);
         std::string modified_path = insert_suffix_before_extension(filepath, suffix);
         output_path = std::filesystem::path(modified_path);
     }

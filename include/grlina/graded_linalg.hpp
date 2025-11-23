@@ -95,24 +95,65 @@ void fill_up_subspaces (vec<vec<SparseMatrix<index>>>& subspaces, index k ){
 }
 
 template <typename index>
-vec<vec<SparseMatrix<index>>> all_sparse_grassmannians(index k, index n){
-    vec<vec<SparseMatrix<index>>> result = vec<vec<SparseMatrix<index>>>(k);
+vec<vec<vec<SparseMatrix<index>>>> sparse_seperated_grassmannians(index k){
+    vec<vec<vec<SparseMatrix<index>>>> result = vec<vec<vec<SparseMatrix<index>>>>(k, vec<vec<SparseMatrix<index>>>());
     for(index i = 0; i < k; i++){
-        vec<DenseMatrix> U_Gr_i_n = grassmannian_union(i+1, n);
-        for(DenseMatrix matrix : U_Gr_i_n){
-            result[i].emplace_back(sparse_from_dense<index>(matrix));
+        for(index j = 0; j <= i+1; j++){
+            result[i].emplace_back(vec<SparseMatrix<index>>());
+            vec<DenseMatrix> Gr_i_j = grassmannian(i+1, j);
+            for(DenseMatrix matrix : Gr_i_j){
+                result[i][j].emplace_back(sparse_from_dense<index>(matrix));
+            }
         }
     }
     return result;
 }
 
 template <typename index>
-void fill_up_grassmannians (vec<vec<SparseMatrix<index>>>& subspaces, index k, index n){
+void fill_up_seperated_grassmannians(vec<vec<vec<SparseMatrix<index>>>>& subspaces, index k){
     for(index i = subspaces.size(); i < k; i++){
-        subspaces.push_back(vec<SparseMatrix<index>>());
-        vec<DenseMatrix> U_Gr_i_n = grassmannian_union(i+1, n);
-        for(DenseMatrix matrix : U_Gr_i_n){
-            subspaces[i].emplace_back(sparse_from_dense<index>(matrix));
+        subspaces.push_back(vec<vec<SparseMatrix<index>>>());
+        for(index j = 0; j <= i+1; j++){
+            subspaces[i].emplace_back(vec<SparseMatrix<index>>());
+            vec<DenseMatrix> Gr_i_j = grassmannian(i+1, j);
+            for(DenseMatrix matrix : Gr_i_j){
+                subspaces[i][j].emplace_back(sparse_from_dense<index>(matrix));
+            }
+        }
+    }
+}
+
+template <typename index>
+vec<vec<vec<SparseMatrix<index>>>> all_sparse_grassmannians(index k, index n){
+    vec<vec<vec<SparseMatrix<index>>>> result = vec<vec<vec<SparseMatrix<index>>>>(k);
+    for(index i = 0; i < k; i++){
+        for(index j = 0; j <= i+1; j++){
+            result[i].emplace_back(vec<SparseMatrix<index>>());
+            if(j > n){
+                continue;
+            }
+            vec<DenseMatrix> Gr_i_j = grassmannian(i+1, j);
+            for(DenseMatrix matrix : Gr_i_j){
+                result[i][j].emplace_back(sparse_from_dense<index>(matrix));
+            }
+        }
+    }
+    return result;
+}
+
+template <typename index>
+void fill_up_grassmannians (vec<vec<vec<SparseMatrix<index>>>>& subspaces, index k, index n){
+    for(index i = subspaces.size(); i < k; i++){
+        subspaces.push_back(vec<vec<SparseMatrix<index>>>());
+        for(index j = 0; j <= i+1; j++){
+            subspaces[i].emplace_back(vec<SparseMatrix<index>>());
+            if(j > n){
+                continue;
+            }
+            vec<DenseMatrix> Gr_i_j = grassmannian(i+1, j);
+            for(DenseMatrix matrix : Gr_i_j){
+                subspaces[i][j].emplace_back(sparse_from_dense<index>(matrix));
+            }
         }
     }
 }
@@ -246,18 +287,18 @@ void read_sccsum(
     }
     
     for (size_t i = 0; i < count; ++i) {
-    // Skip empty lines and read type
-    std::string type;
-    while (std::getline(file_stream, type) && type.empty()) {}
-    
-    if (matrix_types) {
-        matrix_types->push_back(type);
+        // Skip empty lines and read type
+        std::string type;
+        while (std::getline(file_stream, type) && type.empty()) {}
+        
+        if (matrix_types) {
+            matrix_types->push_back(type);
+        }
+        
+        // Construct matrix from stream
+        R2GradedSparseMatrix<index> matrix(file_stream, lex_sort, compute_batches);
+        matrices.push_back(std::move(matrix));
     }
-    
-    // Construct matrix from stream
-    R2GradedSparseMatrix<index> matrix(file_stream, lex_sort, compute_batches);
-    matrices.push_back(std::move(matrix));
-}
 }
 
 /**
