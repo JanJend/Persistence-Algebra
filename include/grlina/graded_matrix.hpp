@@ -831,6 +831,10 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         vec<index> row_indices_to_remove;
         for(index i = 0; i < this->num_cols; i++){
             index p = this->col_last(i);
+            if(p == -1){
+                // Empty columns can also be removed
+                col_indices_to_remove.push_back(i);
+            }
             if(p != -1 && Degree_traits<D>::equals(this->col_degrees[i], this->row_degrees[p])){
                 col_indices_to_remove.push_back(i);
                 row_indices_to_remove.push_back(p);

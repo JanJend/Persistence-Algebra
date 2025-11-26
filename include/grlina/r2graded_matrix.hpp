@@ -787,6 +787,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         // Obsolete if append_matrix works correctly: basis_injection.col_degrees.insert(basis_injection.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
         // A kernel of this map is the pullback of this presentation along the injection
         R2GradedSparseMatrix<index> presentation = basis_injection.graded_kernel();
+        
         // To get the map to the basis, forget all the rows which correspong to relations
         presentation.cull_columns(basis_lift.size(), false);
         presentation.sort_columns_lexicographically();
@@ -828,8 +829,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         if(n == 1){
             return {box.first};
         }
-        double x_step = (box.second.first - box.first.first) / (n);
-        double y_step = (box.second.second - box.first.second) / (n);
+        double x_step = (box.second.first - box.first.first) / (n-1);
+        double y_step = (box.second.second - box.first.second) / (n-1);
         vec<r2degree> grid;
         for(int i = 0; i < n; i++){
             for(int j = 0; j < n; j++){
