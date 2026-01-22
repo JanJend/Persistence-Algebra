@@ -68,12 +68,13 @@ std::vector<index> generate_random_indices(index number, index range) {
 }
 
 template <typename index>
-vec<index>index_pair_to_position(index row_index, 
-    const vec<index>& row_indices, 
-    const vec<vec<index>>& variable_positions_array) {
+vec<index>index_pair_to_position(index j_start, 
+    const vec<index>& B_data_j, 
+    const vec<std::pair<index,index>>& variable_positions) {
+
     vec<index> result;
     auto it = row_indices.begin();
-    while(it != row_indices.end()){
+    for(index j = j_start; j < variable_positions.size() && it != row_indices.end(); j++){
         auto& index_pair = variable_positions[j];
         if(index_pair.first == row_index){
             if(*it == index_pair.second){
@@ -116,17 +117,17 @@ vec<DERIVED> hom_space_basis_new(
     if(! use_hom_exactness){
 
     vec<std::pair<index,index>> variable_positions; // Stores the position of the variables in the matrix Q
-    vec<vec<index>> variable_positions_array = vec(A.get_num_rows(), vec<index>());
+    vec<index> variable_positions_separator = vec<index>(A.get_num_rows(), 0);
     SparseMatrix<index> S(0,0);
     S.data.reserve( A.get_num_rows() + B.get_num_rows() + 1);
     index S_index = 0;
 
     for(index i = 0; i < A.get_num_rows(); i++) {
+        variable_positions_separator[i] = S_index;
         for(index j = 0; j < B.get_num_rows(); j++) {
             if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.row_degrees[j])){
                 S.data.push_back(vec<index>());
                 variable_positions.push_back(std::make_pair(i, j));
-                variable_positions_array[i].push_back(j);
                 for(auto rit = A._rows[i].rbegin(); rit != A._rows[i].rend(); rit++){
                     auto& column_index = *rit;
                     S.data[S_index].emplace_back(linearise_position_reverse_ext(column_index, j, A.get_num_cols(), B.get_num_rows()));
@@ -173,7 +174,7 @@ vec<DERIVED> hom_space_basis_new(
             for(index j = 0; j < B.get_num_cols(); j++){
                 if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.col_degrees[j])){
                     // Add a new homotopy
-                    vec<index> h = index_pair_to_position(i, B.data[j], variable_positions_array);
+                    vec<index> h = index_pair_to_position(variable_positions_separator[i], B.data[j], variable_positions);
                     N_bar.data.push_back(h);
                 }
             }
@@ -745,12 +746,13 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(
         timer.start();
     vec<SparseMatrix<index>> result;
     vec<std::pair<index,index>> variable_positions; // Stores the position of the variables in the matrix Q
-    vec<vec<index>> variable_positions_array = vec(A.get_num_rows(), vec<index>());
+    vec<index> variable_positions_separator = vec<index>(A.get_num_rows(), 0); // To not have to search through the entire variable_positions vector
     SparseMatrix<index> S(0,0);
     S.data.reserve( A.get_num_rows() + B.get_num_rows() + 1);
     index S_index = 0;
 
     for(index i = 0; i < A.get_num_rows(); i++) {
+        variable_positions_separator[i] = S_index;
         for(index j = 0; j < B.get_num_rows(); j++) {
             if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.row_degrees[j])){
                 S.data.push_back(vec<index>());
@@ -758,7 +760,6 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(
                     position_map[std::make_pair(i,j)] = S_index;
                 }
                 variable_positions.push_back(std::make_pair(i, j));
-                variable_positions_array[i].push_back(j);
                 for(auto rit = A._rows[i].rbegin(); rit != A._rows[i].rend(); rit++){
                     auto& column_index = *rit;
                     S.data[S_index].emplace_back(linearise_position_reverse_ext(column_index, j, A.get_num_cols(), B.get_num_rows()));
@@ -829,7 +830,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(
             for(index j = 0; j < B.get_num_cols(); j++){
                 if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.col_degrees[j])){
                     // Add a new homotopy
-                    vec<index> h = index_pair_to_position(i, B.data[j], variable_positions_array);
+                    vec<index> h = index_pair_to_position(variable_positions_separator[i], B.data[j], variable_positions);
                     N_bar.data.push_back(h);
                 }
             }
