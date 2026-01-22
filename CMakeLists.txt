@@ -55,7 +55,7 @@ add_executable(submodule_at submodule_at.cpp)
 target_link_libraries(submodule_at ${Boost_LIBRARIES})
 set_target_properties(submodule_at PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
-add_executable(analyse_ind.cpp)
+add_executable(analyse_ind analyse_ind.cpp)
 target_link_libraries(analyse_ind ${Boost_LIBRARIES})
 set_target_properties(analyse_ind PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 

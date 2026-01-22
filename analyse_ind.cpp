@@ -5,9 +5,14 @@
 using namespace graded_linalg;
 
 
-void compute_hom_space(R2GradedSparseMatrix<int> A, R2GradedSparseMatrix<int> B, int type, bool info = false) {
+int compute_hom_space(R2GradedSparseMatrix<int> A, R2GradedSparseMatrix<int> B, int type, bool info = false) {
     
     using aida_result = std::pair< SparseMatrix<int>, vec<std::pair<int,int>> >;
+
+    int result_full;
+    int result_A;
+    int result_B;
+    int result_semi;
 
     A.sort_columns_lexicographically();
     B.sort_columns_lexicographically();
@@ -25,34 +30,61 @@ void compute_hom_space(R2GradedSparseMatrix<int> A, R2GradedSparseMatrix<int> B,
     if(type == 0|| type == -1 || type == -2){
         boost::timer::cpu_timer timer;
         hom_space_new = hom_space_basis_new<r2degree, int, R2GradedSparseMatrix<int>>(A,B,true, info);
-        std::cout << "After hom-exact, dim hom: " << hom_space_new.size() 
-                  << ", time: " << timer.format() << std::endl;
+        // std::cout << "After hom-exact, time: " << (timer.elapsed().wall * 1e-6) << std::endl;
+        result_B = hom_space_new.size();
     }
     // Full linear system
     if(type == 1 || type == -1){
         boost::timer::cpu_timer timer;
         hom_space_full = hom_space_no_opt<r2degree, int, R2GradedSparseMatrix<int>>(A, B, true, vec<int>(), vec<int>(), info);
-        std::cout << "After full linear system, dim hom: " << hom_space_full.first.get_num_cols() 
-                  << ", time: " << timer.format() << std::endl;
-    } else if ( (type == -2) || (type = -3)){
-        vec<int> system_size = no_opt_system_info<r2degree, int, R2GradedSparseMatrix<int>>(A, B);
+        // std::cout << "After full linear system, time: " << (timer.elapsed().wall * 1e-6) << "ms" <<  std::endl;
+        result_full = hom_space_full.first.get_num_cols();
+    } else if ( (type == -2) || (type == -3)){
+        // vec<int> system_size = no_opt_system_info<r2degree, int, R2GradedSparseMatrix<int>>(A, B);
     }
     // Semi-restriction
     if(type == 2 || type == -1 || type == -2){
         boost::timer::cpu_timer timer;
         hom_space_semi_restriction = hom_space_optimised<r2degree, int, R2GradedSparseMatrix<int>>(A,B, vec<int>(), vec<int>(), info);
-        std::cout << "After semi restriction, dim hom: " << hom_space_semi_restriction.first.get_num_cols() 
-                  << ", time: " << timer.format() << std::endl;
+        // std::cout << "After semi restriction, time: " << (timer.elapsed().wall * 1e-6) << std::endl;
+        result_semi = hom_space_semi_restriction.first.get_num_cols();
     }
     // Algorithm A
     if(type == 3 || type == -1 || type == -2){
         boost::timer::cpu_timer timer;
         hom_space_full_rest = hom_space_full_restriction<r2degree, int, R2GradedSparseMatrix<int>>(A,B, vec<int>(), vec<int>(), info);
-        std::cout << "After full restriction, dim hom: " << hom_space_full_rest.first.get_num_cols() 
-                  << ", time: " << timer.format() << std::endl;
+        // std::cout << "After full restriction, time: " << (timer.elapsed().wall * 1e-6) << std::endl;
+        result_A = hom_space_full_rest.first.get_num_cols();
     }
     
-        
+    if(type == -2 || type == -1){
+        if(result_A != result_B || result_A != result_semi){
+            std::cerr << "Warning: Different results for different methods: " 
+                      << "Semi: " << result_semi 
+                      << ", Alg A: " << result_A << ", Alg B: " << result_B << std::endl;
+        } else {
+        }
+        if( type == -1){
+            if(result_full != result_A){
+                std::cerr << "Warning: Full linear system: " << result_full << std::endl;
+            }
+        }
+        return result_B;
+    } else {
+        if(type == 0){
+            return result_B;
+        } else if(type == 1){
+            return result_full;
+        } else if(type == 2){
+            return result_semi;
+        } else if(type == 3){
+            return result_A;
+        } else {
+            std::cerr << "Error: Unknown type " << type << std::endl;
+            return -1;
+        }
+    }
+ 
 }
 
 bool is_decomp_file(const std::filesystem::path& filepath) {
@@ -60,13 +92,16 @@ bool is_decomp_file(const std::filesystem::path& filepath) {
 }
 
 void compute_end(std::filesystem::path input_path) {
-    std::cout << "Type of module unknown." << std::endl;
     R2GradedSparseMatrix<int> A(input_path.string());
-    R2GradedSparseMatrix<int> B(input_path.string());
-    compute_hom_space(A, B, -1, true);
+    R2GradedSparseMatrix<int> B = A;
+    int dim = compute_hom_space(A, B, -2, false);
+    std::cout << "Dimension of hom-space: " << dim << std::endl;
 }
 
 void compute_decomp_end(std::filesystem::path input_path) {
+
+    vec<pair<int>> non_int_dims;
+
     std::ifstream input_file(input_path);
     
     if (!input_file.is_open()) {
@@ -92,8 +127,6 @@ void compute_decomp_end(std::filesystem::path input_path) {
     
     int processed_sections = 0;
     int section_index = 0;
-    
-    output_file << "scc2020sum\n" << declared_sections << "\n\n";
 
     // Process sections until EOF or declared count reached
     while (section_index < declared_sections && !input_file.eof()) {
@@ -137,9 +170,20 @@ void compute_decomp_end(std::filesystem::path input_path) {
             // Reset to position before header and let constructor handle parsing
             input_file.seekg(pos_before_header);
             
-            R2GradedSparseMatrix<int> A(input_file);
-            R2GradedSparseMatrix<int> B(input_file);
-            compute_hom_space(A, B, std::stoi(type), true);
+            if(type == "free" || type == "cyclic" || type == "interval"){
+                R2GradedSparseMatrix<int> A(input_file);
+            } else {
+                R2GradedSparseMatrix<int> A(input_file);
+                R2GradedSparseMatrix<int> B = A;
+                non_int_dims.push_back(std::make_pair(A.get_num_cols() + A.get_num_rows(), 0));
+                int dim;
+                if(A.get_num_rows() < 100){
+                    dim = compute_hom_space(A, B, 0, false);
+                } else {
+                    dim = compute_hom_space(A, B, -2, false);
+                }
+                non_int_dims.back().second = dim;
+            }
             
             processed_sections++;
             
@@ -166,9 +210,11 @@ void compute_decomp_end(std::filesystem::path input_path) {
         std::cerr << "Warning: Declared " << declared_sections << " sections, but successfully processed " 
                  << processed_sections << " sections." << std::endl;
     }
-    
-    std::cout << "Processed " << processed_sections
-              << " sections, saved to: " << output_path << std::endl;
+
+    std::cout << "Non-interval size and hom-space dimensions:" << std::endl;
+    for(auto& p : non_int_dims){
+        std::cout << "Size: " << p.first << ", dim hom: " << p.second << std::endl;
+    }
 }
 
 
@@ -189,8 +235,10 @@ int main(int argc, char** argv) {
     std::filesystem::path input_path(filepath);
     
     if (is_decomp_file(input_path)) {
+        // std::cout << "Analysing decomposed sccsum file." << std::endl;
         compute_decomp_end(input_path);
     } else {
+        // std::cout << "Analysing single scc file of unknown type."  << std::endl;
         compute_end(input_path);
     }
     

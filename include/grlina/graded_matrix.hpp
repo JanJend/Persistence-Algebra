@@ -272,10 +272,18 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         std::istringstream iss(line);
         index num_rel, num_gen, thirdNumber;
 
-        // Check that there are exactly 3 numbers
-        if (!(iss >> num_rel >> num_gen >> thirdNumber) || thirdNumber != 0) {
-            std::cerr << "Error: Invalid format in the third or fourth line. Expecting exactly 3 numbers with the last one being 0." << std::endl;
+        // read the two mandatory numbers
+        if (!(iss >> num_rel >> num_gen)) {
+            std::cerr << "Error: Invalid format. Expecting at least 2 numbers in the third line." << std::endl;
             std::abort();
+        }
+
+        // try to read a third number
+        if (iss >> thirdNumber) {
+            if (thirdNumber != 0) {
+                std::cerr << "Error: A third nonzero number is present in the third line, indicating that this is not just a presentation matrix, but a longer chain complex." << std::endl;
+                std::abort();
+            }
         }
 
         this->num_cols = num_rel;

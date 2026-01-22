@@ -1,7 +1,7 @@
 #!/bin/sh
 
 FOLDER="${1:-.}"  # Use provided folder or current directory
-PROGRAM="/home/wsljan/MP-Workspace/Persistence-Algebra/build/hom_opt"
+PROGRAM="/home/wsljan/MP-Workspace/Persistence-Algebra/build/hom"
 OUTPUT="$FOLDER/experiments.md"
 
 # Clear/create the output file
@@ -18,7 +18,7 @@ for file in "$FOLDER"/*.scc "$FOLDER"/*.firep; do
     echo "" >> "$OUTPUT"
     echo '```' >> "$OUTPUT"
     
-    "$PROGRAM" "$file" "$file" -2 1 >> "$OUTPUT" 2>&1
+    "$PROGRAM" "$file" "$file" -1 1 >> "$OUTPUT" 2>&1
     
     echo '```' >> "$OUTPUT"
     echo "" >> "$OUTPUT"
