@@ -50,7 +50,7 @@ jobs:
           name="${file%.*}"
           echo "::group::Test: $name"
           
-          if $CXX ${=CXXFLAGS} "$file" -o "$name" && ./"$name"; then
+          if $CXX ${CXXFLAGS} "$file" -I../include/ -o "$name" && ./"$name"; then
              echo "PASS: $name"
           else
              echo "::error::FAIL: $name"
