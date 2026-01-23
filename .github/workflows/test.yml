@@ -29,8 +29,7 @@ jobs:
     - name: Dependencies
       shell: bash -el {0}
       run: |
-        micromamba install  tbb tbb-devel libboost libboost-devel  c-compiler cxx-compiler llvm-openmp -c conda-forge
-        micromamba activate build
+        micromamba create -n build  tbb tbb-devel libboost libboost-devel  c-compiler cxx-compiler llvm-openmp -c conda-forge
 
     - name: tree
       if: ${{ matrix.os != 'windows-latest' }}
