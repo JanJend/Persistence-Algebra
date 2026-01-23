@@ -42,7 +42,7 @@ jobs:
       shell: bash -el {0}
       run: |
         micromamba activate build
-        cd test
+        cd tests
         
         failed=0
 
