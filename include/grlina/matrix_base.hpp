@@ -191,7 +191,7 @@ class MatrixUtil{
                 this->data.emplace_back( CT::get_standard_vector(i, n) );
             }
         } else if (type == "Random") {
-            float fill = percent;
+            float fill = percent/100.0;
             if (fill == -1) {
                 fill = std::log(n)/n;
                 std::cout << "fill rate: " << fill << std::endl;

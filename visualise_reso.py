@@ -41,10 +41,8 @@ def Hilbert_function(generators, relations, syzygies=None, resolution=(500, 500)
 
         # Add padding only if auto mode
         padding = 0.1
-        x_min -= padding
         x_max += padding
-        y_min -= padding
-        y_max += padding * 2
+        y_max += padding 
 
     
 
@@ -136,8 +134,8 @@ def read_resolution(filepath):
                 return None
 
             header_type = file.readline().strip()
-            if header_type != '3':
-                print("Error: Expected a '3' on the second line for resolution format.")
+            if header_type != '2':
+                print("Error: Expected a '2' on the second line for R2 data.")
                 return None
 
             # Read dimensions: no_syzygies, no_relations, no_generators

@@ -272,10 +272,18 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         std::istringstream iss(line);
         index num_rel, num_gen, thirdNumber;
 
-        // Check that there are exactly 3 numbers
-        if (!(iss >> num_rel >> num_gen >> thirdNumber) || thirdNumber != 0) {
-            std::cerr << "Error: Invalid format in the third or fourth line. Expecting exactly 3 numbers with the last one being 0." << std::endl;
+        // read the two mandatory numbers
+        if (!(iss >> num_rel >> num_gen)) {
+            std::cerr << "Error: Invalid format. Expecting at least 2 numbers in the third line." << std::endl;
             std::abort();
+        }
+
+        // try to read a third number
+        if (iss >> thirdNumber) {
+            if (thirdNumber != 0) {
+                std::cerr << "Error: A third nonzero number is present in the third line, indicating that this is not just a presentation matrix, but a longer chain complex." << std::endl;
+                std::abort();
+            }
         }
 
         this->num_cols = num_rel;
@@ -379,7 +387,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      *
      */
     template <typename OutStream>
-    void to_stream(OutStream& out, bool header=true){
+    void to_stream(OutStream& out, bool header=true) const {
 
         // Set the precision for floating-point output
         out << std::fixed << std::setprecision(17);
@@ -831,6 +839,10 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         vec<index> row_indices_to_remove;
         for(index i = 0; i < this->num_cols; i++){
             index p = this->col_last(i);
+            if(p == -1){
+                // Empty columns can also be removed
+                col_indices_to_remove.push_back(i);
+            }
             if(p != -1 && Degree_traits<D>::equals(this->col_degrees[i], this->row_degrees[p])){
                 col_indices_to_remove.push_back(i);
                 row_indices_to_remove.push_back(p);

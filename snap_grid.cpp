@@ -9,7 +9,7 @@ void snap_presentation(std::filesystem::path input_path, std::filesystem::path o
     
     R2GradedSparseMatrix<int> presentation = R2GradedSparseMatrix<int>(input_path.string());
 
-   presentation.snap_to_equidistant_grid(grid_size);
+   presentation.snap_to_equidistant_grid(grid_size, true);
 
     std::ofstream output_file(output_path);
     if (!output_file.is_open()) {
@@ -24,7 +24,7 @@ void snap_presentation(std::filesystem::path input_path, std::filesystem::path o
 
 int main(int argc, char** argv) {
     std::string filepath;
-    int grid_size = 5;  // default value
+    int grid_size = 4;  // default value
     std::filesystem::path output_path;
     std::string suffix;
     std::filesystem::path input_path;
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
             return 1;
         }
     } else {
-        std::string suffix = "_" + std::to_string(grid_size) + "x" + std::to_string(grid_size) + "_snapped";
+        std::string suffix = "_" + std::to_string(grid_size) + "x" + std::to_string(grid_size);
         std::string modified_path = insert_suffix_before_extension(filepath, suffix);
         output_path = std::filesystem::path(modified_path);
     }

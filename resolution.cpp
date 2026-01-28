@@ -139,18 +139,23 @@ void compute_resolution(std::filesystem::path input_path, std::filesystem::path 
 int main(int argc, char** argv) {
     
     std::string filepath;
+    std::filesystem::path output_path;
 
-    if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " <file_path>" << std::endl;
-        filepath = "/home/wsljan/MP-Workspace/data/CompPer25/pointsets/circles3.sccsum";
+    if (argc < 2 || argc > 3) {
+        std::cerr << "Usage: " << argv[0] << " <file_path>" << " <output_path>" << std::endl;
+        return 1;
     } else {
         filepath = argv[1];
     }
 
+    if (argc == 3) {
+        output_path = std::filesystem::path(argv[2]);
+    } else {
+        std::string modified_path = insert_suffix_before_extension(filepath, "_resolution");
+        output_path = std::filesystem::path(modified_path);
+    }
+
     std::filesystem::path input_path(filepath);
-    
-    std::string modified_path = insert_suffix_before_extension(filepath, "_resolution");
-    std::filesystem::path output_path(modified_path);
     
     if (is_decomp_file(input_path)) {
         compute_decomp_resolutions_streaming(input_path, output_path);
