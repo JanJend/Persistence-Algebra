@@ -1,33 +1,21 @@
-#include "grlina/r2graded_matrix.hpp"
+#include <grlina/graded_linalg.hpp>
 #include <iostream>
 #include <filesystem>
 
 using namespace graded_linalg;
 
 
-void compute_thickness(std::filesystem::path input_path) {
-
-    R2GradedSparseMatrix<int> presentation = R2GradedSparseMatrix<int>(input_path.string());
-    R2Resolution<int> res(presentation, true);
-    int thickness = 0;
-    auto v = res.dimension_vector_non_opt(thickness);
-    std::cout << presentation.get_num_rows() << " x " << presentation.get_num_cols() << ": ";
-    std::cout << "thickness: " << thickness << std::endl;
-}
 
 bool is_decomp_file(const std::filesystem::path& filepath) {
     return filepath.extension() == ".sccsum";
 }
 
-void compute_decomp_thickness(std::filesystem::path input_path) {
-
-    vec<int> thicks;
-    vec<int> sizes;
-
+void get_size_decomp(std::filesystem::path input_path) {
     std::ifstream input_file(input_path);
+
     
     if (!input_file.is_open()) {
-        std::cerr << "Error opening input file" << std::endl;
+        std::cerr << "Error opening files" << std::endl;
         return;
     }
     
@@ -49,6 +37,7 @@ void compute_decomp_thickness(std::filesystem::path input_path) {
     
     int processed_sections = 0;
     int section_index = 0;
+    
 
     // Process sections until EOF or declared count reached
     while (section_index < declared_sections && !input_file.eof()) {
@@ -75,11 +64,10 @@ void compute_decomp_thickness(std::filesystem::path input_path) {
         }
         std::string type = line;
         
-
         // Update progress
         section_index++;
-        // std::cout << "\rProcessing section " << section_index << "/" << declared_sections 
-        //          << " (" << type << ")..." << std::flush;
+        std::cout << "\rProcessing section " << section_index << "/" << declared_sections 
+                  << " (" << type << ")..." << std::flush;
                   
         // Check if next line is scc2020 or firep
         std::streampos pos_before_header = input_file.tellg();
@@ -92,20 +80,9 @@ void compute_decomp_thickness(std::filesystem::path input_path) {
         try {
             // Reset to position before header and let constructor handle parsing
             input_file.seekg(pos_before_header);
-
-            if(type == "free" || type == "cyclic" || type == "interval"){
-                thicks.push_back(1);
-                R2GradedSparseMatrix<int> A(input_file);
-                sizes.push_back(A.get_num_cols()+A.get_num_rows());
-            } else {
-                R2GradedSparseMatrix<int> A(input_file);
-                R2Resolution<int> res(A, true);
-                int thickness = 0;
-                auto v = res.dimension_vector_non_opt(thickness);
-                thicks.push_back(thickness);
-                sizes.push_back(A.get_num_cols()+A.get_num_rows());
-            }
             
+            R2GradedSparseMatrix<int> minimal_presentation(input_file);
+            std::cout << minimal_presentation.num_of_entries() << std::endl;
             processed_sections++;
             
         } catch (const std::exception& e) {
@@ -131,22 +108,20 @@ void compute_decomp_thickness(std::filesystem::path input_path) {
         std::cerr << "Warning: Declared " << declared_sections << " sections, but successfully processed " 
                  << processed_sections << " sections." << std::endl;
     }
-
-
-    for (size_t i = 0; i < thicks.size(); i++) {
-        std::cout << "Ind: " << i << ", Thickness: " << thicks[i] 
-                  << ", Size = " << sizes[i] << std::endl;
-    }
-
+    
+    std::cout << "Processed " << processed_sections << std::endl;
 }
 
-
+void get_size(std::filesystem::path input_path) {
+    
+    R2GradedSparseMatrix<int> minimal_presentation = R2GradedSparseMatrix<int>(input_path.string());
+    std::cout << minimal_presentation.num_of_entries() << std::endl;
+}
 
 
 int main(int argc, char** argv) {
     
     std::string filepath;
-    std::filesystem::path output_path;
 
     if (argc < 2 || argc > 2) {
         std::cerr << "Usage: " << argv[0] << " <file_path>" << std::endl;
@@ -154,15 +129,13 @@ int main(int argc, char** argv) {
     } else {
         filepath = argv[1];
     }
-
+    std::cout << "Size of " << filepath << std::endl;
     std::filesystem::path input_path(filepath);
     
     if (is_decomp_file(input_path)) {
-        // std::cout << "Analysing decomposed sccsum file." << std::endl;
-        compute_decomp_thickness(input_path);
+        get_size_decomp(input_path);
     } else {
-        // std::cout << "Analysing single scc file of unknown type."  << std::endl;
-        compute_thickness(input_path);
+        get_size(input_path);
     }
     
     return 0;

@@ -769,6 +769,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         return (copy.get_num_cols() == this->get_num_cols()) && (copy.get_num_rows() == this->get_num_rows());
     }
 
+
+
     /**
      * @brief Computes a presentation for the submodule generated at the given degree.
      * 

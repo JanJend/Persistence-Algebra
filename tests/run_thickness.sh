@@ -2,7 +2,7 @@
   
 PROGRAM="/home/jan/MP-Workspace/Persistence-Algebra/build/thickness"
 FOLDER="${1:-.}"  # Use provided folder or current directory
-OUTPUT="$FOLDER/a_thickness_analysis.md"
+OUTPUT="$FOLDER/detailed_thickness_analysis.md"
 
 # Clear/create the output file
 echo "# Layer thickness of $FOLDER" > "$OUTPUT"

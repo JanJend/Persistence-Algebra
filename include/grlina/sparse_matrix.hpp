@@ -603,6 +603,13 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         }
     }
 
+    index num_of_entries(){
+        index num = 0;
+        for(index i = 0; i < this->get_num_cols(); i++){
+            num+= this->data[i].size();
+        }
+        return num;
+    }
 
     /**
      * @brief Computes all rows from column data in reverse order.
