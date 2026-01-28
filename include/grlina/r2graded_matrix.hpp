@@ -61,6 +61,10 @@ inline r2degree operator*(const r2degree& p, double scalar) {
 return {p.first * scalar, p.second * scalar};
 }
 
+inline r2degree operator/(const r2degree& p, double scalar) {
+    return {p.first / scalar, p.second / scalar};
+}
+
 template<>
 struct Degree_traits<r2degree> {
     static bool equals(const r2degree& lhs, const r2degree& rhs) {
@@ -540,8 +544,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
 
     /** for any grid i:G \into R^2, if this is a presentation, 
     * computes a presentation of i_! i^* X
-    * by snapping all degrees to the grid defined by x_grid and y_grid
-    * Highly inefficient implementation
+    * by snapping all degrees to the next larger degree in x_grid x y_grid
+    * (Highly inefficient implementation)
      */
     void snap_to_grid( vec<double>& new_x_grid, vec<double>& new_y_grid){
 
@@ -571,7 +575,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         this->delete_rows(rows_to_remove);
         this->sort_columns_lexicographically();
         this->sort_rows_lexicographically();
-        this->minimize_variant();
+        this->minimize();
     }
 
     void print_grid(){
@@ -783,6 +787,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         // Obsolete if append_matrix works correctly: basis_injection.col_degrees.insert(basis_injection.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
         // A kernel of this map is the pullback of this presentation along the injection
         R2GradedSparseMatrix<index> presentation = basis_injection.graded_kernel();
+        
         // To get the map to the basis, forget all the rows which correspong to relations
         presentation.cull_columns(basis_lift.size(), false);
         presentation.sort_columns_lexicographically();
@@ -824,8 +829,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         if(n == 1){
             return {box.first};
         }
-        double x_step = (box.second.first - box.first.first) / (n);
-        double y_step = (box.second.second - box.first.second) / (n);
+        double x_step = (box.second.first - box.first.first) / (n-1);
+        double y_step = (box.second.second - box.first.second) / (n-1);
         vec<r2degree> grid;
         for(int i = 0; i < n; i++){
             for(int j = 0; j < n; j++){
@@ -840,19 +845,43 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         if(n == 0){
             std::cerr << "Error: Cannot snap to an equidistant grid with 0 points." << std::endl;
         } else {
+            r2degree step;
             if(end_inclusive){
-                n = n - 1;
+                step = (box.second - box.first) / (n - 1);
+            } else {
+                step = (box.second - box.first) / (n);
             }
-            double x_step = (box.second.first - box.first.first) / (n);
-            double y_step = (box.second.second - box.first.second) / (n);
             vec<double> new_x_grid;
             vec<double> new_y_grid;
             for(int i = 0; i < n; i++){
-                new_x_grid.push_back(box.first.first + i * x_step);
-                new_y_grid.push_back(box.first.second + i * y_step);
+                new_x_grid.push_back(box.first.first + i * step.first);
+                new_y_grid.push_back(box.first.second + i * step.second);
             }
             this->snap_to_grid(new_x_grid, new_y_grid);
         }
+    };
+
+    void cut_above(double x_cutoff, double y_cutoff){
+        auto box = this->bounding_box();
+        r2degree diagonal = box.second - box.first;
+        auto max_degree_x = box.first.first + x_cutoff * diagonal.first;
+        auto max_degree_y = box.first.second + y_cutoff * diagonal.second;
+        vec<index> rows_to_remove;
+        vec<index> cols_to_remove;
+        for(index i = 0; i < this->get_num_cols(); i++){
+            if(this->col_degrees[i].first > max_degree_x || this->col_degrees[i].second > max_degree_y){
+                cols_to_remove.push_back(i);
+            }
+        }
+
+        for(index i = 0; i < this->get_num_rows(); i++){
+            if(this->row_degrees[i].first > max_degree_x || this->row_degrees[i].second > max_degree_y){
+                rows_to_remove.push_back(i);
+            }
+        }
+
+        this->delete_columns(cols_to_remove);
+        this->delete_rows(rows_to_remove);
     };
 
 }; // R2GradedSparseMatrix
@@ -1007,7 +1036,8 @@ struct R2Resolution {
         : d1(d1) {
             // Kernel computation is easy if the presentation is minimal, sorted, and has one generator.
             if(is_minimal && d1.get_num_rows() == 1){
-                // assert sored! Todo
+                // assert sorted! Todo
+                // This doesnt look right at the moment.
                 d2 = R2GradedSparseMatrix<index>(d1.get_num_cols()-1, d1.get_num_cols());
                 d2.data = vec< vec<index> >(d1.get_num_cols()-1);
                 d2.row_degrees = d1.col_degrees;
@@ -1025,6 +1055,25 @@ struct R2Resolution {
             }
         }
     
+    // Copy constructor
+    R2Resolution(const R2Resolution& other) 
+        : d1(other.d1), d2(other.d2) {
+    }
+    
+    // Copy assignment
+    R2Resolution& operator=(const R2Resolution& other){
+        if (this != &other) {
+            d1 = other.d1;
+            d2 = other.d2;
+        }
+        return *this;
+    }
+    
+    // Move constructor
+    R2Resolution(R2Resolution&& other) = default;
+    
+    // Move assignment
+    R2Resolution& operator=(R2Resolution&& other) = default;
 
     /**
      * @brief Writes the R^2 resolution to an output stream.
@@ -1038,7 +1087,7 @@ struct R2Resolution {
 
         // Write the header lines
         output_stream << "scc2020" << std::endl;
-        output_stream << "3" << std::endl;
+        output_stream << "2" << std::endl;
         output_stream << this->d2.get_num_cols() << " " << this->d2.get_num_rows() << " " << this->d1.get_num_rows() << std::endl;
 
         // Write the syzygies
@@ -1069,7 +1118,6 @@ struct R2Resolution {
     }
 
     
-    
     /**
      * @brief Writes the R^2 resolution to an output stream.
      * 
@@ -1081,114 +1129,6 @@ struct R2Resolution {
         index num_chains_1 = d1.num_cols_before(alpha);
         index num_chains_2 = d2.num_cols_before(alpha);
         return num_chains_0 - num_chains_1 + num_chains_2;
-    }
-
-    /**
-     * @brief Only works for modules with all generators at a single degree
-     *  TO-DO: Log transform on the scale parameter. What to do on density?
-     * @return double 
-     */
-    double area () const {
-        auto [min, max] = d1.bounding_box();
-        double base_area = d1.get_num_rows()*(max.first - min.first) * (max.second - min.second);
-        for(const auto& degree : d1.col_degrees){
-            base_area -= (max.first - degree.first) * (max.second - degree.second);
-        }
-        for(const auto& degree : d2.col_degrees){
-            base_area += (max.first - degree.first) * (max.second - degree.second);
-        }
-        return base_area;
-    }
-
-
-    /**
-     * @brief Only works for modules with all generators at a single degree
-     * @return double 
-     */
-    double area (const r2degree& bound) const {
-        auto [min, max] = d1.bounding_box();
-        max = bound;
-        double base_area = d1.get_num_rows()*(max.first - min.first) * (max.second - min.second);
-        for(const auto& degree : d1.col_degrees){
-            base_area -= (max.first - degree.first) * (max.second - degree.second);
-        }
-        for(const auto& degree : d2.col_degrees){
-            base_area += (max.first - degree.first) * (max.second - degree.second);
-        }
-        return base_area;
-    }
-
-    /**
-     * @brief Only works for modules with all generators at a single degree
-     * Normalised so that the area of the free module is 1.
-     *  TO-DO: Log transform on the scale parameter. What to do on density?
-     * @return double 
-     */
-    double area (const pair<r2degree>& bounds) const {
-        //TO-DO: Actually only need to compute the minimal element here.
-        auto [min, max] = d1.bounding_box();
-        max = bounds.second;
-        assert(max.first >= min.first);
-        assert(max.second >= min.second);
-        r2degree range = bounds.second-bounds.first;
-        double range_area = range.first * range.second;
-        double base_area = d1.get_num_rows() * (max.first - min.first) * (max.second - min.second);
-        for(const auto& degree : d1.col_degrees){
-            assert(degree.first <= max.first);
-            assert(degree.second <= max.second);
-            assert(degree.first >= min.first);
-            assert(degree.second >= min.second);
-            base_area -= (max.first - degree.first) * (max.second - degree.second);
-        }
-        for(const auto& degree : d2.col_degrees){
-            assert(degree.first <= max.first);
-            assert(degree.second <= max.second);
-            assert(degree.first >= min.first);
-            assert(degree.second >= min.second);
-            base_area += (max.first - degree.first) * (max.second - degree.second);
-        }
-        double normalised_area = base_area/range_area;
-        return normalised_area;
-    }
-
-    double slope () const {
-        double area = this->area();
-        if(area == 0){
-            std::cerr << "Area is zero, slope will be infinite. Consider passing a bound." << std::endl;
-        }
-        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
-        return slope_value;
-    }
-
-    double slope (const r2degree& bound) const {
-        double area = this->area(bound);
-        if(area == 0){
-            std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
-        }
-        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
-        return slope_value;
-    }
-
-    double slope (const pair<r2degree>& bounds) const {
-        double area = this->area(bounds);
-        if(area == 0){
-            std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
-        }
-        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
-        return slope_value;
-    }
-
-    /**
-     * @brief Returns a polynomial a[0] + a[1]*x + a[2]*y + a[3]*x*y
-     * which gives the area of the module after shifting the (assumed to be) single generator by (x,y)
-     * 
-     * @param bounds 
-     * @return std::array<double, 4> 
-     */
-    std::array<double, 4> area_polynomial (const pair<r2degree>& bounds) const {
-        assert(d1.get_num_rows() == 1);
-        // TO-DO: Finish this.
-        return {0,0,0,0};
     }
 
     /**
@@ -1204,8 +1144,8 @@ struct R2Resolution {
             d2.sort_columns_colexicographically();
         }
 
-        vec<index> x_grid = d1.x_grid;
-        vec<index> y_grid = d1.y_grid;
+        vec<double> x_grid = d1.x_grid;
+        vec<double> y_grid = d1.y_grid;
         index num_x = x_grid.size();
         index num_y = y_grid.size();
 
@@ -1214,8 +1154,55 @@ struct R2Resolution {
         auto itc3 = d2.col_degrees.begin();
 
         for(index i = 0; i < num_y; i++){
-             //TO-DO finish.
+            
         }
+    }
+
+    array<index> dimension_vector_non_opt(index& max_value){
+
+        d1.compute_grid_representation();
+        d2.compute_grid_representation();
+
+            d1.sort_rows_colexicographically();
+            d1.sort_columns_colexicographically();
+            d2.sort_rows_colexicographically();
+            d2.sort_columns_colexicographically();
+        
+
+        vec<double> x_grid = d1.x_grid;
+        vec<double> y_grid = d1.y_grid;
+        index num_x = x_grid.size();
+        index num_y = y_grid.size();
+        
+        const auto& generators = d1.row_degrees;
+        const auto& relations = d1.col_degrees;
+        const auto& syzygies = d2.col_degrees;
+        
+        array<index> hilbert = array<index>(num_x, vec<index>(num_y, 0));
+        max_value = 0;
+        
+        for (index j = 0; j < num_y; j++) {
+            double y = y_grid[j];
+            for (index i= 0; i < num_x; i++) {
+                double x = x_grid[i];
+                int val = 0;
+                
+                // Add generators and syzygies
+                for (const auto& [gx, gy] : generators) 
+                    if (x >= gx && y >= gy) val++;
+                for (const auto& [sx, sy] : syzygies) 
+                    if (x >= sx && y >= sy) val++;
+                
+                // Subtract relations
+                for (const auto& [rx, ry] : relations) 
+                    if (x >= rx && y >= ry) val--;
+                
+                assert(val >= 0);
+                hilbert[i][j] = val;
+                max_value = std::max(max_value, val);
+            }
+        }
+        return hilbert;
     }
 
 };
