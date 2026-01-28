@@ -11,7 +11,7 @@ void compute_thickness(std::filesystem::path input_path) {
     R2Resolution<int> res(presentation, true);
     int thickness = 0;
     auto v = res.dimension_vector_non_opt(thickness);
-    std::cout << presentation.get_num_rows() << " x " << presentation.get_num_cols() << std::endl;
+    std::cout << presentation.get_num_rows() << " x " << presentation.get_num_cols() << ": ";
     std::cout << "thickness: " << thickness << std::endl;
 }
 
@@ -22,6 +22,7 @@ bool is_decomp_file(const std::filesystem::path& filepath) {
 void compute_decomp_thickness(std::filesystem::path input_path) {
 
     vec<int> thicks;
+    vec<int> sizes;
 
     std::ifstream input_file(input_path);
     
@@ -101,6 +102,7 @@ void compute_decomp_thickness(std::filesystem::path input_path) {
                 int thickness = 0;
                 auto v = res.dimension_vector_non_opt(thickness);
                 thicks.push_back(thickness);
+                sizes.push_back(A.get_num_cols()+A.get_num_rows());
             }
             
             processed_sections++;
@@ -130,12 +132,14 @@ void compute_decomp_thickness(std::filesystem::path input_path) {
     }
 
     int max = 1;
+    int max_index = -1;
     for (size_t i = 0; i < thicks.size(); i++) {
         if (thicks[i] > max) {
             max = thicks[i];
+            max_index = i;
         }
     }
-    std::cout << "layer thickness:" << max << std::endl;
+    std::cout << "layer thickness:" << max << ", ind: " << max_index << ", size: " << sizes[max_index] << std::endl;
 }
 
 
