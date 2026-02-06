@@ -55,9 +55,9 @@ add_executable(submodule_at submodule_at.cpp)
 target_link_libraries(submodule_at ${Boost_LIBRARIES})
 set_target_properties(submodule_at PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
-# add_executable(analyse_ind analyse_ind.cpp)
-# target_link_libraries(analyse_ind ${Boost_LIBRARIES})
-# set_target_properties(analyse_ind PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
+add_executable(analyse_ind analyse_ind.cpp)
+target_link_libraries(analyse_ind ${Boost_LIBRARIES})
+set_target_properties(analyse_ind PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
 add_executable(thickness thickness.cpp)
 target_link_libraries(thickness ${Boost_LIBRARIES})
@@ -67,7 +67,7 @@ add_executable(size size.cpp)
 target_link_libraries(size ${Boost_LIBRARIES})
 set_target_properties(size PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
-install(TARGETS shift_endo hom minimize pres_to_quiver resolution snap_grid submodule_at thickness size
+install(TARGETS shift_endo hom minimize pres_to_quiver resolution snap_grid submodule_at analyse_ind thickness size
     RUNTIME DESTINATION bin
 )
 

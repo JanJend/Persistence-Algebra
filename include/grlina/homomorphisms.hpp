@@ -2,10 +2,10 @@
  * @file homomorphisms.hpp
  * @author Jan Jendrysiak
  * @brief different methods to compute homomorphisms of persistence modules.
- * @version 0.1
- * @date 2025-03-13
+ * @version 0.2
+ * @date 2026-02-05
  * 
- * @copyright 2025 TU Graz
+ * @copyright 2026 TU Graz
     This file is part of the AIDA library. 
    You can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as published by
@@ -283,7 +283,7 @@ vec<DERIVED> hom_space_basis_new(
 
         if(info){
             timer.stop();
-            std::cout << "  time to solve: " << timer.elapsed().wall * 1e-6 << "ms";
+            std::cout << "  time to solve: " << timer.elapsed().wall * 1e-6 << "ms" << std::endl;
             // std::cout << "Dimension of hom-space: " << K.get_num_cols() << std::endl;
         }
 

@@ -7,7 +7,7 @@
 using namespace graded_linalg;
 
 
-int compute_hom_space(R2GradedSparseMatrix<int> A, R2GradedSparseMatrix<int> B, int type, bool info = false) {
+int compute_hom_space(R2GradedSparseMatrix<int> A, R2GradedSparseMatrix<int> B, int type, bool info = false, bool nano = false) {
     
     using aida_result = std::pair< SparseMatrix<int>, vec<std::pair<int,int>> >;
 
@@ -32,14 +32,22 @@ int compute_hom_space(R2GradedSparseMatrix<int> A, R2GradedSparseMatrix<int> B, 
     if(type == 0|| type == -1 || type == -2){
         boost::timer::cpu_timer timer;
         hom_space_new = Alg_B_test<r2degree, int, R2GradedSparseMatrix<int>>(A,B, info);
-        std::cout << "  Alg B time: " << (timer.elapsed().wall * 1e-6) << "ms" << std::endl;
+        if(nano){
+            std::cout << "  Alg B time: " << (static_cast<double>(timer.elapsed().wall) / 1e9) << "ns" << std::endl;
+        } else {
+            std::cout << "  Alg B time: " << (static_cast<double>(timer.elapsed().wall) / 1e6) << "ms" << std::endl;
+        }
         result_B = hom_space_new.get_num_cols();
     }
     // Full linear system
     if(type == 1 || type == -1){
         boost::timer::cpu_timer timer;
-        hom_space_full = hom_space_no_opt<r2degree, int, R2GradedSparseMatrix<int>>(A, B, false, vec<int>(), vec<int>(), info);
-        std::cout << "  Naive time: " << (timer.elapsed().wall * 1e-6) << "ms" <<  std::endl;
+        hom_space_full = hom_space_no_opt<r2degree, int, R2GradedSparseMatrix<int>>(A, B, true, vec<int>(), vec<int>(), info);
+        if(nano){
+            std::cout << "  Full linear system time: " << (static_cast<double>(timer.elapsed().wall) / 1e9) << "ns" <<  std::endl;
+        } else {
+            std::cout << "  Full linear system time: " << (static_cast<double>(timer.elapsed().wall) / 1e6) << "ms" <<  std::endl;
+        }
         result_full = hom_space_full.first.get_num_cols();
     } else if ( (type == -2) || (type == -3)){
          vec<int> system_size = no_opt_system_info<r2degree, int, R2GradedSparseMatrix<int>>(A, B);
@@ -48,14 +56,23 @@ int compute_hom_space(R2GradedSparseMatrix<int> A, R2GradedSparseMatrix<int> B, 
     if(type == 2 || type == -1 || type == -2){
         boost::timer::cpu_timer timer;
         hom_space_semi_restriction = hom_space_optimised<r2degree, int, R2GradedSparseMatrix<int>>(A,B, vec<int>(), vec<int>(), info);
-        std::cout << "  Mixed time: " << (timer.elapsed().wall * 1e-6) << "ms" << std::endl;
+        if(nano){
+            std::cout << "  Mixed time: " << (static_cast<double>(timer.elapsed().wall) / 1e9) << "ns" << std::endl;
+        } else {
+            std::cout << "  Mixed time: " << (static_cast<double>(timer.elapsed().wall) / 1e6) << "ms" << std::endl;
+        }
         result_semi = hom_space_semi_restriction.first.get_num_cols();
     }
     // Algorithm A
     if(type == 3 || type == -1 || type == -2){
         boost::timer::cpu_timer timer;
         hom_space_full_rest = hom_space_full_restriction<r2degree, int, R2GradedSparseMatrix<int>>(A,B, vec<int>(), vec<int>(), info);
-        std::cout << "  Alg A time: " << (timer.elapsed().wall * 1e-6) << "ms" <<std::endl;
+        
+        if(nano){
+            std::cout << "  Alg A time: " << (static_cast<double>(timer.elapsed().wall) / 1e9) << "ns" <<std::endl;
+        } else {
+            std::cout << "  Alg A time: " << (static_cast<double>(timer.elapsed().wall) / 1e6) << "ms" <<std::endl;
+        }
         result_A = hom_space_full_rest.first.get_num_cols();
     }
     
@@ -123,9 +140,22 @@ int main(int argc, char** argv) {
     
     R2GradedSparseMatrix<int> A(input_path_A.string());
     R2GradedSparseMatrix<int> B(input_path_B.string());
-
-    int dim = compute_hom_space(A, B, type, info);
+    if(info){
+        std::cout << "Dimensions of A: " << A.get_num_rows() << " x " << A.get_num_cols() << std::endl;
+        std::cout << "Dimensions of B: " << B.get_num_rows() << " x " << B.get_num_cols() << std::endl;
+        R2Resolution<int> res(B, true);
+        int thickness = 0;
+        auto v = res.dimension_vector_non_opt(thickness);
+        std::cout << "Thickness of B: " << thickness << std::endl;
+    }
+    bool nano = false;
+    if(A.get_num_rows() < 200){
+        // nano = true;
+    }
+    int dim = compute_hom_space(A, B, type, info, nano);
     std::cout << "Dimension: " << dim << std::endl;
+    
+    
 
     return 0;
 } // main
