@@ -13,6 +13,8 @@ This library forms the algebraic backbone of the author's PhD research and is us
 ## Table of Contents
 
 - [Background](#background)
+- [Citing This Work](#citing-this-work)
+- [Related Projects](#related-projects)
 - [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Installation and Build](#installation-and-build)
@@ -20,34 +22,93 @@ This library forms the algebraic backbone of the author's PhD research and is us
 - [Library Structure](#library-structure)
 - [Command-Line Tools](#command-line-tools)
 - [Usage Examples](#usage-examples)
-- [Citing This Work](#citing-this-work)
 - [License](#license)
 
 ---
 
 ## Background
 
-A **persistence module** over a poset *P* is a functor from *P* to vector spaces over a field (here always 𝔽₂). In the multiparameter setting — where *P* = ℝⁿ for *n ≥ 2* — such modules are no longer completely classified by simple invariants like barcodes. Instead, one studies them through **presentations**: graded linear maps
+A **persistence module** over a poset *P* is a functor from *P* to vector spaces over a field (here 𝔽₂ for now). We store them via **presentations**: graded linear maps
 
 ```
 d : F₁ → F₀
 ```
 
-between free graded modules, whose cokernel is the persistence module of interest. This library provides the data structures and algorithms needed to construct, manipulate, minimise, and analyse such presentations, as well as to compute derived algebraic objects such as kernels, resolutions, and homomorphism spaces.
+between free graded modules, whose cokernel is the persistence module of interest. This is because in practice these matrices are much smaller than storing all of the necessary structure maps. This library provides the data structures and algorithms needed to construct, manipulate, minimise, and analyse such presentations, as well as to compute derived algebraic objects such as kernels, resolutions, and homomorphism spaces.
 
+---
+
+## Citing This Work
+
+If you use this library in your research, please cite it via its DOI. The full citation metadata is in [`CITATION.cff`](CITATION.cff).
+
+```bibtex
+@software{Jendrysiak_Persistence_Algebra,
+  author       = {Jendrysiak, Jan},
+  title        = {Persistence-Algebra},
+  version      = {0.2},
+  year         = {2024},
+  license      = {LGPL-3.0-or-later},
+  doi          = {10.4230/artifacts.23283},
+  orcid        = {https://orcid.org/0000-0002-3761-3463}
+}
+```
+
+If you use this library through or alongside **AIDA**, please also cite the accompanying paper:
+
+```bibtex
+@InProceedings{djk25,
+  author    = {Dey, Tamal K. and Jendrysiak, Jan and Kerber, Michael},
+  title     = {{Decomposing Multiparameter Persistence Modules}},
+  booktitle = {41st International Symposium on Computational Geometry (SoCG 2025)},
+  pages     = {41:1--41:19},
+  series    = {Leibniz International Proceedings in Informatics (LIPIcs)},
+  ISBN      = {978-3-95977-370-6},
+  ISSN      = {1868-8969},
+  year      = {2025},
+  volume    = {332},
+  editor    = {Aichholzer, Oswin and Wang, Haitao},
+  publisher = {Schloss Dagstuhl -- Leibniz-Zentrum f{\"u}r Informatik},
+  address   = {Dagstuhl, Germany},
+  doi       = {10.4230/LIPIcs.SoCG.2025.41}
+}
+```
+
+A preprint is also available on arXiv: [arXiv:2504.08119](https://arxiv.org/abs/2504.08119).
+
+The kernel computation for ℝ²-graded matrices is adapted from the **MPfree** algorithm by Michael Kerber and Alexander Rolle; please cite the relevant MPfree paper if that component is central to your use.
+
+@inProceedings{mpfree,
+author = {Michael Kerber and Alexander Rolle},
+title = {Fast Minimal Presentations of Bi-graded Persistence Modules},
+booktitle = {Algorithm Engineering and Experiments (ALENEX)},
+year = {2021},
+doi = {10.1137/1.9781611976472.16},
+}
+
+---
+
+## Related Projects
+
+This library is used as a dependency in the following projects, all part of the author's PhD thesis at TU Graz:
+
+- **[AIDA](https://github.com/JanJend/AIDA)** — Computing indecomposable decompositions of multiparameter persistence modules; published at [SoCG 2025](https://doi.org/10.4230/LIPIcs.SoCG.2025.41) (Dey, Jendrysiak, Kerber)
+- **[Skyscraper-Invariant](https://github.com/JanJend/Skyscraper-Invariant)** — efficient computation of the skyscraper invariant (Fersztand, Jendrysiak)
+- **[Stable-Decomposition](https://github.com/JanJend/Stable-Decomposition)** — algorithm to compute the Pruning (Bjerkevik '24) to stabilise decomposition of multiparameter modules
+(Bjerkevik, Jendrysiak, Lenzen)
 ---
 
 ## Features
 
 - **Flexible matrix types** over 𝔽₂, with columns stored as sorted index vectors, sets, or dense bitsets
-- **Graded sparse matrices** parametrised by an arbitrary degree type `D`, with specialisations for ℝ¹, ℝ², and ℝ³
+- **Graded sparse matrices** parametrised by an arbitrary degree type `D`, with existing specialisations for ℝ¹, ℝ², and ℝ³
 - **Column reduction algorithms**: standard, triangular, graded, with and without tracking of performed operations
-- **Kernel computation** for ℝ²-graded matrices, adapted from the MPfree algorithm (Kerber)
+- **Kernel computation** for ℝ²-graded matrices, adapted from the MPfree algorithm (Kerber, Rolle - Implementation by Michael Kerber, TU Graz)
 - **Minimisation** of graded presentations
 - **Free resolutions** up to second syzygies
 - **Hom-space computation** between graded modules
 - **Snap-to-grid** operations for discretising presentations
-- **Quiver representation** extraction from presentations
+- **Quiver representation** extraction from presentations of the corresponding representations of quivers
 - Reading and writing of `.scc` and `.firep` file formats (compatible with RIVET, mpfree, and related tools)
 - OpenMP parallelisation for matrix transformations
 - Comprehensive template design: column type, index type, and degree type are all template parameters
@@ -191,8 +252,6 @@ After building, the following executables are available in `build/`:
 | `size` | Print the size (number of generators and relations) of a presentation |
 | `cut_module` | Cut a module by removing degrees above a threshold |
 
-> **Note on build artefacts:** The `build/` directory may contain a stale `endo.dir/` from an older version of the project where `endo.cpp` existed. This file has since been removed. Running `cmake --build build --target clean` will clear these artefacts. `cut_module.cpp` is present in the source root but not yet listed in `CMakeLists.txt`; add an `add_executable(cut_module cut_module.cpp)` entry to build it.
-
 Each tool reads from a file path passed as the first argument and writes to stdout or an output file. Run any tool with no arguments for usage information.
 
 ---
@@ -314,58 +373,6 @@ struct Degree_traits<MyDegree> {
 
 // Then use GradedSparseMatrix<MyDegree, int, MyDerivedMatrix>
 ```
-
----
-
-## Citing This Work
-
-If you use this library in your research, please cite it via its DOI. The full citation metadata is in [`CITATION.cff`](CITATION.cff).
-
-```bibtex
-@software{Jendrysiak_Persistence_Algebra,
-  author       = {Jendrysiak, Jan},
-  title        = {Persistence-Algebra},
-  version      = {0.2},
-  year         = {2024},
-  license      = {LGPL-3.0-or-later},
-  doi          = {10.4230/artifacts.23283},
-  orcid        = {https://orcid.org/0000-0002-3761-3463}
-}
-```
-
-If you use this library through or alongside **AIDA**, please also cite the accompanying paper:
-
-```bibtex
-@InProceedings{djk25,
-  author    = {Dey, Tamal K. and Jendrysiak, Jan and Kerber, Michael},
-  title     = {{Decomposing Multiparameter Persistence Modules}},
-  booktitle = {41st International Symposium on Computational Geometry (SoCG 2025)},
-  pages     = {41:1--41:19},
-  series    = {Leibniz International Proceedings in Informatics (LIPIcs)},
-  ISBN      = {978-3-95977-370-6},
-  ISSN      = {1868-8969},
-  year      = {2025},
-  volume    = {332},
-  editor    = {Aichholzer, Oswin and Wang, Haitao},
-  publisher = {Schloss Dagstuhl -- Leibniz-Zentrum f{\"u}r Informatik},
-  address   = {Dagstuhl, Germany},
-  doi       = {10.4230/LIPIcs.SoCG.2025.41}
-}
-```
-
-A preprint is also available on arXiv: [arXiv:2504.08119](https://arxiv.org/abs/2504.08119).
-
-The kernel computation for ℝ²-graded matrices is adapted from the **MPfree** algorithm by Michael Kerber; please cite the relevant MPfree paper if that component is central to your use.
-
----
-
-## Related Projects
-
-This library is used as a dependency in the following projects, all part of the author's PhD thesis at TU Graz:
-
-- **[AIDA](https://github.com/JanJend/AIDA)** — approximation and interval decomposition of 2-parameter persistence modules; published at [SoCG 2025](https://doi.org/10.4230/LIPIcs.SoCG.2025.41) (Dey, Jendrysiak, Kerber)
-- **[Skyscraper-Invariant](https://github.com/JanJend/Skyscraper-Invariant)** — efficient computation of the skyscraper invariant
-- **[Stable-Decomposition](https://github.com/JanJend/Stable-Decomposition)** — algorithms for stable decomposition of multiparameter modules
 
 ---
 
