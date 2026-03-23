@@ -886,6 +886,22 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         this->delete_rows(rows_to_remove);
     };
 
+    void bound_support(r2degree bound){
+        vec<index> rows_to_remove;
+        for(index i = 0; i < this->get_num_rows(); i++){
+            if(this->row_degrees[i].first > bound.first || this->row_degrees[i].second > bound.second){
+                rows_to_remove.push_back(i);
+            } else {
+                this->col_degrees.append(std::make_pair(bound.first,this->row_degrees[i].second));
+                this->data.push_back( std::vector<index>({i}));
+                this->col_degrees.append(std::make_pair(this->row_degrees[i].first, bound.second));
+                this->data.push_back( std::vector<index>({i}));
+            }
+        }
+        this->delete_rows(rows_to_remove);
+        this->minimize();
+    }
+
 }; // R2GradedSparseMatrix
 
 template<typename index>
