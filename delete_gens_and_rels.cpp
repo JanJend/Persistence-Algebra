@@ -5,11 +5,11 @@
 using namespace graded_linalg;
 
 
-void cut_presentation(std::filesystem::path input_path, std::filesystem::path output_path, double x_cutoff = 1.0, double y_cutoff = 1.0) {
+void delete_gens_and_rels(std::filesystem::path input_path, std::filesystem::path output_path, double x_cutoff = 1.0, double y_cutoff = 1.0) {
     
     R2GradedSparseMatrix<int> presentation = R2GradedSparseMatrix<int>(input_path.string());
 
-    presentation.bound_support(std::make_pair(x_cutoff, y_cutoff));
+    presentation.cut_above(x_cutoff, y_cutoff);
 
     std::ofstream output_file(output_path);
     if (!output_file.is_open()) {
@@ -57,6 +57,6 @@ int main(int argc, char** argv) {
         std::string modified_path = insert_suffix_before_extension(filepath, suffix);
         output_path = std::filesystem::path(modified_path);
     }
-    cut_presentation(input_path, output_path, x_cutoff, y_cutoff);
+    delete_gens_and_rels(input_path, output_path, x_cutoff, y_cutoff);
     return 0;
 }

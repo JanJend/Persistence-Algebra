@@ -67,7 +67,11 @@ add_executable(size size.cpp)
 target_link_libraries(size ${Boost_LIBRARIES})
 set_target_properties(size PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
-install(TARGETS shift_endo hom minimize pres_to_quiver resolution snap_grid submodule_at analyse_ind thickness size
+add_executable(cut_module cut_module.cpp)
+target_link_libraries(size ${Boost_LIBRARIES})
+set_target_properties(size PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
+
+install(TARGETS shift_endo cut_module hom minimize pres_to_quiver resolution snap_grid submodule_at analyse_ind thickness size
     RUNTIME DESTINATION bin
 )
 
