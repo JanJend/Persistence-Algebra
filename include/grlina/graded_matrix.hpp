@@ -962,7 +962,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
     /**
      * @brief Performs column reduction whenever grades make it possible.
-     * Needs columns to be sorted in a linear extension of N^2
+     * for maximal efficiency, sort columns in a linear extension of N^2 
      *
      */
     vec<index> column_reduction_graded(){
