@@ -31,6 +31,7 @@ namespace graded_linalg {
 
 using r2degree = std::pair<double, double>;
 
+//
 // Vector addition
 inline r2degree operator+(const r2degree& a,
     const r2degree& b) {
