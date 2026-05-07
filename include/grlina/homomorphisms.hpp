@@ -73,8 +73,8 @@ vec<index>index_pair_to_position(index j_start,
     const vec<std::pair<index,index>>& variable_positions) {
 
     vec<index> result;
-    auto it = row_indices.begin();
-    for(index j = j_start; j < variable_positions.size() && it != row_indices.end(); j++){
+    auto it = variable_positions.begin();
+    for(index j = j_start; j < variable_positions.size() && it != variable_positions.end(); j++){
         auto& index_pair = variable_positions[j];
         if(index_pair.first == row_index){
             if(*it == index_pair.second){
@@ -756,9 +756,6 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(
         for(index j = 0; j < B.get_num_rows(); j++) {
             if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.row_degrees[j])){
                 S.data.push_back(vec<index>());
-                if(reduce){
-                    position_map[std::make_pair(i,j)] = S_index;
-                }
                 variable_positions.push_back(std::make_pair(i, j));
                 for(auto rit = A._rows[i].rbegin(); rit != A._rows[i].rend(); rit++){
                     auto& column_index = *rit;
