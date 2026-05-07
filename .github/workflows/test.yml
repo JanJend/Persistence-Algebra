@@ -1,0 +1,70 @@
+
+name: Build, test
+
+on: 
+  [pull_request,workflow_dispatch,push]
+
+jobs:
+  build-test:
+    name: 
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "macos-latest","windows-latest"]
+        # https://docs.github.com/en/actions/reference/github-hosted-runners-reference
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    - uses: mamba-org/setup-micromamba@v2
+      with:
+        micromamba-version: 'latest'
+        init-shell: >-
+          bash
+          powershell
+        condarc: |
+          channels:
+            - conda-forge
+    - name: Dependencies
+      shell: bash -el {0}
+      run: |
+        micromamba create -n build  tbb tbb-devel libboost libboost-devel  c-compiler cxx-compiler llvm-openmp gxx -c conda-forge
+
+    - name: tree
+      if: ${{ matrix.os != 'windows-latest' }}
+      shell: bash -el {0}
+      run: |
+        micromamba activate build
+        micromamba install tree -c conda-forge
+        tree
+    - name: Build
+      shell: bash -el {0}
+      run: |
+        micromamba activate build
+        cd tests
+        
+        failed=0
+        export CXX=${CXX:-g++}
+
+        echo "Using Compiler: $CXX"
+
+        for file in *.cpp; do
+          name="${file%.*}"
+          echo "::group::Test: $name"
+          
+          if $CXX -std=c++17 -Wall ${CXXFLAGS} "$file" -I../include/ -o "$name" && ./"$name"; then
+             echo "PASS: $name"
+          else
+             echo "::error::FAIL: $name"
+             failed=1
+          fi
+          
+          echo "::endgroup::"
+        done
+
+        if [ "$failed" -ne 0 ]; then
+          exit 1
+        fi
+
+
