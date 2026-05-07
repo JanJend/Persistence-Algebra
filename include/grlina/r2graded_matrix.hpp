@@ -769,6 +769,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         return (copy.get_num_cols() == this->get_num_cols()) && (copy.get_num_rows() == this->get_num_rows());
     }
 
+
+
     /**
      * @brief Computes a presentation for the submodule generated at the given degree.
      * 
@@ -883,6 +885,23 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         this->delete_columns(cols_to_remove);
         this->delete_rows(rows_to_remove);
     };
+
+    void bound_support(r2degree bound){
+        vec<index> rows_to_remove;
+        for(index i = 0; i < this->get_num_rows(); i++){
+            if(this->row_degrees[i].first > bound.first || this->row_degrees[i].second > bound.second){
+                rows_to_remove.push_back(i);
+            } else {
+                this->col_degrees.push_back(std::make_pair(bound.first,this->row_degrees[i].second));
+                this->data.push_back( std::vector<index>({i}));
+                this->col_degrees.push_back(std::make_pair(this->row_degrees[i].first, bound.second));
+                this->data.push_back( std::vector<index>({i}));
+            }
+        }
+        this->compute_num_cols();
+        this->delete_rows(rows_to_remove);
+        this->minimize();
+    }
 
 }; // R2GradedSparseMatrix
 
@@ -1144,8 +1163,8 @@ struct R2Resolution {
             d2.sort_columns_colexicographically();
         }
 
-        vec<index> x_grid = d1.x_grid;
-        vec<index> y_grid = d1.y_grid;
+        vec<double> x_grid = d1.x_grid;
+        vec<double> y_grid = d1.y_grid;
         index num_x = x_grid.size();
         index num_y = y_grid.size();
 
@@ -1154,8 +1173,55 @@ struct R2Resolution {
         auto itc3 = d2.col_degrees.begin();
 
         for(index i = 0; i < num_y; i++){
-             //TO-DO finish.
+            
         }
+    }
+
+    array<index> dimension_vector_non_opt(index& max_value){
+
+        d1.compute_grid_representation();
+        d2.compute_grid_representation();
+
+            d1.sort_rows_colexicographically();
+            d1.sort_columns_colexicographically();
+            d2.sort_rows_colexicographically();
+            d2.sort_columns_colexicographically();
+        
+
+        vec<double> x_grid = d1.x_grid;
+        vec<double> y_grid = d1.y_grid;
+        index num_x = x_grid.size();
+        index num_y = y_grid.size();
+        
+        const auto& generators = d1.row_degrees;
+        const auto& relations = d1.col_degrees;
+        const auto& syzygies = d2.col_degrees;
+        
+        array<index> hilbert = array<index>(num_x, vec<index>(num_y, 0));
+        max_value = 0;
+        
+        for (index j = 0; j < num_y; j++) {
+            double y = y_grid[j];
+            for (index i= 0; i < num_x; i++) {
+                double x = x_grid[i];
+                int val = 0;
+                
+                // Add generators and syzygies
+                for (const auto& [gx, gy] : generators) 
+                    if (x >= gx && y >= gy) val++;
+                for (const auto& [sx, sy] : syzygies) 
+                    if (x >= sx && y >= sy) val++;
+                
+                // Subtract relations
+                for (const auto& [rx, ry] : relations) 
+                    if (x >= rx && y >= ry) val--;
+                
+                assert(val >= 0);
+                hilbert[i][j] = val;
+                max_value = std::max(max_value, val);
+            }
+        }
+        return hilbert;
     }
 
 };

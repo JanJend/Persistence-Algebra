@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from turtle import pos
 import matplotlib.pyplot as plt
 import numpy as np

@@ -2,10 +2,10 @@
  * @file homomorphisms.hpp
  * @author Jan Jendrysiak
  * @brief different methods to compute homomorphisms of persistence modules.
- * @version 0.1
- * @date 2025-03-13
+ * @version 0.2
+ * @date 2026-02-05
  * 
- * @copyright 2025 TU Graz
+ * @copyright 2026 TU Graz
     This file is part of the AIDA library. 
    You can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as published by
@@ -68,13 +68,14 @@ std::vector<index> generate_random_indices(index number, index range) {
 }
 
 template <typename index>
-vec<index>index_pair_to_position(index j_start, 
+vec<index>index_pair_to_position(index row_index,
+    index j_start, 
     const vec<index>& B_data_j, 
     const vec<std::pair<index,index>>& variable_positions) {
 
     vec<index> result;
-    auto it = variable_positions.begin();
-    for(index j = j_start; j < variable_positions.size() && it != variable_positions.end(); j++){
+    auto it = B_data_j.begin();
+    for(index j = j_start; j < variable_positions.size() && it != B_data_j.end(); j++){
         auto& index_pair = variable_positions[j];
         if(index_pair.first == row_index){
             if(*it == index_pair.second){
@@ -174,7 +175,7 @@ vec<DERIVED> hom_space_basis_new(
             for(index j = 0; j < B.get_num_cols(); j++){
                 if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.col_degrees[j])){
                     // Add a new homotopy
-                    vec<index> h = index_pair_to_position(variable_positions_separator[i], B.data[j], variable_positions);
+                    vec<index> h = index_pair_to_position(i,variable_positions_separator[i], B.data[j], variable_positions);
                     N_bar.data.push_back(h);
                 }
             }
@@ -282,7 +283,7 @@ vec<DERIVED> hom_space_basis_new(
 
         if(info){
             timer.stop();
-            std::cout << "  time to solve: " << timer.elapsed().wall * 1e-6 << "ms";
+            std::cout << "  time to solve: " << timer.elapsed().wall * 1e-6 << "ms" << std::endl;
             // std::cout << "Dimension of hom-space: " << K.get_num_cols() << std::endl;
         }
 
@@ -752,10 +753,13 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(
     index S_index = 0;
 
     for(index i = 0; i < A.get_num_rows(); i++) {
-        variable_positions_separator[i] = S_index;
+        if(reduce){
+            variable_positions_separator[i] = S_index;
+        }
         for(index j = 0; j < B.get_num_rows(); j++) {
             if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.row_degrees[j])){
                 S.data.push_back(vec<index>());
+                
                 variable_positions.push_back(std::make_pair(i, j));
                 for(auto rit = A._rows[i].rbegin(); rit != A._rows[i].rend(); rit++){
                     auto& column_index = *rit;
@@ -827,14 +831,13 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(
             for(index j = 0; j < B.get_num_cols(); j++){
                 if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.col_degrees[j])){
                     // Add a new homotopy
-                    vec<index> h = index_pair_to_position(variable_positions_separator[i], B.data[j], variable_positions);
+                    vec<index> h = index_pair_to_position(i, variable_positions_separator[i], B.data[j], variable_positions);
                     N_bar.data.push_back(h);
                 }
             }
         }
         N_bar.compute_num_cols();
-        N_bar.reduce_fully(K);
-        K.column_reduction_triangular(true);
+        N_bar.reduce_fully_alt(K);
         if(info){
             timer.stop();
             std::cout << "  Time to reduce to basis: " << timer.elapsed().wall * 1e-6 << "ms" << std::endl;
