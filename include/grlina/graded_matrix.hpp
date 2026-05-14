@@ -832,6 +832,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     * assumes a compatible ordering of the columns and rows!
      */
     void minimize(){
+        // Bug, TO-DO: Column reduce here instead and remember pivot elements of same degree as column
         assert(this->are_columns_sorted_lexicographically());
         assert(this->are_rows_sorted_lexicographically());
         assert(this->get_num_rows() == this->row_degrees.size());
@@ -849,11 +850,13 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             }
         }
         this->delete_columns(col_indices_to_remove);
+        std::sort(row_indices_to_remove.begin(), row_indices_to_remove.end());
         this->delete_rows(row_indices_to_remove);
         col_indices_to_remove.clear();
         row_indices_to_remove.clear();
         DERIVED copy = static_cast<DERIVED&>(*this);
         auto K = copy.graded_kernel();
+        // TO-DO: Think about this again: Is it really enough to only consider the last element?
         for(index i = 0; i < K.get_num_cols(); i++){
             // For this to work, the rows of K must be sorted lexicographically
             index p = K.col_last(i);
@@ -876,6 +879,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * TO-DO: Check if this function is typically faster than the above.
      */
     void minimize_variant(){
+        // Bug, TO-DO: Column reduce here instead and remember pivot elements of same degree as column
         assert(this->are_columns_sorted_lexicographically());
         assert(this->are_rows_sorted_lexicographically());
         // First do a check for row-column pairs (easy) and the "trivial" zero columns, 
@@ -883,6 +887,8 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         array<index> multi_pivots = array<index>(this->num_rows, vec<index>());
         vec<index> col_indices_to_remove;
         vec<index> row_indices_to_remove;
+        // Bug, TO-DO: perform column operation also, if there is a non-zero entry 
+        // in a pivot of a "same-degree" column.
         for(index i = 0; i < this->num_cols; i++){
             index p = this->col_last(i);
             bool found = true;
@@ -919,6 +925,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         row_indices_to_remove.clear();
         DERIVED copy = static_cast<DERIVED&>(*this);
         auto K = copy.graded_kernel();
+        // TO-DO: Think about this again: Is it really enough to only consider the last element?
         for(index i = 0; i < K.get_num_cols(); i++){
             // For this to work, the rows of K must be sorted lexicographically
             index p = K.col_last(i);
