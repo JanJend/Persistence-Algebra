@@ -792,6 +792,27 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         return permutation;
     }
 
+    void permute_rows_graded(const vec<index>& permutation) {
+        assert(permutation.size() == this->get_num_rows());
+        this->transform_data(permutation);
+        this->sort_data();
+        vec<D> new_row_degrees(this->get_num_rows());
+        for(index i = 0; i < (index)permutation.size(); i++) {
+            new_row_degrees[permutation[i]] = this->row_degrees[i];
+        }
+        this->row_degrees = new_row_degrees;
+    }
+
+    DERIVED restricted_domain_copy(vec<index>& colIndices) const {
+        DERIVED result( this->SparseMatrix<index>::restricted_domain_copy(colIndices) );
+        result.col_degrees = vec<D>(colIndices.size());
+        for(index i = 0; i < (index)colIndices.size(); i++) {
+            result.col_degrees[i] = this->col_degrees[colIndices[i]];
+        }
+        result.row_degrees = this->row_degrees;
+        return result;
+    }
+
     bool are_columns_sorted_lexicographically() const {
         for(index i = 1; i < this->num_cols; i++) {
             if( !Degree_traits<D>::lex_lambda()(this->col_degrees[i-1], this->col_degrees[i]) && !Degree_traits<D>::equals(this->col_degrees[i-1], this->col_degrees[i]) ) {
@@ -1083,27 +1104,15 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
 
     /**
-     * @brief Checks if the matrix is minimal as a presentation,
-     *  by first looking for row-column pairs and then reducing a copy.
+     * @brief Checks if the matrix is minimal as a presentation by minimizing a copy.
      *
      * @return true
      * @return false
      */
     bool is_minimal() const {
-        // First check for row-column pairs
-        for(index i = 0; i < this->num_cols; i++){
-            const vec<index>& col = this->data[i];
-            const D& col_degree = this->col_degrees[i];
-            for(index j : col){
-                const D& row_degree = this->row_degrees[j];
-                if( Degree_traits<D>::equals(col_degree , row_degree) ){
-                    return false;
-                }
-            }
-        }
-        // Then check for empty columns
-        // To-DO: need to compute kernel.
-        return true;
+        DERIVED copy = static_cast<const DERIVED&>(*this);
+        copy.minimize();
+        return (copy.get_num_cols() == this->get_num_cols()) && (copy.get_num_rows() == this->get_num_rows());
     }
 
     void append_column(const vec<index>& column_data, const D& column_degree) {
@@ -1229,6 +1238,25 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         DERIVED presentation = copy.graded_kernel();
         // To get the map to the basis, forget all the rows which correspong to relations
         presentation.cull_columns(num_new_gens, false);
+        return presentation;
+    }
+
+    /**
+     * @brief Computes a presentation for the submodule generated at the given degree.
+     *
+     * @param alpha
+     * @return DERIVED
+     */
+    DERIVED submodule_generated_at(D alpha) const {
+        vec<index> basis_lift = this->basislift_at(alpha);
+        DERIVED basis_injection(this->get_num_rows(), basis_lift);
+        basis_injection.row_degrees = this->row_degrees;
+        basis_injection.col_degrees = vec<D>(basis_lift.size(), alpha);
+        basis_injection.append_matrix(*this);
+        DERIVED presentation = basis_injection.graded_kernel();
+        presentation.cull_columns(basis_lift.size(), false);
+        presentation.sort_columns_lexicographically();
+        presentation.minimize();
         return presentation;
     }
 

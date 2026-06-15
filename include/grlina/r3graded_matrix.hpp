@@ -150,6 +150,8 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMa
 
     R3GradedSparseMatrix() : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>() {}
     R3GradedSparseMatrix(index m, index n) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(m, n) {}
+    R3GradedSparseMatrix(index n, vec<index> indicator) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(n, indicator) {}
+    R3GradedSparseMatrix(SparseMatrix<index>&& other) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(std::move(other)) {}
 
     /**
      * @brief Constructs an R^3 graded matrix from an scc or firep data file.
@@ -208,11 +210,11 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMa
     }
 
     /**
-     * @brief Returns a basis for the kernel of a 2d graded matrix.
+     * @brief Returns a basis for the kernel of a 3-parameter graded matrix.
      * 
      * @return SparseMatrix<index> 
      */
-    SparseMatrix<index> r3kernel()  {
+    SparseMatrix<index> graded_kernel()  {
         // Implement
         return SparseMatrix<index>();
     }

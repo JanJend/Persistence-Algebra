@@ -289,26 +289,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     } // Constructor from ifstream
 
     /**
-     * @brief Overwrites restricted_domain_copy from SparseMatrix to also copy the degrees.
-     * 
-     * @param colIndices 
-     * @return R2GradedSparseMatrix 
-     */
-    R2GradedSparseMatrix restricted_domain_copy(vec<index>& colIndices) const {
-        R2GradedSparseMatrix result( this->SparseMatrix<index>::restricted_domain_copy(colIndices) );
-        result.col_degrees = vec<r2degree>(colIndices.size());
-        for(index i = 0; i < colIndices.size(); i++){
-            result.col_degrees[i] = this->col_degrees[colIndices[i]];
-        }
-        result.row_degrees = this->row_degrees;
-
-        return result;
-    }
-
-
-    /**
      * @brief Sets up the grid scheduler for kernel computation
-     * 
+     *
      */
     void initialise_grid_scheduler() {
         this->grid_scheduler = Grid_scheduler<index>(*this);
@@ -360,23 +342,6 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         }
         this->data = new_data;
         return permutation;
-    }
-
-    /**
-     * @brief Given a vector v where v[i] indicates that we want the second row to be moved to position v[i],
-     * applies this permutation to the rows/data and the row degrees.
-     * 
-     * @param permutation 
-     */
-    void permute_rows_graded(const vec<index>& permutation) {
-        assert(permutation.size() == this->get_num_rows());
-        this->transform_data(permutation);
-        this->sort_data();
-        vec<r2degree> new_row_degrees(this->get_num_rows());
-        for(index i = 0; i < permutation.size(); i++) {
-            new_row_degrees[permutation[i]] = this->row_degrees[i];
-        }
-        this->row_degrees = new_row_degrees;
     }
 
     private:
@@ -755,47 +720,6 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
 
         return result;
     }
-
-
-    /**
-     * @brief Inefficient - computes a minimization.
-     * 
-     * @return true 
-     * @return false 
-     */
-    bool is_minimal() const {
-        auto copy = *this;
-        copy.minimize();
-        return (copy.get_num_cols() == this->get_num_cols()) && (copy.get_num_rows() == this->get_num_rows());
-    }
-
-
-
-    /**
-     * @brief Computes a presentation for the submodule generated at the given degree.
-     * 
-     * @param alpha 
-     * @return R2GradedSparseMatrix 
-     */
-    R2GradedSparseMatrix submodule_generated_at (r2degree alpha) const {
-        // Find a list of generators which map to a basis:
-        vec<index> basis_lift = this->basislift_at(alpha);
-        // Construct the injective graded matrix which represents these generators pushed forward to alpha
-        R2GradedSparseMatrix<index> basis_injection = R2GradedSparseMatrix<index>(this->get_num_rows(), basis_lift);
-        basis_injection.row_degrees = this->row_degrees;
-        basis_injection.col_degrees = vec<r2degree>(basis_lift.size(), alpha);
-        // Append this presentation itself
-        basis_injection.append_matrix(*this);
-        // Obsolete if append_matrix works correctly: basis_injection.col_degrees.insert(basis_injection.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
-        // A kernel of this map is the pullback of this presentation along the injection
-        R2GradedSparseMatrix<index> presentation = basis_injection.graded_kernel();
-        
-        // To get the map to the basis, forget all the rows which correspong to relations
-        presentation.cull_columns(basis_lift.size(), false);
-        presentation.sort_columns_lexicographically();
-        presentation.minimize();
-        return presentation;
-    }   
 
 
     pair<r2degree> bounding_box() const{
