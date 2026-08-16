@@ -24,7 +24,9 @@
 #include <vector>
 #include <grlina/matrix_base.hpp>
 #include <grlina/dense_matrix.hpp>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include <boost/dynamic_bitset.hpp>
 #include <cmath>
 

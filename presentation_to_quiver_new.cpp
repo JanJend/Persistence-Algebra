@@ -6,7 +6,9 @@
 #include <iomanip>
 #include <string>
 #include <concepts>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include <unordered_map>
 #include <boost/dynamic_bitset.hpp>
 #include <chrono>

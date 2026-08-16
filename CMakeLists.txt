@@ -1,11 +1,27 @@
 cmake_minimum_required(VERSION 3.15)
 project(Persistence-Algebra VERSION 1.0 LANGUAGES CXX)
 
-# Set C++ standard
-set(CMAKE_CXX_STANDARD 17)
+# Set C++ standard (overridable on the command line for testing newer standards)
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 17)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# Find Boost
-find_package(Boost REQUIRED COMPONENTS timer system)
+# Find Boost. Boost.System is header-only since 1.69 and newer distributions
+# (Boost >= 1.90) no longer ship a boost_system CMake config, so do not request it.
+find_package(Boost REQUIRED COMPONENTS timer)
+
+# OpenMP is optional: used when available, ignored otherwise.
+# Apple clang ships no OpenMP runtime, so point CMake at Homebrew's libomp if present.
+if(APPLE AND NOT DEFINED OpenMP_ROOT)
+    execute_process(COMMAND brew --prefix libomp
+                    OUTPUT_VARIABLE _brew_libomp
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET)
+    if(_brew_libomp AND EXISTS "${_brew_libomp}")
+        set(OpenMP_ROOT "${_brew_libomp}")
+    endif()
+endif()
+find_package(OpenMP)
 
 # Set build type to Release if not specified
 if(NOT CMAKE_BUILD_TYPE)
@@ -25,6 +41,11 @@ set(CMAKE_DEBUG_POSTFIX "_debug")
 # Include directories
 include_directories(include)
 include_directories(${Boost_INCLUDE_DIRS})
+
+# Applies to every target defined below, when OpenMP was found.
+if(OpenMP_CXX_FOUND)
+    link_libraries(OpenMP::OpenMP_CXX)
+endif()
 
 
 add_executable(shift_endo shift_endo.cpp)
@@ -68,8 +89,8 @@ target_link_libraries(size ${Boost_LIBRARIES})
 set_target_properties(size PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
 add_executable(cut_module cut_module.cpp)
-target_link_libraries(size ${Boost_LIBRARIES})
-set_target_properties(size PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
+target_link_libraries(cut_module ${Boost_LIBRARIES})
+set_target_properties(cut_module PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
 install(TARGETS shift_endo cut_module hom minimize pres_to_quiver resolution snap_grid submodule_at analyse_ind thickness size
     RUNTIME DESTINATION bin

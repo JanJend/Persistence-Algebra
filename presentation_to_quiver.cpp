@@ -6,7 +6,9 @@
 #include <utility>
 #include <unordered_set>
 #include <unordered_map>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include <algorithm>
 #include <sys/stat.h>
 #include <filesystem>
