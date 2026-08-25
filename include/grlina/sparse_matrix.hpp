@@ -24,7 +24,9 @@
 #include <vector>
 #include <grlina/matrix_base.hpp>
 #include <grlina/dense_matrix.hpp>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include <boost/dynamic_bitset.hpp>
 #include <cmath>
 
@@ -603,14 +605,12 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         }
     }
 
-
-    bool is_sorted() const {
-        for(index i = 0; i < this->num_cols; i++){
-            if(!std::is_sorted(this->data[i].begin(), this->data[i].end())){
-                return false;
-            }
+    index num_of_entries(){
+        index num = 0;
+        for(index i = 0; i < this->get_num_cols(); i++){
+            num+= this->data[i].size();
         }
-        return true;
+        return num;
     }
 
     /**
@@ -1301,6 +1301,47 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         return N.is_zero();
     }
 
+    /**
+     * @brief Reduces N as much as possible using column reduction to get a quotient space representation.
+     * Alternative version using different addition scheme.
+     * 
+     * @param N 
+     */
+
+    bool reduce_fully_alt(SparseMatrix& N, bool is_diagonal = false){
+        if(!is_diagonal){
+            this->column_reduction_triangular(true);
+        }
+        N.pivots.clear();
+        for(index j=0; j < N.num_cols; j++) {
+            index p = N.col_last(j);
+            while( p >= 0) {
+                if(this->pivots.count(p)) {
+                    index i = this->pivots[p];
+                     Column_traits<vec<index>, index>::add_to(this->data[i], N.data[j]);
+                    auto new_p = N.col_last(j);
+                    assert( new_p < p);
+                    p = new_p;
+                } else if ( N.pivots.count(p)){
+                    index i = N.pivots[p];
+                    Column_traits<vec<index>, index>::add_to(N.data[i], N.data[j]);
+                    auto new_p = N.col_last(j);
+                    assert( new_p < p);
+                    p = new_p;
+                } else {
+                    N.pivots[p]=j;
+                    break;
+                }
+            }
+            if (p == -1){
+                std::swap(N.data[j], N.data[N.get_num_cols()-1]);
+                N.data.pop_back();
+                N.num_cols--;
+                j--;
+            }
+        }        
+        return N.is_zero();
+    }
 
     /**
      * @brief Reduces N as much as possible using column reduction to get a quotient space representation.

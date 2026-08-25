@@ -25,8 +25,6 @@
 #include <vector>
 #include <string>
 
-
-
 namespace graded_linalg {
 
 using r2degree = std::pair<double, double>;
@@ -62,6 +60,10 @@ return {scalar * p.first, scalar * p.second};
 // Scalar multiplication (pair * scalar)
 inline r2degree operator*(const r2degree& p, double scalar) {
 return {p.first * scalar, p.second * scalar};
+}
+
+inline r2degree operator/(const r2degree& p, double scalar) {
+    return {p.first / scalar, p.second / scalar};
 }
 
 template<>
@@ -227,6 +229,18 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         return *this;
     }
 
+    R2GradedSparseMatrix& operator = (const GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>& other) {
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>::assign(other);
+        return *this;
+    }
+
+    R2GradedSparseMatrix& operator = (GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>&& other) {
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>::assign(std::move(other));
+        return *this;
+    }
+
+
+
     R2GradedSparseMatrix(index cols, index rows) : 
         GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(cols, rows) {}
     R2GradedSparseMatrix(index n, vec<index> indicator) : 
@@ -246,6 +260,9 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(std::move(other)) {
     } // Move constructor
 
+    R2GradedSparseMatrix(const GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix>& other) {
+        this->assign(other);
+    } // Copy constructor from GradedSparseMatrix
     R2GradedSparseMatrix( const SparseMatrix<index>& other) : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(other.get_num_cols(), other.get_num_rows()) {
         this->data = other.data;
     } // Copy constructor from SparseMatrix
@@ -273,26 +290,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     } // Constructor from ifstream
 
     /**
-     * @brief Overwrites restricted_domain_copy from SparseMatrix to also copy the degrees.
-     * 
-     * @param colIndices 
-     * @return R2GradedSparseMatrix 
-     */
-    R2GradedSparseMatrix restricted_domain_copy(vec<index>& colIndices) const {
-        R2GradedSparseMatrix result( this->SparseMatrix<index>::restricted_domain_copy(colIndices) );
-        result.col_degrees = vec<r2degree>(colIndices.size());
-        for(index i = 0; i < colIndices.size(); i++){
-            result.col_degrees[i] = this->col_degrees[colIndices[i]];
-        }
-        result.row_degrees = this->row_degrees;
-
-        return result;
-    }
-
-
-    /**
      * @brief Sets up the grid scheduler for kernel computation
-     * 
+     *
      */
     void initialise_grid_scheduler() {
         this->grid_scheduler = Grid_scheduler<index>(*this);
@@ -346,88 +345,71 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         return permutation;
     }
 
-    /**
-     * @brief Given a vector v where v[i] indicates that we want the second row to be moved to position v[i],
-     * applies this permutation to the rows/data and the row degrees.
-     * 
-     * @param permutation 
-     */
-    void permute_rows_graded(const vec<index>& permutation) {
-        assert(permutation.size() == this->get_num_rows());
-        this->transform_data(permutation);
-        this->sort_data();
-        vec<r2degree> new_row_degrees(this->get_num_rows());
-        for(index i = 0; i < permutation.size(); i++) {
-            new_row_degrees[permutation[i]] = this->row_degrees[i];
-        }
-        this->row_degrees = new_row_degrees;
-    }
-
     private:
 
     template <typename T>
-void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
+    void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
                            const std::vector<std::pair<T, T>>& vec2,
                            std::vector<T>& out,
                            bool useFirst = true) {
-    auto it1 = vec1.begin();
-    auto it2 = vec2.begin();
-    T last_x = T();
-    bool has_last_x = false;
+        auto it1 = vec1.begin();
+        auto it2 = vec2.begin();
+        T last_x = T();
+        bool has_last_x = false;
 
-    while (it1 != vec1.end() || it2 != vec2.end()) {
-        T value;
+        while (it1 != vec1.end() || it2 != vec2.end()) {
+            T value;
 
-        if (it1 == vec1.end()) {
-            value = useFirst ? it2->first : it2->second;
-            if (!has_last_x || value != last_x) {
-                out.push_back(value);
-                last_x = value;
-                has_last_x = true;
-            }
-            ++it2;
-        } 
-        else if (it2 == vec2.end()) {
-            value = useFirst ? it1->first : it1->second;
-            if (!has_last_x || value != last_x) {
-                out.push_back(value);
-                last_x = value;
-                has_last_x = true;
-            }
-            ++it1;
-        } 
-        else {
-            T val1 = useFirst ? it1->first : it1->second;
-            T val2 = useFirst ? it2->first : it2->second;
-
-            if (val1 < val2) {
-                if (!has_last_x || val1 != last_x) {
-                    out.push_back(val1);
-                    last_x = val1;
-                    has_last_x = true;
-                }
-                ++it1;
-            } 
-            else if (val2 < val1) {
-                if (!has_last_x || val2 != last_x) {
-                    out.push_back(val2);
-                    last_x = val2;
+            if (it1 == vec1.end()) {
+                value = useFirst ? it2->first : it2->second;
+                if (!has_last_x || value != last_x) {
+                    out.push_back(value);
+                    last_x = value;
                     has_last_x = true;
                 }
                 ++it2;
+            } 
+            else if (it2 == vec2.end()) {
+                value = useFirst ? it1->first : it1->second;
+                if (!has_last_x || value != last_x) {
+                    out.push_back(value);
+                    last_x = value;
+                    has_last_x = true;
+                }
+                ++it1;
             } 
             else {
-                if (!has_last_x || val1 != last_x) {
-                    out.push_back(val1);
-                    last_x = val1;
-                    has_last_x = true;
+                T val1 = useFirst ? it1->first : it1->second;
+                T val2 = useFirst ? it2->first : it2->second;
+
+                if (val1 < val2) {
+                    if (!has_last_x || val1 != last_x) {
+                        out.push_back(val1);
+                        last_x = val1;
+                        has_last_x = true;
+                    }
+                    ++it1;
+                } 
+                else if (val2 < val1) {
+                    if (!has_last_x || val2 != last_x) {
+                        out.push_back(val2);
+                        last_x = val2;
+                        has_last_x = true;
+                    }
+                    ++it2;
+                } 
+                else {
+                    if (!has_last_x || val1 != last_x) {
+                        out.push_back(val1);
+                        last_x = val1;
+                        has_last_x = true;
+                    }
+                    ++it1;
+                    ++it2;
                 }
-                ++it1;
-                ++it2;
             }
         }
     }
-}
 
 
     public:
@@ -492,19 +474,74 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         return column_permutation;
     }
 
+    private:
+
+        pair<index> snap_degree_to_grid_upper(const r2degree& degree, const vec<double>& x_grid, const vec<double>& y_grid) {
+            auto it_x = std::lower_bound(x_grid.begin(), x_grid.end(), degree.first);
+            auto it_y = std::lower_bound(y_grid.begin(), y_grid.end(), degree.second);
+            index x_index = std::distance(x_grid.begin(), it_x);
+            index y_index = std::distance(y_grid.begin(), it_y);
+            return {x_index, y_index};
+        }
+        
+        pair<index> snap_degree_to_grid_lower(const r2degree& degree, const vec<double>& x_grid, const vec<double>& y_grid) {
+            auto it_x = std::upper_bound(x_grid.begin(), x_grid.end(), degree.first);
+            auto it_y = std::upper_bound(y_grid.begin(), y_grid.end(), degree.second);
+            index x_index = std::distance(x_grid.begin(), it_x)-1;
+            index y_index = std::distance(y_grid.begin(), it_y)-1;
+            return {x_index, y_index};
+        }
+
+    public:
+
     /**
-     * @brief Returns the indices of the closest smaller grid point or -1,-1 if to the left of the grid.
+     * @brief Returns the indices of the closest *smaller* grid point or -1 if to the left/bottom of the grid.
      * 
      * @param degree 
      * @return pair<index> 
      */
     pair<index> get_closest_smaller_grid_point(r2degree& degree){
-        double& first = degree.first;
-        double& second = degree.second;
-        auto it_x = std::lower_bound(x_grid.begin(), x_grid.end(), first);
-        auto it_y = std::lower_bound(y_grid.begin(), y_grid.end(), second);
-        index x_index = (it_x != x_grid.begin()) ? std::distance(x_grid.begin(), it_x) - 1 : -1;
-        index y_index = (it_y != y_grid.begin()) ? std::distance(y_grid.begin(), it_y) - 1 : -1;
+        if(x_grid.empty() || y_grid.empty()){
+            std::cerr << "Grid representation was not computed. Calling compute_grid_representation()." << std::endl;
+            compute_grid_representation();
+        }
+        return snap_degree_to_grid_lower(degree, x_grid, y_grid);
+    }
+
+    /** for any grid i:G \into R^2, if this is a presentation, 
+    * computes a presentation of i_! i^* X
+    * by snapping all degrees to the next larger degree in x_grid x y_grid
+    * (Highly inefficient implementation)
+     */
+    void snap_to_grid( vec<double>& new_x_grid, vec<double>& new_y_grid){
+
+        assert(!new_x_grid.empty() && !new_y_grid.empty());
+        index m = new_x_grid.size();
+        index n = new_y_grid.size();
+        vec<index> columns_to_remove = vec<index>();
+        vec<index> rows_to_remove = vec<index>();
+        for(index i = 0; i < this->get_num_cols(); i++){
+            auto snapped = snap_degree_to_grid_upper(this->col_degrees[i], new_x_grid, new_y_grid);
+            if(snapped.first == m || snapped.second == n){
+                columns_to_remove.push_back(i);
+            } else {
+                this->col_degrees[i] = {new_x_grid[snapped.first], new_y_grid[snapped.second]};
+            }
+        }
+
+        for(index i = 0; i < this->get_num_rows(); i++){
+            auto snapped = snap_degree_to_grid_upper(this->row_degrees[i], new_x_grid, new_y_grid);
+            if(snapped.first == m ||snapped.second == n){
+                rows_to_remove.push_back(i);
+            } else {
+                this->row_degrees[i] = {new_x_grid[snapped.first], new_y_grid[snapped.second]};
+            }
+        }
+        this->delete_columns(columns_to_remove);
+        this->delete_rows(rows_to_remove);
+        this->sort_columns_lexicographically();
+        this->sort_rows_lexicographically();
+        this->minimize();
     }
 
     void print_grid(){
@@ -618,7 +655,6 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         vec<index> column_permutation = this->compute_grid_representation();
         this->initialise_grid_scheduler();
         
-
         pq_row.resize(this->y_grid.size());
         // This is the "slave" matrix in mpfree
         SparseMatrix<index> col_operations = SparseMatrix<index>(this->get_num_cols(), this->get_num_cols(), "Identity");
@@ -687,45 +723,6 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
     }
 
 
-    /**
-     * @brief Inefficient - computes a minimization.
-     * 
-     * @return true 
-     * @return false 
-     */
-    bool is_minimal() const {
-        auto copy = *this;
-        copy.minimize();
-        return (copy.get_num_cols() == this->get_num_cols()) && (copy.get_num_rows() == this->get_num_rows());
-    }
-
-    /**
-     * @brief Computes a presentation for the submodule generated at the given degree.
-     * 
-     * @param alpha 
-     * @return R2GradedSparseMatrix 
-     */
-    R2GradedSparseMatrix submodule_generated_at (r2degree alpha) const {
-        // Find a list of generators which map to a basis:
-        vec<index> basis_lift = this->basislift_at(alpha);
-        // Construct the injective graded matrix which represents these generators pushed forward to alpha
-        R2GradedSparseMatrix<index> basis_injection = R2GradedSparseMatrix<index>(this->get_num_rows(), basis_lift);
-        basis_injection.row_degrees = this->row_degrees;
-        basis_injection.col_degrees = vec<r2degree>(basis_lift.size(), alpha);
-        // Append this presentation itself
-        basis_injection.append_matrix(*this);
-        // Obsolete if append_matrix works correctly: basis_injection.col_degrees.insert(basis_injection.col_degrees.end(), this->col_degrees.begin(), this->col_degrees.end());
-        // A kernel of this map is the pullback of this presentation along the injection
-        R2GradedSparseMatrix<index> presentation = basis_injection.graded_kernel();
-        // To get the map to the basis, forget all the rows which correspong to relations
-        presentation.cull_columns(basis_lift.size(), false);
-        presentation.sort_columns_lexicographically();
-        presentation.minimize();
-        return presentation;
-    }   
-
-    
-
     pair<r2degree> bounding_box() const{
         r2degree min = {std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
         r2degree max = {-std::numeric_limits<double>::max(), -std::numeric_limits<double>::max()};
@@ -741,6 +738,94 @@ void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
         }
 
         return {min, max};
+    }
+
+
+    
+    /**
+     * @brief Computes an equidistant grid of n x n points in the bounding box of the degrees of the matrix.
+     * 
+     * @param n 
+     * @return vec<r2degree> 
+     */
+    vec<r2degree> get_equidistant_grid(const int& n) const {
+        pair<r2degree> box = this->bounding_box();
+        if(n == 0){
+            return {};
+        }
+        if(n == 1){
+            return {box.first};
+        }
+        double x_step = (box.second.first - box.first.first) / (n-1);
+        double y_step = (box.second.second - box.first.second) / (n-1);
+        vec<r2degree> grid;
+        for(int i = 0; i < n; i++){
+            for(int j = 0; j < n; j++){
+                grid.push_back({box.first.first + i * x_step, box.first.second + j * y_step});
+            }     
+        }  
+        return grid;
+    }
+
+    void snap_to_equidistant_grid(int n, bool end_inclusive = false){
+        pair<r2degree> box = this->bounding_box();
+        if(n == 0){
+            std::cerr << "Error: Cannot snap to an equidistant grid with 0 points." << std::endl;
+        } else {
+            r2degree step;
+            if(end_inclusive){
+                step = (box.second - box.first) / (n - 1);
+            } else {
+                step = (box.second - box.first) / (n);
+            }
+            vec<double> new_x_grid;
+            vec<double> new_y_grid;
+            for(int i = 0; i < n; i++){
+                new_x_grid.push_back(box.first.first + i * step.first);
+                new_y_grid.push_back(box.first.second + i * step.second);
+            }
+            this->snap_to_grid(new_x_grid, new_y_grid);
+        }
+    };
+
+    void cut_above(double x_cutoff, double y_cutoff){
+        auto box = this->bounding_box();
+        r2degree diagonal = box.second - box.first;
+        auto max_degree_x = box.first.first + x_cutoff * diagonal.first;
+        auto max_degree_y = box.first.second + y_cutoff * diagonal.second;
+        vec<index> rows_to_remove;
+        vec<index> cols_to_remove;
+        for(index i = 0; i < this->get_num_cols(); i++){
+            if(this->col_degrees[i].first > max_degree_x || this->col_degrees[i].second > max_degree_y){
+                cols_to_remove.push_back(i);
+            }
+        }
+
+        for(index i = 0; i < this->get_num_rows(); i++){
+            if(this->row_degrees[i].first > max_degree_x || this->row_degrees[i].second > max_degree_y){
+                rows_to_remove.push_back(i);
+            }
+        }
+
+        this->delete_columns(cols_to_remove);
+        this->delete_rows(rows_to_remove);
+    };
+
+    void bound_support(r2degree bound){
+        vec<index> rows_to_remove;
+        for(index i = 0; i < this->get_num_rows(); i++){
+            if(this->row_degrees[i].first > bound.first || this->row_degrees[i].second > bound.second){
+                rows_to_remove.push_back(i);
+            } else {
+                this->col_degrees.push_back(std::make_pair(bound.first,this->row_degrees[i].second));
+                this->data.push_back( std::vector<index>({i}));
+                this->col_degrees.push_back(std::make_pair(this->row_degrees[i].first, bound.second));
+                this->data.push_back( std::vector<index>({i}));
+            }
+        }
+        this->compute_num_cols();
+        this->delete_rows(rows_to_remove);
+        this->minimize();
     }
 
 }; // R2GradedSparseMatrix
@@ -895,7 +980,8 @@ struct R2Resolution {
         : d1(d1) {
             // Kernel computation is easy if the presentation is minimal, sorted, and has one generator.
             if(is_minimal && d1.get_num_rows() == 1){
-                // assert sored! Todo
+                // assert sorted! Todo
+                // This doesnt look right at the moment.
                 d2 = R2GradedSparseMatrix<index>(d1.get_num_cols()-1, d1.get_num_cols());
                 d2.data = vec< vec<index> >(d1.get_num_cols()-1);
                 d2.row_degrees = d1.col_degrees;
@@ -913,6 +999,25 @@ struct R2Resolution {
             }
         }
     
+    // Copy constructor
+    R2Resolution(const R2Resolution& other) 
+        : d1(other.d1), d2(other.d2) {
+    }
+    
+    // Copy assignment
+    R2Resolution& operator=(const R2Resolution& other){
+        if (this != &other) {
+            d1 = other.d1;
+            d2 = other.d2;
+        }
+        return *this;
+    }
+    
+    // Move constructor
+    R2Resolution(R2Resolution&& other) = default;
+    
+    // Move assignment
+    R2Resolution& operator=(R2Resolution&& other) = default;
 
     /**
      * @brief Writes the R^2 resolution to an output stream.
@@ -926,7 +1031,7 @@ struct R2Resolution {
 
         // Write the header lines
         output_stream << "scc2020" << std::endl;
-        output_stream << "3" << std::endl;
+        output_stream << "2" << std::endl;
         output_stream << this->d2.get_num_cols() << " " << this->d2.get_num_rows() << " " << this->d1.get_num_rows() << std::endl;
 
         // Write the syzygies
@@ -957,7 +1062,6 @@ struct R2Resolution {
     }
 
     
-    
     /**
      * @brief Writes the R^2 resolution to an output stream.
      * 
@@ -969,114 +1073,6 @@ struct R2Resolution {
         index num_chains_1 = d1.num_cols_before(alpha);
         index num_chains_2 = d2.num_cols_before(alpha);
         return num_chains_0 - num_chains_1 + num_chains_2;
-    }
-
-    /**
-     * @brief Only works for modules with all generators at a single degree
-     *  TO-DO: Log transform on the scale parameter. What to do on density?
-     * @return double 
-     */
-    double area () const {
-        auto [min, max] = d1.bounding_box();
-        double base_area = d1.get_num_rows()*(max.first - min.first) * (max.second - min.second);
-        for(const auto& degree : d1.col_degrees){
-            base_area -= (max.first - degree.first) * (max.second - degree.second);
-        }
-        for(const auto& degree : d2.col_degrees){
-            base_area += (max.first - degree.first) * (max.second - degree.second);
-        }
-        return base_area;
-    }
-
-
-    /**
-     * @brief Only works for modules with all generators at a single degree
-     * @return double 
-     */
-    double area (const r2degree& bound) const {
-        auto [min, max] = d1.bounding_box();
-        max = bound;
-        double base_area = d1.get_num_rows()*(max.first - min.first) * (max.second - min.second);
-        for(const auto& degree : d1.col_degrees){
-            base_area -= (max.first - degree.first) * (max.second - degree.second);
-        }
-        for(const auto& degree : d2.col_degrees){
-            base_area += (max.first - degree.first) * (max.second - degree.second);
-        }
-        return base_area;
-    }
-
-    /**
-     * @brief Only works for modules with all generators at a single degree
-     * Normalised so that the area of the free module is 1.
-     *  TO-DO: Log transform on the scale parameter. What to do on density?
-     * @return double 
-     */
-    double area (const pair<r2degree>& bounds) const {
-        //TO-DO: Actually only need to compute the minimal element here.
-        auto [min, max] = d1.bounding_box();
-        max = bounds.second;
-        assert(max.first >= min.first);
-        assert(max.second >= min.second);
-        r2degree range = bounds.second-bounds.first;
-        double range_area = range.first * range.second;
-        double base_area = d1.get_num_rows() * (max.first - min.first) * (max.second - min.second);
-        for(const auto& degree : d1.col_degrees){
-            assert(degree.first <= max.first);
-            assert(degree.second <= max.second);
-            assert(degree.first >= min.first);
-            assert(degree.second >= min.second);
-            base_area -= (max.first - degree.first) * (max.second - degree.second);
-        }
-        for(const auto& degree : d2.col_degrees){
-            assert(degree.first <= max.first);
-            assert(degree.second <= max.second);
-            assert(degree.first >= min.first);
-            assert(degree.second >= min.second);
-            base_area += (max.first - degree.first) * (max.second - degree.second);
-        }
-        double normalised_area = base_area/range_area;
-        return normalised_area;
-    }
-
-    double slope () const {
-        double area = this->area();
-        if(area == 0){
-            std::cerr << "Area is zero, slope will be infinite. Consider passing a bound." << std::endl;
-        }
-        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
-        return slope_value;
-    }
-
-    double slope (const r2degree& bound) const {
-        double area = this->area(bound);
-        if(area == 0){
-            std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
-        }
-        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
-        return slope_value;
-    }
-
-    double slope (const pair<r2degree>& bounds) const {
-        double area = this->area(bounds);
-        if(area == 0){
-            std::cerr << "Area is zero, slope will be infinite. The bound you passed is insufficient." << std::endl;
-        }
-        double slope_value = (static_cast<double>(d1.get_num_rows())/area);
-        return slope_value;
-    }
-
-    /**
-     * @brief Returns a polynomial a[0] + a[1]*x + a[2]*y + a[3]*x*y
-     * which gives the area of the module after shifting the (assumed to be) single generator by (x,y)
-     * 
-     * @param bounds 
-     * @return std::array<double, 4> 
-     */
-    std::array<double, 4> area_polynomial (const pair<r2degree>& bounds) const {
-        assert(d1.get_num_rows() == 1);
-        // TO-DO: Finish this.
-        return {0,0,0,0};
     }
 
     /**
@@ -1092,8 +1088,8 @@ struct R2Resolution {
             d2.sort_columns_colexicographically();
         }
 
-        vec<index> x_grid = d1.x_grid;
-        vec<index> y_grid = d1.y_grid;
+        vec<double> x_grid = d1.x_grid;
+        vec<double> y_grid = d1.y_grid;
         index num_x = x_grid.size();
         index num_y = y_grid.size();
 
@@ -1102,8 +1098,55 @@ struct R2Resolution {
         auto itc3 = d2.col_degrees.begin();
 
         for(index i = 0; i < num_y; i++){
-             //TO-DO finish.
+            
         }
+    }
+
+    array<index> dimension_vector_non_opt(index& max_value){
+
+        d1.compute_grid_representation();
+        d2.compute_grid_representation();
+
+            d1.sort_rows_colexicographically();
+            d1.sort_columns_colexicographically();
+            d2.sort_rows_colexicographically();
+            d2.sort_columns_colexicographically();
+        
+
+        vec<double> x_grid = d1.x_grid;
+        vec<double> y_grid = d1.y_grid;
+        index num_x = x_grid.size();
+        index num_y = y_grid.size();
+        
+        const auto& generators = d1.row_degrees;
+        const auto& relations = d1.col_degrees;
+        const auto& syzygies = d2.col_degrees;
+        
+        array<index> hilbert = array<index>(num_x, vec<index>(num_y, 0));
+        max_value = 0;
+        
+        for (index j = 0; j < num_y; j++) {
+            double y = y_grid[j];
+            for (index i= 0; i < num_x; i++) {
+                double x = x_grid[i];
+                int val = 0;
+                
+                // Add generators and syzygies
+                for (const auto& [gx, gy] : generators) 
+                    if (x >= gx && y >= gy) val++;
+                for (const auto& [sx, sy] : syzygies) 
+                    if (x >= sx && y >= sy) val++;
+                
+                // Subtract relations
+                for (const auto& [rx, ry] : relations) 
+                    if (x >= rx && y >= ry) val--;
+                
+                assert(val >= 0);
+                hilbert[i][j] = val;
+                max_value = std::max(max_value, val);
+            }
+        }
+        return hilbert;
     }
 
 };

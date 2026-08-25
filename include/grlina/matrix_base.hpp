@@ -191,7 +191,7 @@ class MatrixUtil{
                 this->data.emplace_back( CT::get_standard_vector(i, n) );
             }
         } else if (type == "Random") {
-            float fill = percent;
+            float fill = percent/100.0;
             if (fill == -1) {
                 fill = std::log(n)/n;
                 std::cout << "fill rate: " << fill << std::endl;
@@ -440,6 +440,7 @@ class MatrixUtil{
         } 
     }
 
+    public:
    /**
     * @brief Brings Matrix in completly reduced Column Echelon form. Operations go *from* the active column.
     * 
@@ -457,6 +458,7 @@ class MatrixUtil{
             }
         }
     }
+    
 
     public:
     /**
@@ -1150,6 +1152,19 @@ class MatrixUtil{
         return basis;
     }
 
+    vec<index> coKernel_basis_local(const vec<index>& row_indices, const bool& no_reduction = false){
+        vec<index> basis;
+        if(!no_reduction){
+            column_reduction();
+        }
+        for(index i : row_indices){
+            if(pivots.count(i) == 0){
+                basis.push_back(i);
+            }
+        }
+        return basis;
+    }
+
     /**
      * @brief Computes a set of row indices whose images under the quotient map form a basis of the cokernel.
      *          Equivalently, the set of row indices which are not pivots after column-reduction.
@@ -1417,7 +1432,7 @@ bool compare_col_space(const DERIVED& A,const DERIVED& B){
 
 
 
-} // graded_linalg
+} // namespace graded_linalg
 
 
 #endif

@@ -30,9 +30,9 @@
 #include <grlina/r3graded_matrix.hpp>
 #include <grlina/dense_matrix.hpp>
 #include <grlina/homomorphisms.hpp>
+#include <grlina/to_quiver.hpp>
 
 namespace graded_linalg {
-
 
 /**
  * @brief Converts a dense matrix to a sparse matrix
@@ -69,12 +69,91 @@ vec<vec<SparseMatrix<index>>> all_sparse_proper_subspaces(index k){
 }
 
 template <typename index>
+vec<vec<SparseMatrix<index>>> all_sparse_subspaces(index k){
+    vec<vec<SparseMatrix<index>>> result = vec<vec<SparseMatrix<index>>>(k);
+    for(index i = 0; i < k; i++){
+    
+        vec<DenseMatrix> i_spaces = all_subspaces(i+1);
+        for(DenseMatrix matrix : i_spaces){
+            result[i].emplace_back(sparse_from_dense<index>(matrix));
+        }
+    }
+    return result;
+}
+
+
+template <typename index>
 void fill_up_subspaces (vec<vec<SparseMatrix<index>>>& subspaces, index k ){
+
     for(index i = subspaces.size(); i < k; i++){
         subspaces.push_back(vec<SparseMatrix<index>>());
         vec<DenseMatrix> i_spaces = all_proper_subspaces(i+1);
         for(DenseMatrix matrix : i_spaces){
             subspaces[i].emplace_back(sparse_from_dense<index>(matrix));
+        }
+    }
+}
+
+template <typename index>
+vec<vec<vec<SparseMatrix<index>>>> sparse_seperated_grassmannians(index k){
+    vec<vec<vec<SparseMatrix<index>>>> result = vec<vec<vec<SparseMatrix<index>>>>(k, vec<vec<SparseMatrix<index>>>());
+    for(index i = 0; i < k; i++){
+        for(index j = 0; j <= i+1; j++){
+            result[i].emplace_back(vec<SparseMatrix<index>>());
+            vec<DenseMatrix> Gr_i_j = grassmannian(i+1, j);
+            for(DenseMatrix matrix : Gr_i_j){
+                result[i][j].emplace_back(sparse_from_dense<index>(matrix));
+            }
+        }
+    }
+    return result;
+}
+
+template <typename index>
+void fill_up_seperated_grassmannians(vec<vec<vec<SparseMatrix<index>>>>& subspaces, index k){
+    for(index i = subspaces.size(); i < k; i++){
+        subspaces.push_back(vec<vec<SparseMatrix<index>>>());
+        for(index j = 0; j <= i+1; j++){
+            subspaces[i].emplace_back(vec<SparseMatrix<index>>());
+            vec<DenseMatrix> Gr_i_j = grassmannian(i+1, j);
+            for(DenseMatrix matrix : Gr_i_j){
+                subspaces[i][j].emplace_back(sparse_from_dense<index>(matrix));
+            }
+        }
+    }
+}
+
+template <typename index>
+vec<vec<vec<SparseMatrix<index>>>> all_sparse_grassmannians(index k, index n){
+    vec<vec<vec<SparseMatrix<index>>>> result = vec<vec<vec<SparseMatrix<index>>>>(k);
+    for(index i = 0; i < k; i++){
+        for(index j = 0; j <= i+1; j++){
+            result[i].emplace_back(vec<SparseMatrix<index>>());
+            if(j > n){
+                continue;
+            }
+            vec<DenseMatrix> Gr_i_j = grassmannian(i+1, j);
+            for(DenseMatrix matrix : Gr_i_j){
+                result[i][j].emplace_back(sparse_from_dense<index>(matrix));
+            }
+        }
+    }
+    return result;
+}
+
+template <typename index>
+void fill_up_grassmannians (vec<vec<vec<SparseMatrix<index>>>>& subspaces, index k, index n){
+    for(index i = subspaces.size(); i < k; i++){
+        subspaces.push_back(vec<vec<SparseMatrix<index>>>());
+        for(index j = 0; j <= i+1; j++){
+            subspaces[i].emplace_back(vec<SparseMatrix<index>>());
+            if(j > n){
+                continue;
+            }
+            vec<DenseMatrix> Gr_i_j = grassmannian(i+1, j);
+            for(DenseMatrix matrix : Gr_i_j){
+                subspaces[i][j].emplace_back(sparse_from_dense<index>(matrix));
+            }
         }
     }
 }
@@ -171,6 +250,54 @@ void write_vector_to_file(const std::vector<T>& vec, const std::string& folder, 
     
     if (!outfile) {
         std::cerr << "Error: Could not close the file " << full_path << " after writing." << std::endl;
+    }
+}
+
+/**
+ * @brief Constructs matrices from stream with header and type annotations
+ *
+ * @param matrices vector to store the constructed matrices
+ * @param file_stream input stream with format: header, count, then (type, matrix) pairs
+ * @param lex_sort whether to sort lexicographically
+ * @param compute_batches whether to compute the column batches and k_max
+ * @param matrix_types optional vector to store the type of each matrix (e.g., "cyclic")
+ */
+template <typename index, typename InputStream>
+void read_sccsum(
+    std::vector<R2GradedSparseMatrix<index>>& matrices, 
+    InputStream& file_stream, 
+    bool lex_sort = false, 
+    bool compute_batches = false,
+    std::vector<std::string>* matrix_types = nullptr) {
+    
+    // Read and validate header
+    std::string header;
+    std::getline(file_stream, header);
+    if (header != "scc2020sum") {
+        throw std::runtime_error("Invalid header: expected 'scc2020sum', got '" + header + "'");
+    }
+    
+    // Read matrix count
+    size_t count;
+    file_stream >> count;
+    
+    matrices.reserve(count);
+    if (matrix_types) {
+        matrix_types->reserve(count);
+    }
+    
+    for (size_t i = 0; i < count; ++i) {
+        // Skip empty lines and read type
+        std::string type;
+        while (std::getline(file_stream, type) && type.empty()) {}
+        
+        if (matrix_types) {
+            matrix_types->push_back(type);
+        }
+        
+        // Construct matrix from stream
+        R2GradedSparseMatrix<index> matrix(file_stream, lex_sort, compute_batches);
+        matrices.push_back(std::move(matrix));
     }
 }
 

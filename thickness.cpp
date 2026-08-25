@@ -1,21 +1,33 @@
-#include <grlina/graded_linalg.hpp>
+#include "grlina/r2graded_matrix.hpp"
 #include <iostream>
 #include <filesystem>
 
 using namespace graded_linalg;
 
 
+void compute_thickness(std::filesystem::path input_path) {
+
+    R2GradedSparseMatrix<int> presentation = R2GradedSparseMatrix<int>(input_path.string());
+    R2Resolution<int> res(presentation, true);
+    int thickness = 0;
+    auto v = res.dimension_vector_non_opt(thickness);
+    std::cout << presentation.get_num_rows() << " x " << presentation.get_num_cols() << ": ";
+    std::cout << "thickness: " << thickness << std::endl;
+}
 
 bool is_decomp_file(const std::filesystem::path& filepath) {
     return filepath.extension() == ".sccsum";
 }
 
-void compute_decomp_resolutions_streaming(std::filesystem::path input_path, std::filesystem::path output_path) {
+void compute_decomp_thickness(std::filesystem::path input_path) {
+
+    vec<int> thicks;
+    vec<int> sizes;
+
     std::ifstream input_file(input_path);
-    std::ofstream output_file(output_path);
     
-    if (!input_file.is_open() || !output_file.is_open()) {
-        std::cerr << "Error opening files" << std::endl;
+    if (!input_file.is_open()) {
+        std::cerr << "Error opening input file" << std::endl;
         return;
     }
     
@@ -37,8 +49,6 @@ void compute_decomp_resolutions_streaming(std::filesystem::path input_path, std:
     
     int processed_sections = 0;
     int section_index = 0;
-    
-    output_file << "scc2020sum\n" << declared_sections << "\n\n";
 
     // Process sections until EOF or declared count reached
     while (section_index < declared_sections && !input_file.eof()) {
@@ -65,10 +75,11 @@ void compute_decomp_resolutions_streaming(std::filesystem::path input_path, std:
         }
         std::string type = line;
         
+
         // Update progress
         section_index++;
-        std::cout << "\rProcessing section " << section_index << "/" << declared_sections 
-                  << " (" << type << ")..." << std::flush;
+        // std::cout << "\rProcessing section " << section_index << "/" << declared_sections 
+        //          << " (" << type << ")..." << std::flush;
                   
         // Check if next line is scc2020 or firep
         std::streampos pos_before_header = input_file.tellg();
@@ -81,14 +92,19 @@ void compute_decomp_resolutions_streaming(std::filesystem::path input_path, std:
         try {
             // Reset to position before header and let constructor handle parsing
             input_file.seekg(pos_before_header);
-            
-            R2GradedSparseMatrix<int> minimal_presentation(input_file);
-            R2Resolution<int> resolution(minimal_presentation, false);
-            
-            // Output format: type line + resolution output
-            output_file << type << "\n";
-            resolution.to_stream(output_file);
-            output_file << "\n";
+
+            if(type == "free" || type == "cyclic" || type == "interval"){
+                thicks.push_back(1);
+                R2GradedSparseMatrix<int> A(input_file);
+                sizes.push_back(A.get_num_cols()+A.get_num_rows());
+            } else {
+                R2GradedSparseMatrix<int> A(input_file);
+                R2Resolution<int> res(A, true);
+                int thickness = 0;
+                auto v = res.dimension_vector_non_opt(thickness);
+                thicks.push_back(thickness);
+                sizes.push_back(A.get_num_cols()+A.get_num_rows());
+            }
             
             processed_sections++;
             
@@ -115,25 +131,16 @@ void compute_decomp_resolutions_streaming(std::filesystem::path input_path, std:
         std::cerr << "Warning: Declared " << declared_sections << " sections, but successfully processed " 
                  << processed_sections << " sections." << std::endl;
     }
-    
-    std::cout << "Processed " << processed_sections
-              << " sections, saved to: " << output_path << std::endl;
+
+
+    for (size_t i = 0; i < thicks.size(); i++) {
+        std::cout << "Ind: " << i << ", Thickness: " << thicks[i] 
+                  << ", Size = " << sizes[i] << std::endl;
+    }
+
 }
 
-void compute_resolution(std::filesystem::path input_path, std::filesystem::path output_path) {
-    
-    R2GradedSparseMatrix<int> minimal_presentation = R2GradedSparseMatrix<int>(input_path.string());
-    R2Resolution<int> resolution(minimal_presentation, false);
-    std::ofstream output_file(output_path);
-    if (!output_file.is_open()) {
-        std::cerr << "Error: Unable to open output file " << output_path << std::endl;
-        return;
-    } else {
-        resolution.to_stream(output_file);
-        output_file.close();
-        std::cout << "Resolution computed and saved to: " << output_path << std::endl;
-    }
-}
+
 
 
 int main(int argc, char** argv) {
@@ -141,26 +148,21 @@ int main(int argc, char** argv) {
     std::string filepath;
     std::filesystem::path output_path;
 
-    if (argc < 2 || argc > 3) {
-        std::cerr << "Usage: " << argv[0] << " <file_path>" << " <output_path>" << std::endl;
+    if (argc < 2 || argc > 2) {
+        std::cerr << "Usage: " << argv[0] << " <file_path>" << std::endl;
         return 1;
     } else {
         filepath = argv[1];
     }
 
-    if (argc == 3) {
-        output_path = std::filesystem::path(argv[2]);
-    } else {
-        std::string modified_path = insert_suffix_before_extension(filepath, "_resolution");
-        output_path = std::filesystem::path(modified_path);
-    }
-
     std::filesystem::path input_path(filepath);
     
     if (is_decomp_file(input_path)) {
-        compute_decomp_resolutions_streaming(input_path, output_path);
+        // std::cout << "Analysing decomposed sccsum file." << std::endl;
+        compute_decomp_thickness(input_path);
     } else {
-        compute_resolution(input_path, output_path);
+        // std::cout << "Analysing single scc file of unknown type."  << std::endl;
+        compute_thickness(input_path);
     }
     
     return 0;

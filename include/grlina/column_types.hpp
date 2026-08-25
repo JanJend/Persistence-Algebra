@@ -20,6 +20,7 @@
 
 #include <vector>
 #include <set>
+#include <random>
 #include <boost/dynamic_bitset.hpp>
 
 namespace graded_linalg {
@@ -34,6 +35,13 @@ using pair = std::pair<T, T>;
 template <typename T>
 using set = std::set<T>;
 using bitset = boost::dynamic_bitset<>;
+
+
+static std::mt19937& get_rng() {
+    static thread_local std::random_device rd;
+    static thread_local std::mt19937 gen(rd());
+    return gen;
+}
 
 template <typename COLUMN, typename index>
 struct Column_traits {
@@ -239,8 +247,11 @@ struct Column_traits<vec<index>, index> {
 
     static vec<index> get_random_vector(index length, float rate) {
         vec<index> v;
+        std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+        auto& gen = get_rng();
+        
         for(index i = 0; i < length; i++) {
-            if(static_cast<float>(rand()) / static_cast<float>(RAND_MAX) < rate) {
+            if(dist(gen) < rate) {
                 v.push_back(i);
             }
         }
@@ -289,7 +300,7 @@ struct Column_traits<set<index>, index> {
         return (v.find(i) != v.end());
     }
 
-    static index last_entry_index(set<index>& v) {
+    static index last_entry_index(const set<index>& v) {
         if(v.size() == 0){
             return -1;
         } else {
@@ -350,7 +361,7 @@ struct Column_traits<bitset, index> {
         return v[i];
     }
 
-    static index last_entry_index(bitset& v) {
+    static index last_entry_index(const bitset& v) {
         for (int i = v.size() - 1; i >= 0; --i) {
             if (v[i]) {
                 return i;
