@@ -96,3 +96,19 @@ install(TARGETS shift_endo cut_module hom minimize pres_to_quiver resolution sna
     RUNTIME DESTINATION bin
 )
 
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(module_framework_test tests/modules_test.cpp)
+    target_link_libraries(module_framework_test ${Boost_LIBRARIES})
+    add_test(NAME module_framework_test COMMAND module_framework_test)
+    set_tests_properties(module_framework_test PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+    # Keep the established matrix-level API under test while the module API is
+    # introduced alongside it.
+    foreach(_legacy_test dense_matrix_test sparse_matrix_test graded_matrix_test hom_space_test)
+        add_executable(${_legacy_test} tests/${_legacy_test}.cpp)
+        target_link_libraries(${_legacy_test} ${Boost_LIBRARIES})
+        add_test(NAME ${_legacy_test} COMMAND ${_legacy_test})
+        set_tests_properties(${_legacy_test} PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    endforeach()
+endif()

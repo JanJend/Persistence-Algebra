@@ -67,6 +67,7 @@ inline r2degree operator/(const r2degree& p, double scalar) {
 
 template<>
 struct Degree_traits<r2degree> {
+    inline static constexpr const char* poset_id = "2";
     static bool equals(const r2degree& lhs, const r2degree& rhs) {
         return lhs.first == rhs.first && lhs.second == rhs.second;
     }
@@ -308,6 +309,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         }
         this->transform_data(reverse);
         this->sort_data();
+        this->compatibly_sorted = std::is_sorted(this->col_degrees.begin(), this->col_degrees.end(), Degree_traits<r2degree>::colex_lambda());
     }
 
     vec<index> sort_rows_colexicographically_with_output() {
@@ -318,6 +320,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         }
         this->transform_data(reverse);
         this->sort_data();
+        this->compatibly_sorted = std::is_sorted(this->col_degrees.begin(), this->col_degrees.end(), Degree_traits<r2degree>::colex_lambda());
         return permutation;
     }
 
@@ -332,6 +335,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
             new_data[i] = this->data[permutation[i]];
         }
         this->data = new_data;
+        this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(), Degree_traits<r2degree>::colex_lambda());
     }
 
     vec<index> sort_columns_colexicographically_with_output() {
@@ -341,7 +345,12 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
             new_data[i] = this->data[permutation[i]];
         }
         this->data = new_data;
+        this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(), Degree_traits<r2degree>::colex_lambda());
         return permutation;
+    }
+
+    void sort_colexicographically() {
+        this->sort_compatibly(Degree_traits<r2degree>::colex_lambda());
     }
 
     private:

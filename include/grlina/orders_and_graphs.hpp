@@ -60,6 +60,9 @@ void print_edge_list(const edge_list<index>& edges){
 
 template <typename D>
 struct Degree_traits {
+
+    /** Stable identifier written to the second line of SCC files. */
+    inline static constexpr const char* poset_id = "unknown";
     
     static bool equals (const D& lhs, const D& rhs);
 
@@ -892,4 +895,3 @@ std::vector<index> sort_and_get_permutation(std::vector<T>& vec, std::function<b
 } // namespace graded_linalg
 
 #endif // DIGRAPHS_HPP
-

@@ -40,8 +40,19 @@ using Hom_space_temp = std::pair< SparseMatrix<index>, vec<std::pair<index,index
 template <typename D, typename index, typename DERIVED>
 struct GradedSparseMatrix : public SparseMatrix<index> {
 
+    using degree_type = D;
+    using index_type = index;
+    using derived_type = DERIVED;
+
     vec<D> col_degrees;
     vec<D> row_degrees;
+
+    /**
+     * True exactly when both degree lists are known to use the same compatible
+     * linear extension.  It is deliberately false for newly constructed and
+     * parsed matrices unless sorting was requested.
+     */
+    bool compatibly_sorted = false;
 
     // Unclear if we really need the following:
     // admissible_col[i] stores to what column i can be added
@@ -72,6 +83,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             this->row_degrees = other.row_degrees;
             this->col_batches = other.col_batches;
             this->k_max = other.k_max;
+            this->compatibly_sorted = other.compatibly_sorted;
             return *this;
         }
 
@@ -81,6 +93,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             this->row_degrees = std::move(other.row_degrees);
             this->col_batches = std::move(other.col_batches);
             this->k_max = other.k_max;
+            this->compatibly_sorted = other.compatibly_sorted;
             return *this;
         }
 
@@ -101,9 +114,9 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
 
     GradedSparseMatrix() : SparseMatrix<index>() {};
 
-    GradedSparseMatrix(const GradedSparseMatrix& other) : SparseMatrix<index>(other), col_degrees(other.col_degrees), row_degrees(other.row_degrees), col_batches(other.col_batches), k_max(other.k_max) {}
+    GradedSparseMatrix(const GradedSparseMatrix& other) : SparseMatrix<index>(other), col_degrees(other.col_degrees), row_degrees(other.row_degrees), compatibly_sorted(other.compatibly_sorted), col_batches(other.col_batches), k_max(other.k_max) {}
 
-    GradedSparseMatrix(GradedSparseMatrix&& other) : SparseMatrix<index>(std::move(other)), col_degrees(std::move(other.col_degrees)), row_degrees(std::move(other.row_degrees)), col_batches(std::move(other.col_batches)), k_max(other.k_max) {}
+    GradedSparseMatrix(GradedSparseMatrix&& other) : SparseMatrix<index>(std::move(other)), col_degrees(std::move(other.col_degrees)), row_degrees(std::move(other.row_degrees)), compatibly_sorted(other.compatibly_sorted), col_batches(std::move(other.col_batches)), k_max(other.k_max) {}
 
     GradedSparseMatrix(index m, index n) : SparseMatrix<index>(m, n), col_degrees(vec<D>(m)), row_degrees(vec<D>(n)) {}
 
@@ -166,7 +179,11 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             for(index j : this->data[i]){
                 if(!Degree_traits<D>::greater_equal(this->col_degrees[i], this->row_degrees[j])){
                     if(output){
-                        std::cout << "Column " << i << " has degree " << this->col_degrees[i] << " but row " << j << " has degree " << this->row_degrees[j] << std::endl;
+                        std::cout << "Column " << i << " has degree ";
+                        Degree_traits<D>::print_degree(this->col_degrees[i]);
+                        std::cout << " but row " << j << " has degree ";
+                        Degree_traits<D>::print_degree(this->row_degrees[j]);
+                        std::cout << std::endl;
                     }
                     return false;
                 }
@@ -722,7 +739,45 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      *
      */
     void sort_columns_lexicographically_with_pointers() {
-        sort_simultaneously<D, vec<index>>(col_degrees, this->data);
+        sort_columns(Degree_traits<D>::lex_lambda());
+    }
+
+    /** Sort columns by an arbitrary compatible linear order. */
+    template <typename Compare>
+    void sort_columns(Compare compare) {
+        vec<index> permutation = sort_and_get_permutation<D, index>(this->col_degrees, compare);
+        array<index> new_data(this->data.size());
+        for(index i = 0; i < static_cast<index>(this->data.size()); i++) {
+            new_data[i] = std::move(this->data[permutation[i]]);
+        }
+        this->data = std::move(new_data);
+        this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(), compare);
+    }
+
+    /** Sort rows by an arbitrary compatible linear order. */
+    template <typename Compare>
+    void sort_rows(Compare compare) {
+        vec<index> permutation = sort_and_get_permutation<D, index>(this->row_degrees, compare);
+        vec<index> reverse(permutation.size());
+        for (index i = 0; i < static_cast<index>(permutation.size()); ++i) {
+            reverse[permutation[i]] = i;
+        }
+        this->transform_data(reverse);
+        this->sort_data();
+        this->compatibly_sorted = std::is_sorted(this->col_degrees.begin(), this->col_degrees.end(), compare);
+    }
+
+    /** Sort rows and columns by the same compatible linear order. */
+    template <typename Compare>
+    void sort_compatibly(Compare compare) {
+        sort_columns(compare);
+        sort_rows(compare);
+        this->compatibly_sorted = true;
+    }
+
+    /** Sort with the mandatory linear order supplied by Degree_traits. */
+    void sort_compatibly() {
+        sort_compatibly(Degree_traits<D>::lex_lambda());
     }
 
     /**
@@ -731,12 +786,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      *
      */
     void sort_columns_lexicographically() {
-        vec<index> permutation = sort_and_get_permutation<D, index>(this->col_degrees, Degree_traits<D>::lex_lambda());
-        array<index> new_data = array<index>(this->data.size());
-        for(index i = 0; i < this->data.size(); i++) {
-            new_data[i] = this->data[permutation[i]];
-        }
-        this->data = new_data;
+        sort_columns(Degree_traits<D>::lex_lambda());
     }
 
     /**
@@ -756,6 +806,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         for (int i = 0; i < permutation.size(); ++i) {
             reverse[permutation[i]] = i;
         }
+        this->compatibly_sorted = this->are_rows_sorted_lexicographically();
         return reverse;
     }
 
@@ -764,15 +815,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      *
      */
     void sort_rows_lexicographically(){
-
-        vec<index> permutation = sort_and_get_permutation<D, index>(this->row_degrees, Degree_traits<D>::lex_lambda());
-        // Need inverse of permutation
-        vec<index> reverse = vec<index>(permutation.size());
-        for (int i = 0; i < permutation.size(); ++i) {
-            reverse[permutation[i]] = i;
-        }
-        this->transform_data(reverse);
-        this->sort_data();
+        sort_rows(Degree_traits<D>::lex_lambda());
     }
 
     /**
@@ -789,6 +832,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         }
         this->transform_data(reverse);
         this->sort_data();
+        this->compatibly_sorted = this->are_columns_sorted_lexicographically();
         return permutation;
     }
 
@@ -801,6 +845,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             new_row_degrees[permutation[i]] = this->row_degrees[i];
         }
         this->row_degrees = new_row_degrees;
+        this->compatibly_sorted = false;
     }
 
     DERIVED restricted_domain_copy(vec<index>& colIndices) const {
@@ -1047,6 +1092,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * @param d 
      */
     void set_all_generator_degrees(D d) {
+        this->compatibly_sorted = false;
         for(index i = 0; i < this->get_num_rows(); i++){
             this->row_degrees[i] = d;
         }
@@ -1119,6 +1165,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         this->data.push_back(column_data);
         this->col_degrees.push_back(column_degree);
         this->num_cols += 1;
+        this->compatibly_sorted = false;
     }
 
      /**
@@ -1134,6 +1181,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             this->col_degrees.push_back(other.col_degrees[i]);
         }
         this->num_cols += other.num_cols;
+        this->compatibly_sorted = false;
     }
 
     void append_move_matrix(GradedSparseMatrix&& other) {
@@ -1143,6 +1191,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
             this->col_degrees.push_back(std::move(other.col_degrees[i]));
         }
         this->num_cols += other.num_cols;
+        this->compatibly_sorted = false;
     }
 
     /**
@@ -1167,7 +1216,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     DERIVED quotient_by_copy (DERIVED& Y) const {
         DERIVED copy = static_cast<const DERIVED&>(*this);
         copy.append_matrix(Y);
-        this->sort_columns_lexicographically();
+        copy.sort_compatibly();
         copy.minimize();
         return copy;
     }
@@ -1184,7 +1233,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         index row_temp = this->num_cols;
         this->append_matrix(S);
         this->append_matrix(M);
-        auto K = static_cast<DERIVED*>(this)->graded_kernel();
+        auto K = static_cast<DERIVED&>(*this).graded_kernel();
         K.cull_columns(row_temp, false);
         
         K.column_reduction_graded_w_deletion();
@@ -1205,7 +1254,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         index row_temp = copy.num_cols;
         copy.append_matrix(S);
         copy.append_matrix(M);
-        auto K = static_cast<DERIVED*>(this)->graded_kernel();
+        auto K = copy.graded_kernel();
         K.cull_columns(row_temp, false);
         K.column_reduction_graded_w_deletion();
         // TO-DO: could also fully minimize if we want to?
@@ -1325,6 +1374,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
         result.col_degrees = this->row_degrees;
         result.row_degrees = this->col_degrees;
         result.data.resize(this->num_rows);
+        result.compatibly_sorted = this->compatibly_sorted;
 
         for(index i = 0; i < this->num_cols; i++){
             for(index j : this->data[i]){

@@ -7,7 +7,9 @@
 using namespace graded_linalg;
 
 
-int compute_hom_space(R2GradedSparseMatrix<int> A, R2GradedSparseMatrix<int> B, int type, bool info = false, bool nano = false) {
+int compute_hom_space(R2Module<int> domain, R2Module<int> target, int type, bool info = false, bool nano = false) {
+    R2GradedSparseMatrix<int> A = domain.presentation();
+    R2GradedSparseMatrix<int> B = target.presentation();
     
     using aida_result = std::pair< SparseMatrix<int>, vec<std::pair<int,int>> >;
 
@@ -138,18 +140,16 @@ int main(int argc, char** argv) {
     std::filesystem::path input_path_A(filepath_A);
     std::filesystem::path input_path_B(filepath_B);
     
-    R2GradedSparseMatrix<int> A(input_path_A.string());
-    R2GradedSparseMatrix<int> B(input_path_B.string());
+    R2Module<int> A(input_path_A.string());
+    R2Module<int> B(input_path_B.string());
     if(info){
-        std::cout << "Dimensions of A: " << A.get_num_rows() << " x " << A.get_num_cols() << std::endl;
-        std::cout << "Dimensions of B: " << B.get_num_rows() << " x " << B.get_num_cols() << std::endl;
-        R2Resolution<int> res(B, true);
-        int thickness = 0;
-        auto v = res.dimension_vector_non_opt(thickness);
-        std::cout << "Thickness of B: " << thickness << std::endl;
+        std::cout << "Dimensions of A: " << A.number_of_generators() << " x " << A.number_of_relations() << std::endl;
+        std::cout << "Dimensions of B: " << B.number_of_generators() << " x " << B.number_of_relations() << std::endl;
+        auto hilbert = B.hilbert_function_on_induced_grid();
+        std::cout << "Thickness of B: " << hilbert.maximum << std::endl;
     }
     bool nano = false;
-    if(A.get_num_rows() < 200){
+    if(A.number_of_generators() < 200){
         // nano = true;
     }
     int dim = compute_hom_space(A, B, type, info, nano);

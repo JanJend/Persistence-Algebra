@@ -1,5 +1,10 @@
 # Persistence-Algebra
 
+The compatibility-preserving persistence-module API is documented in
+[`docs/module-framework.md`](docs/module-framework.md). Existing presentation
+matrix APIs remain available; new clients should start with
+`#include <grlina/modules.hpp>` and `R2Module<index>`.
+
 A C++17 header-only library for computational multiparameter persistent homology. It provides flexible, efficient data structures and algorithms for working with **presentations of persistence modules** — graded linear maps between free modules over arbitrary posets — with a focus on the two-parameter case over ℝ².
 
 This library forms the algebraic backbone of the author's PhD research and is used directly by three companion projects:

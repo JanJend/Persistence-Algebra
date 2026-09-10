@@ -1,4 +1,5 @@
 #include "grlina/r2graded_matrix.hpp"
+#include "grlina/modules.hpp"
 #include <iostream>
 #include <filesystem>
 
@@ -7,12 +8,10 @@ using namespace graded_linalg;
 
 void compute_thickness(std::filesystem::path input_path) {
 
-    R2GradedSparseMatrix<int> presentation = R2GradedSparseMatrix<int>(input_path.string());
-    R2Resolution<int> res(presentation, true);
-    int thickness = 0;
-    auto v = res.dimension_vector_non_opt(thickness);
-    std::cout << presentation.get_num_rows() << " x " << presentation.get_num_cols() << ": ";
-    std::cout << "thickness: " << thickness << std::endl;
+    R2Module<int> module(input_path.string());
+    auto hilbert = module.hilbert_function_on_induced_grid();
+    std::cout << module.number_of_generators() << " x " << module.number_of_relations() << ": ";
+    std::cout << "thickness: " << hilbert.maximum << std::endl;
 }
 
 bool is_decomp_file(const std::filesystem::path& filepath) {
@@ -95,15 +94,13 @@ void compute_decomp_thickness(std::filesystem::path input_path) {
 
             if(type == "free" || type == "cyclic" || type == "interval"){
                 thicks.push_back(1);
-                R2GradedSparseMatrix<int> A(input_file);
-                sizes.push_back(A.get_num_cols()+A.get_num_rows());
+                R2Module<int> module(input_file);
+                sizes.push_back(module.number_of_relations()+module.number_of_generators());
             } else {
-                R2GradedSparseMatrix<int> A(input_file);
-                R2Resolution<int> res(A, true);
-                int thickness = 0;
-                auto v = res.dimension_vector_non_opt(thickness);
-                thicks.push_back(thickness);
-                sizes.push_back(A.get_num_cols()+A.get_num_rows());
+                R2Module<int> module(input_file);
+                auto hilbert = module.hilbert_function_on_induced_grid();
+                thicks.push_back(hilbert.maximum);
+                sizes.push_back(module.number_of_relations()+module.number_of_generators());
             }
             
             processed_sections++;

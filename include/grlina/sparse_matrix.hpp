@@ -517,7 +517,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     // Stores the rows (sometimes in reverse order!).
     vec<vec<index>> _rows;
     // So that the rows are not computed multiple times by accident.
-    bool rows_computed;
+    bool rows_computed = false;
 
 
     protected:
@@ -555,9 +555,13 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 
     SparseMatrix(index m, index n) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n) {rows_computed = false;}
 
-    SparseMatrix(const SparseMatrix& other) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(other)  {}
+    SparseMatrix(const SparseMatrix& other)
+        : MatrixUtil<vec<index>, index, SparseMatrix<index>>(other),
+          _rows(other._rows), rows_computed(other.rows_computed) {}
 
-    SparseMatrix(SparseMatrix&& other) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(std::move(other))  {}
+    SparseMatrix(SparseMatrix&& other)
+        : MatrixUtil<vec<index>, index, SparseMatrix<index>>(std::move(other)),
+          _rows(std::move(other._rows)), rows_computed(other.rows_computed) {}
 
     SparseMatrix(index m, index n, const array<index>& data) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, data) {rows_computed = false;}
     

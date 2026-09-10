@@ -10,8 +10,9 @@ using namespace graded_linalg;
 using Mat = R2GradedSparseMatrix<int>;
 
 void hom_space_test(){
-    std::string path1 = "Persistence-Algebra/test_presentations/hom_test_domain.scc";
-    std::string path2 = "Persistence-Algebra/test_presentations/hom_test_target.scc";
+    const auto test_directory = std::filesystem::path(__FILE__).parent_path();
+    std::string path1 = (test_directory / "../test_presentations/hom_test_domain.scc").string();
+    std::string path2 = (test_directory / "../test_presentations/hom_test_target.scc").string();
     Mat domain = Mat(path1);
     Mat target = Mat(path2);
     domain.print_graded();

@@ -102,7 +102,8 @@ vec<DERIVED> hom_space_basis_new(
     const GradedSparseMatrix<D, index, DERIVED>& A,
     const GradedSparseMatrix<D, index, DERIVED>& B, 
     bool use_hom_exactness = false,
-    const bool info = false
+    const bool info = false,
+    const bool reduce_lift_duplicates = false
     ) {
 
     boost::timer::cpu_timer timer;
@@ -168,8 +169,7 @@ vec<DERIVED> hom_space_basis_new(
     K.compute_num_cols();
     K.column_reduction_triangular(true);
 
-    bool reduce = false;
-    if(reduce){
+    if(reduce_lift_duplicates){
         SparseMatrix<index> N_bar = SparseMatrix<index>(0,K.get_num_cols());
         for(index i = 0; i < A.get_num_rows(); i++){
             for(index j = 0; j < B.get_num_cols(); j++){
@@ -303,7 +303,7 @@ vec<DERIVED> hom_space_basis_new(
             // We need to advance the iterator for the next block of size S_column_partition[i]
             for(index i = 0; i < A.get_num_rows(); i++){
                 index block_end = column_counter + S_column_partition[i].size();
-                while(it != f_vec.end() && *it <= block_end){
+                while(it != f_vec.end() && *it < block_end){
                     Q[i].push_back(S_column_partition[i][*it - column_counter]);
                     it++;
                 }
@@ -316,6 +316,23 @@ vec<DERIVED> hom_space_basis_new(
     }
 
     return result;
+}
+
+/**
+ * @brief Backwards-compatible name for the Hom-space basis routine.
+ *
+ * This historical entry point returns actual module morphisms, so generator
+ * lifts that differ by a factorisation through target relations are removed.
+ * Existing users of hom_space_basis_new retain its original default.
+ */
+template <typename D, typename index, typename DERIVED>
+vec<DERIVED> hom_space_basis(
+    const GradedSparseMatrix<D, index, DERIVED>& A,
+    const GradedSparseMatrix<D, index, DERIVED>& B,
+    bool use_hom_exactness = false,
+    const bool info = false
+    ) {
+    return hom_space_basis_new(A, B, use_hom_exactness, info, true);
 }
 
 /**
@@ -1091,4 +1108,3 @@ Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index, DERIVED>& A, 
 
 
 #endif // Homomorphisms.hpp
-

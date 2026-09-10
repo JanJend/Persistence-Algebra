@@ -31,6 +31,7 @@
 #include <grlina/dense_matrix.hpp>
 #include <grlina/homomorphisms.hpp>
 #include <grlina/to_quiver.hpp>
+#include <grlina/modules.hpp>
 
 namespace graded_linalg {
 

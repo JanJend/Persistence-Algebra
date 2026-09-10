@@ -8,14 +8,14 @@ using namespace graded_linalg;
 
 void compute_minimization(std::filesystem::path input_path, std::filesystem::path output_path) {
     
-    R2GradedSparseMatrix<int> presentation = R2GradedSparseMatrix<int>(input_path.string());
-    presentation.minimize();
+    R2Module<int> module(input_path.string());
+    module.minimize();
     std::ofstream output_file(output_path);
     if (!output_file.is_open()) {
         std::cerr << "Error: Unable to open output file " << output_path << std::endl;
         return;
     } else {
-        presentation.to_stream(output_file);
+        module.to_stream(output_file);
         output_file.close();
         std::cout << "Resolution computed and saved to: " << output_path << std::endl;
     }
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
 
     std::filesystem::path input_path(filepath);
     
-    std::string modified_path = insert_suffix_before_extension(filepath, "_min");
+    std::string modified_path = ::insert_suffix_before_extension(filepath, "_min", "");
     std::filesystem::path output_path(modified_path);
     
     
