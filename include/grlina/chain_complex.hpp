@@ -31,12 +31,22 @@ namespace graded_linalg {
 template <typename Matrix>
 class ChainComplex {
 public:
+    static_assert(is_graded_sparse_matrix_v<Matrix>,
+                  "ChainComplex<Matrix> requires Matrix to inherit "
+                  "GradedSparseMatrix<D, index, Matrix> via CRTP");
     using matrix_type = Matrix;
     using degree_type = typename Matrix::degree_type;
     using index_type = typename Matrix::index_type;
 
 private:
     std::vector<Matrix> differentials_;
+
+    void refresh_sorting_certificates() {
+        for (auto& matrix : differentials_) {
+            if (!matrix.compatible_sorting_is_verified())
+                matrix.refresh_compatible_sorted();
+        }
+    }
 
     static std::string trim(std::string value) {
         auto not_space = [](unsigned char c) { return !std::isspace(c); };
@@ -88,20 +98,22 @@ public:
 
     explicit ChainComplex(std::vector<Matrix> differentials, bool validate = true)
         : differentials_(std::move(differentials)) {
+        refresh_sorting_certificates();
         if (validate) validate_structure();
     }
 
     ChainComplex(std::initializer_list<Matrix> differentials)
         : differentials_(differentials) {
+        refresh_sorting_certificates();
         validate_structure();
     }
 
-    explicit ChainComplex(std::istream& input) {
-        *this = from_stream(input);
+    explicit ChainComplex(std::istream& input, bool sort_if_needed = false) {
+        *this = from_stream(input, sort_if_needed);
     }
 
-    explicit ChainComplex(const std::string& path) {
-        *this = from_file(path);
+    explicit ChainComplex(const std::string& path, bool sort_if_needed = false) {
+        *this = from_file(path, sort_if_needed);
     }
 
     bool empty() const noexcept { return differentials_.empty(); }
@@ -180,6 +192,8 @@ public:
             }
         }
         differentials_.push_back(std::move(differential));
+        if (!differentials_.back().compatible_sorting_is_verified())
+            differentials_.back().refresh_compatible_sorted();
         validate_structure();
     }
 
@@ -234,7 +248,7 @@ public:
         to_stream(output);
     }
 
-    static ChainComplex from_stream(std::istream& input) {
+    static ChainComplex from_stream(std::istream& input, bool sort_if_needed = false) {
         std::string line;
         if (!std::getline(input, line) || trim(line) != "scc2020") {
             throw std::runtime_error("Expected scc2020 header");
@@ -296,6 +310,9 @@ public:
             differential.col_degrees = groups[i].degrees;
             differential.row_degrees = groups[i + 1].degrees;
             differential.data = groups[i].columns;
+            if (!differential.refresh_compatible_sorted() && sort_if_needed) {
+                differential.sort_compatibly();
+            }
             high_to_low.push_back(std::move(differential));
         }
 
@@ -303,10 +320,10 @@ public:
         return ChainComplex(std::move(high_to_low));
     }
 
-    static ChainComplex from_file(const std::string& path) {
+    static ChainComplex from_file(const std::string& path, bool sort_if_needed = false) {
         std::ifstream input(path);
         if (!input) throw std::runtime_error("Unable to open SCC input file: " + path);
-        return from_stream(input);
+        return from_stream(input, sort_if_needed);
     }
 };
 

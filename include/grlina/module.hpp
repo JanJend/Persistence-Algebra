@@ -26,6 +26,9 @@ struct has_matrix_graded_kernel<Matrix, std::void_t<decltype(std::declval<Matrix
 template <typename Matrix>
 class PersistenceModule {
 public:
+    static_assert(is_graded_sparse_matrix_v<Matrix>,
+                  "PersistenceModule<Matrix> requires Matrix to inherit "
+                  "GradedSparseMatrix<D, index, Matrix> via CRTP");
     using matrix_type = Matrix;
     using degree_type = typename Matrix::degree_type;
     using index_type = typename Matrix::index_type;
@@ -63,10 +66,10 @@ public:
         projective_resolution_.validate_structure();
         injective_resolution_.validate_structure();
     }
-    explicit PersistenceModule(const std::string& path)
-        : projective_resolution_(chain_complex_type::from_file(path)) {}
-    explicit PersistenceModule(std::istream& input)
-        : projective_resolution_(chain_complex_type::from_stream(input)) {}
+    explicit PersistenceModule(const std::string& path, bool sort_if_needed = false)
+        : projective_resolution_(chain_complex_type::from_file(path, sort_if_needed)) {}
+    explicit PersistenceModule(std::istream& input, bool sort_if_needed = false)
+        : projective_resolution_(chain_complex_type::from_stream(input, sort_if_needed)) {}
 
     static PersistenceModule from_presentation(Matrix presentation) {
         return PersistenceModule(std::move(presentation));
@@ -133,11 +136,10 @@ public:
     }
 
     /** Minimize d1; any now-stale higher projective lifts are discarded. */
-    void minimize() {
+    void minimize(bool sort_if_needed = true) {
         Matrix minimized = presentation();
-        minimized.sort_compatibly();
+        if (sort_if_needed) minimized.sort_compatibly();
         minimized.minimize();
-        minimized.compatibly_sorted = true;
         projective_resolution_ = chain_complex_type(std::vector<Matrix>{std::move(minimized)});
     }
 
@@ -240,5 +242,99 @@ public:
 
 template <typename Matrix> using Module = PersistenceModule<Matrix>;
 template <typename index> using R2Module = PersistenceModule<R2GradedSparseMatrix<index>>;
+
+/**
+ * Present H_k = ker(d_k) / im(d_{k+1}) from a chain complex.
+ *
+ * graded_kernel() returns kernel generators as columns in the coordinates of
+ * C_k.  Each incoming-boundary column is therefore solved against that kernel
+ * matrix at its own degree; those solution coordinates are the relations of
+ * the homology presentation.
+ */
+template <typename Matrix>
+PersistenceModule<Matrix> homology_module(const ChainComplex<Matrix>& complex,
+                                          std::size_t homological_degree = 1,
+                                          bool minimize = true) {
+    static_assert(is_graded_sparse_matrix_v<Matrix>,
+                  "homology_module requires the GradedSparseMatrix CRTP contract");
+    if constexpr (!has_matrix_graded_kernel<Matrix>::value) {
+        throw std::logic_error("This graded matrix type does not implement a graded kernel");
+    } else {
+        complex.validate_structure();
+        if (!complex.squares_to_zero())
+            throw std::invalid_argument("homology_module requires d_k d_(k+1) = 0");
+        if (homological_degree == 0 || homological_degree > complex.size())
+            throw std::out_of_range("No outgoing differential at the requested homological degree");
+
+        Matrix kernel_source = complex.differential(homological_degree);
+        Matrix kernel_generators = kernel_source.graded_kernel();
+        kernel_generators.sort_compatibly();
+
+        using index_type = typename Matrix::index_type;
+        using degree_type = typename Matrix::degree_type;
+        array<index_type> relation_coordinates;
+        vec<degree_type> relation_degrees;
+
+        if (homological_degree < complex.size()) {
+            const Matrix& incoming = complex.differential(homological_degree + 1);
+            relation_coordinates.reserve(static_cast<std::size_t>(incoming.get_num_cols()));
+            relation_degrees = incoming.col_degrees;
+
+            for (index_type column = 0; column < incoming.get_num_cols(); ++column) {
+                const degree_type& degree = incoming.col_degrees[column];
+                auto local_pair = kernel_generators.map_at_degree_pair(degree, true);
+                SparseMatrix<index_type> local_kernel = std::move(local_pair.first);
+                const vec<index_type>& selected_rows = local_pair.second;
+
+                vec<index_type> selected_kernel_columns;
+                for (index_type candidate = 0;
+                     candidate < kernel_generators.get_num_cols(); ++candidate) {
+                    if (Degree_traits<degree_type>::smaller_equal(
+                            kernel_generators.col_degrees[candidate], degree)) {
+                        selected_kernel_columns.push_back(candidate);
+                    }
+                }
+
+                vec<index_type> local_boundary;
+                local_boundary.reserve(incoming.data[column].size());
+                for (index_type row : incoming.data[column]) {
+                    auto position = std::lower_bound(selected_rows.begin(), selected_rows.end(), row);
+                    if (position == selected_rows.end() || *position != row) {
+                        throw std::logic_error(
+                            "An incoming boundary contains a row unavailable at its degree");
+                    }
+                    local_boundary.push_back(
+                        static_cast<index_type>(std::distance(selected_rows.begin(), position)));
+                }
+
+                vec<index_type> local_solution;
+                if (!local_kernel.solve_col_reduction(
+                        local_boundary, local_solution, true, true, true)) {
+                    throw std::invalid_argument(
+                        "An incoming boundary is not contained in the computed graded kernel");
+                }
+
+                vec<index_type> global_solution;
+                global_solution.reserve(local_solution.size());
+                for (index_type local_index : local_solution) {
+                    if (local_index < 0 ||
+                        local_index >= static_cast<index_type>(selected_kernel_columns.size())) {
+                        throw std::logic_error("Kernel-coordinate solver returned an invalid index");
+                    }
+                    global_solution.push_back(selected_kernel_columns[local_index]);
+                }
+                relation_coordinates.push_back(std::move(global_solution));
+            }
+        }
+
+        Matrix presentation(
+            static_cast<index_type>(relation_coordinates.size()),
+            kernel_generators.get_num_cols(), relation_coordinates,
+            relation_degrees, kernel_generators.col_degrees);
+        PersistenceModule<Matrix> result(std::move(presentation));
+        if (minimize) result.minimize();
+        return result;
+    }
+}
 
 } // namespace graded_linalg

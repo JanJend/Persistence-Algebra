@@ -92,7 +92,14 @@ add_executable(cut_module cut_module.cpp)
 target_link_libraries(cut_module ${Boost_LIBRARIES})
 set_target_properties(cut_module PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
+foreach(_module_cli birth_death delete_gens_and_rels minimize_pres mpfree_clone)
+    add_executable(${_module_cli} ${_module_cli}.cpp)
+    target_link_libraries(${_module_cli} ${Boost_LIBRARIES})
+    set_target_properties(${_module_cli} PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
+endforeach()
+
 install(TARGETS shift_endo cut_module hom minimize pres_to_quiver resolution snap_grid submodule_at analyse_ind thickness size
+                birth_death delete_gens_and_rels minimize_pres mpfree_clone
     RUNTIME DESTINATION bin
 )
 
@@ -102,6 +109,25 @@ if(BUILD_TESTING)
     target_link_libraries(module_framework_test ${Boost_LIBRARIES})
     add_test(NAME module_framework_test COMMAND module_framework_test)
     set_tests_properties(module_framework_test PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+    add_executable(cli_programs_test tests/cli_programs_test.cpp)
+    add_test(NAME cli_programs_test COMMAND cli_programs_test
+        ${CMAKE_SOURCE_DIR}/tests/fixtures
+        $<TARGET_FILE:minimize>
+        $<TARGET_FILE:hom>
+        $<TARGET_FILE:shift_endo>
+        $<TARGET_FILE:pres_to_quiver>
+        $<TARGET_FILE:resolution>
+        $<TARGET_FILE:snap_grid>
+        $<TARGET_FILE:submodule_at>
+        $<TARGET_FILE:analyse_ind>
+        $<TARGET_FILE:thickness>
+        $<TARGET_FILE:size>
+        $<TARGET_FILE:cut_module>
+        $<TARGET_FILE:birth_death>
+        $<TARGET_FILE:delete_gens_and_rels>
+        $<TARGET_FILE:minimize_pres>
+        $<TARGET_FILE:mpfree_clone>)
 
     # Keep the established matrix-level API under test while the module API is
     # introduced alongside it.

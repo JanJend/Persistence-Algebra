@@ -13,6 +13,8 @@ namespace graded_linalg {
 template <typename Matrix>
 class Submodule {
 public:
+    static_assert(is_graded_sparse_matrix_v<Matrix>,
+                  "Submodule<Matrix> requires the GradedSparseMatrix CRTP contract");
     using module_type = PersistenceModule<Matrix>;
     using index_type = typename Matrix::index_type;
 
@@ -52,6 +54,7 @@ public:
         generators.row_degrees = presentation.row_degrees;
         generators.col_degrees.clear();
         generators.data.clear();
+        generators.refresh_compatible_sorted();
         return Submodule(std::move(parent), std::move(generators));
     }
 
@@ -61,6 +64,7 @@ public:
         Matrix identity(presentation.get_num_rows(), presentation.get_num_rows(), "Identity");
         identity.row_degrees = presentation.row_degrees;
         identity.col_degrees = presentation.row_degrees;
+        identity.refresh_compatible_sorted();
         return Submodule(std::move(parent), std::move(identity));
     }
 
@@ -69,6 +73,7 @@ public:
         Matrix ambient = parent_->presentation();
         const index_type relation_count = ambient.get_num_cols();
         ambient.append_matrix(generators_);
+        ambient.sort_rows_lexicographically();
         auto old_to_new = ambient.sort_columns_lexicographically_with_output();
         std::vector<index_type> generator_positions;
         generator_positions.reserve(static_cast<std::size_t>(generators_.get_num_cols()));
@@ -101,6 +106,17 @@ public:
         combined.append_matrix(other.generators_);
         Submodule result(parent_, std::move(combined));
         result.minimize_generators();
+        return result;
+    }
+
+    /** Intersection computed by the shared CRTP pullback/kernel construction. */
+    Submodule intersection(const Submodule& other, bool minimize = true) const {
+        if (parent_.get() != other.parent_.get())
+            throw std::invalid_argument("Submodule intersection requires the same parent object");
+        Matrix intersection_generators = parent_->presentation().submodule_intersection(
+            generators_, other.generators_);
+        Submodule result(parent_, std::move(intersection_generators));
+        if (minimize) result.minimize_generators();
         return result;
     }
 

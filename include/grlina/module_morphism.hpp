@@ -13,6 +13,8 @@ namespace graded_linalg {
 template <typename Matrix>
 class ModuleMorphism {
 public:
+    static_assert(is_graded_sparse_matrix_v<Matrix>,
+                  "ModuleMorphism<Matrix> requires the GradedSparseMatrix CRTP contract");
     using module_type = PersistenceModule<Matrix>;
     using submodule_type = Submodule<Matrix>;
     using chain_complex_type = ChainComplex<Matrix>;

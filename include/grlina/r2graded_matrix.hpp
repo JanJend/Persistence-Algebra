@@ -309,7 +309,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         }
         this->transform_data(reverse);
         this->sort_data();
-        this->compatibly_sorted = std::is_sorted(this->col_degrees.begin(), this->col_degrees.end(), Degree_traits<r2degree>::colex_lambda());
+        this->invalidate_cached_rows();
+        this->refresh_compatible_sorted(Degree_traits<r2degree>::colex_lambda());
     }
 
     vec<index> sort_rows_colexicographically_with_output() {
@@ -320,7 +321,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         }
         this->transform_data(reverse);
         this->sort_data();
-        this->compatibly_sorted = std::is_sorted(this->col_degrees.begin(), this->col_degrees.end(), Degree_traits<r2degree>::colex_lambda());
+        this->invalidate_cached_rows();
+        this->refresh_compatible_sorted(Degree_traits<r2degree>::colex_lambda());
         return permutation;
     }
 
@@ -335,7 +337,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
             new_data[i] = this->data[permutation[i]];
         }
         this->data = new_data;
-        this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(), Degree_traits<r2degree>::colex_lambda());
+        this->invalidate_cached_rows();
+        this->refresh_compatible_sorted(Degree_traits<r2degree>::colex_lambda());
     }
 
     vec<index> sort_columns_colexicographically_with_output() {
@@ -345,7 +348,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
             new_data[i] = this->data[permutation[i]];
         }
         this->data = new_data;
-        this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(), Degree_traits<r2degree>::colex_lambda());
+        this->invalidate_cached_rows();
+        this->refresh_compatible_sorted(Degree_traits<r2degree>::colex_lambda());
         return permutation;
     }
 
@@ -524,6 +528,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     void snap_to_grid( vec<double>& new_x_grid, vec<double>& new_y_grid){
 
         assert(!new_x_grid.empty() && !new_y_grid.empty());
+        this->invalidate_compatible_sorting();
         index m = new_x_grid.size();
         index n = new_y_grid.size();
         vec<index> columns_to_remove = vec<index>();
@@ -726,6 +731,9 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         result.row_degrees = this->col_degrees;
     
         result.permute_rows_graded(column_permutation);
+        // Kernel clients (pullbacks, intersections, resolutions) receive a
+        // matrix with an established compatible-order invariant.
+        result.sort_compatibly();
 
         return result;
     }
@@ -825,14 +833,14 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
             if(this->row_degrees[i].first > bound.first || this->row_degrees[i].second > bound.second){
                 rows_to_remove.push_back(i);
             } else {
-                this->col_degrees.push_back(std::make_pair(bound.first,this->row_degrees[i].second));
-                this->data.push_back( std::vector<index>({i}));
-                this->col_degrees.push_back(std::make_pair(this->row_degrees[i].first, bound.second));
-                this->data.push_back( std::vector<index>({i}));
+                this->append_column(std::vector<index>({i}),
+                                    std::make_pair(bound.first, this->row_degrees[i].second));
+                this->append_column(std::vector<index>({i}),
+                                    std::make_pair(this->row_degrees[i].first, bound.second));
             }
         }
-        this->compute_num_cols();
         this->delete_rows(rows_to_remove);
+        this->sort_compatibly();
         this->minimize();
     }
 

@@ -21,30 +21,22 @@ void compute_minimization(std::filesystem::path input_path, std::filesystem::pat
     }
 }
 
-std::string insert_suffix_before_extension(const std::string& filepath, const std::string& suffix) {
-    std::filesystem::path path(filepath);
-    std::string stem = path.stem().string();             // filename without extension
-    std::string extension = path.extension().string();   // e.g., ".txt"
-    std::filesystem::path new_path = path.parent_path() / (stem + suffix + extension);
-    return new_path.string();
-}
-
 int main(int argc, char** argv) {
     
     std::string filepath;
 
     if (argc != 2) {
         std::cerr << "Usage: " << argv[0] << " <file_path>" << std::endl;
-        filepath = "/home/wsljan/AIDA/tests/test_presentations/davids_annulus_min.sccsum";
+        return 1;
     } else {
         filepath = argv[1];
     }
 
     std::filesystem::path input_path(filepath);
     
-    std::string modified_path = ::insert_suffix_before_extension(filepath, "_min", "");
+    std::string modified_path = insert_suffix_before_extension(filepath, "_min");
     std::filesystem::path output_path(modified_path);
-    
-    
+
+    compute_minimization(input_path, output_path);
     return 0;
 } // main

@@ -175,8 +175,8 @@ struct CoordinateGradedSparseMatrix
             reverse[permutation[i]] = i;
         this->transform_data(reverse);
         this->sort_data();
-        this->compatibly_sorted = std::is_sorted(this->col_degrees.begin(), this->col_degrees.end(),
-                                                  Degree_traits<degree_type>::colex_lambda());
+        this->invalidate_cached_rows();
+        this->refresh_compatible_sorted(Degree_traits<degree_type>::colex_lambda());
         return permutation;
     }
 
@@ -191,8 +191,8 @@ struct CoordinateGradedSparseMatrix
         for (index i = 0; i < static_cast<index>(this->data.size()); ++i)
             new_data[i] = std::move(this->data[permutation[i]]);
         this->data = std::move(new_data);
-        this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(),
-                                                  Degree_traits<degree_type>::colex_lambda());
+        this->invalidate_cached_rows();
+        this->refresh_compatible_sorted(Degree_traits<degree_type>::colex_lambda());
         return permutation;
     }
 

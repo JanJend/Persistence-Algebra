@@ -30,6 +30,12 @@ Including `grlina/modules.hpp` loads the whole public layer.
 
 ## Conventions and invariants
 
+Every matrix type accepted by `ChainComplex`, `PersistenceModule`, `Submodule`,
+or `ModuleMorphism` is checked at compile time to inherit
+`GradedSparseMatrix<D, index, Matrix>` via CRTP. The inherited constructions
+therefore return the concrete `Matrix` type and dispatch genuinely
+poset-specific steps through it (for example, `graded_kernel()`).
+
 `ChainComplex<Matrix>::differential(1)` is the presentation
 `d1 : F1 -> F0`. Consequently, its column degrees are relations and its row
 degrees are module generators. Higher differentials follow the same convention.
@@ -44,12 +50,25 @@ whose `graded_kernel()` returns that same matrix type. A uniform `shift()` is
 applied to every stored projective and injective differential and therefore
 preserves the resolutions.
 
-`GradedSparseMatrix` now has `compatibly_sorted`, false by default. Calling
-`sort_compatibly()` sorts rows and columns with the mandatory linear extension
-from `Degree_traits`; the comparator overload supports any other compatible
-linear extension. Direct writes to the intentionally public degree vectors
-cannot automatically invalidate the flag, so callers performing such legacy
-edits should call a sorting method before algorithms requiring sorted input.
+`GradedSparseMatrix` has `compatibly_sorted`, false when no ordering has been
+certified. Calling `sort_compatibly()` sorts rows and columns with the mandatory
+linear extension from `Degree_traits`; the comparator overload supports any
+other compatible linear extension. The matrix retains the certifying
+comparator, so sorted-input algorithms re-check the actual degree vectors and
+detect a stale flag caused by legacy direct writes. Explicit-degree
+constructors and SCC readers check their input; chain-complex readers accept a
+`sort_if_needed` argument. Appending, arbitrary permutation, and degree edits
+invalidate the certificate. `minimize`, `minimize_variant`, `semi_minimize`,
+and graded column reduction throw `std::invalid_argument` when their required
+certificate is absent or stale. A module's `minimize()` sorts by default;
+`minimize(false)` selects strict rejection instead.
+
+Minimization now uses graded basis operations. It admissibly column-reduces and
+removes zero relation columns, then finds unit entries where a relation and a
+generator have equal degree. Before deleting such a row/column pair it adds the
+pivot relation to every other relation containing that generator, making the
+full pivot row zero outside the pivot column. The three historical minimizer
+names share this correctness-first implementation.
 
 ## SCC I/O
 
@@ -74,6 +93,11 @@ new output always uses the poset ID.
 `ChainComplex::to_stream`, `from_stream`, `to_file`, and `from_file` are the
 canonical generic SCC operations. The older matrix and `R2Resolution` readers
 and writers are unchanged.
+
+`homology_module(complex, k)` computes a presentation of
+`ker(d_k) / im(d_(k+1))`: incoming boundary columns are lifted degree by degree
+to coordinates in the concrete matrix type's graded-kernel basis. This is the
+path used by `mpfree_clone`.
 
 ## Typical use
 
@@ -132,13 +156,18 @@ Module image_as_module = image.presented_module();
 
 ## Verification
 
-`tests/modules_test.cpp` exercises sorting state, legacy and canonical SCC
-round trips, real fixture loading, chain validation, module Hilbert functions,
-resolution invalidation/recomputation, submodule reduction/presentation/
-quotients, morphism image/kernel/Hom adapters, R³ colex sorting, and R⁴/Z⁴ I/O.
+`tests/modules_test.cpp` exercises CRTP enforcement, sorting certificates and
+stale-flag detection, correct unit cancellation and redundant-relation
+deletion, legacy and canonical SCC round trips, real fixture loading, chain
+validation, module Hilbert functions, resolution invalidation/recomputation,
+submodule reduction/presentation/quotients/intersections, morphism
+image/kernel/Hom adapters, homology presentations, R³ colex sorting, and
+R⁴/Z⁴ I/O.
 It is registered as `module_framework_test` with CTest. The established dense,
 sparse, graded-matrix, and Hom tests are also registered, so the new layer and
-the compatibility API run together. A fixture sweep successfully loads all 95
+the compatibility API run together. `cli_programs_test` runs all 15 installed
+Persistence-Algebra executables on small hand-computed fixtures and compares
+their SCC/quiver output or exact mathematical invariants. A fixture sweep successfully loads all 95
 valid `scc2020` files in `test_presentations` (excluding the intentionally
 ungraded examples and the SCC-sum container), and the module/Hom tests pass
 with AddressSanitizer and UndefinedBehaviorSanitizer enabled.
