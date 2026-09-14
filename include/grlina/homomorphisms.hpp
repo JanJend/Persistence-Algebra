@@ -6,7 +6,7 @@
  * @date 2026-02-05
  * 
  * @copyright 2026 TU Graz
-    This file is part of the AIDA library. 
+    This file is part of the Persistence Algebra library. 
    You can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
@@ -14,7 +14,6 @@
  */
 
 #pragma once
-
 
 #ifndef HOMOMORPHISMS_HPP
 #define HOMOMORPHISMS_HPP
