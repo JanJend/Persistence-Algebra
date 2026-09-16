@@ -14,6 +14,7 @@
 #include <grlina/homomorphism.hpp>
 #include <grlina/module_homomorphisms.hpp>
 #include <grlina/module_operations.hpp>
+#include <grlina/presentation_operations.hpp>
 #include <grlina/r3graded_matrix.hpp>
 #include <grlina/z2graded_matrix.hpp>
 #include <grlina/z3graded_matrix.hpp>

@@ -8,6 +8,7 @@
 #include <thread>
 #include <utility>
 #include <filesystem>
+#include <grlina/progress.hpp>
 
 inline std::string insert_suffix_before_extension(const std::string& filepath, const std::string& suffix, const std::string& new_extension = "") {
     std::filesystem::path path(filepath);
@@ -23,37 +24,7 @@ inline std::string insert_suffix_before_extension(const std::string& filepath, c
 }
 
 
-template <typename Func, typename... Args>
-auto timed_with_progress(const std::string &task_name, Func &&func,
-                         Args &&...args)
-    -> decltype(func(std::forward<Args>(args)...)) {
-  
-  std::atomic<bool> done(false);
-  auto start = std::chrono::steady_clock::now();
-  
-  std::thread progress_thread([&]() {
-    while (!done) {
-      auto elapsed = std::chrono::steady_clock::now() - start;
-      auto seconds =
-          std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
-      std::cout << "\r" << task_name << ": " << seconds << "s" << std::flush;
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-  });
-  
-  auto result = func(std::forward<Args>(args)...);
-  
-  done = true;
-  progress_thread.join();
-  
-  auto end = std::chrono::steady_clock::now();
-  auto total_seconds =
-      std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  std::cout << "\r" << task_name << " completed in: " << total_seconds << "s"
-            << std::endl;
-  
-  return result;
-}
+// Preserve the global name without creating a competing overload under ADL.
+using graded_linalg::timed_with_progress;
 
 #endif // GENERAL_HPP

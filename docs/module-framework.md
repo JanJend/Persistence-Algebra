@@ -226,6 +226,28 @@ same module's representations, not automatic transport of embeddings under such 
 
 ## Migrated clients
 
+Stable-Decomposition's reusable helpers are exposed in
+`grlina/presentation_operations.hpp` (included by `modules.hpp`) and
+`grlina/matrix_family.hpp`. In particular:
+
+- `S.contains(T)`, `S.is_contained_in(T)`, and `S.equals(T)` test exact submodule
+  membership modulo their common parent's relations, without requiring a kernel.
+- `Homomorphism<Matrix>::canonical_shift(M, amount)` builds the structure map
+  with identity lifts on all stored projective groups. `f.shifted(amount)`
+  translates both endpoint modules and every stored lift.
+- `f.image(S)` computes the image of a submodule of its domain.
+- Matrix-level adapters cover zero/whole/sum/reduction, canonical shift lifts,
+  free-target image inclusion and equality in a presented parent. They preserve
+  ambient row coordinates and validate grading; containment needs no sorting.
+- `homomorphism_lift_basis` and `shifted_endomorphism_lift_complement` intentionally
+  operate on spaces of generator lifts. Use `module_hom_space_basis` when maps
+  differing by target relations should be identified. `reduce_matrix_family_modulo`
+  is coefficient-vector linear algebra, not a categorical Hom quotient.
+
+These additions are tested with handmade examples in
+`tests/presentation_operations_test.cpp`. The generic timing utility now lives
+in `grlina/progress.hpp`; `general.hpp` retains its historical global name.
+
 - Persistence-Algebra command-line targets now construct modules for file I/O,
   minimization, resolutions, Hilbert/thickness calculations, Hom calculations,
   grid operations, and submodule presentations.

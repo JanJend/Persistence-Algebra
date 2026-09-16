@@ -171,6 +171,25 @@ public:
         }
     }
 
+    /** Exact containment modulo the parent's relations; no graded kernel or
+     * sorted basis is needed. Parent identity fixes the ambient coordinates.
+     */
+    bool contains(const Submodule& other) const {
+        if (parent_.get() != other.parent_.get())
+            throw std::invalid_argument("Submodule containment requires the same parent object");
+        validate();
+        other.validate();
+        Matrix spanning = parent_->presentation();
+        spanning.append_matrix(generators_);
+        return solve_graded_linear_system(spanning, other.generators_).has_value();
+    }
+
+    bool is_contained_in(const Submodule& other) const { return other.contains(*this); }
+
+    bool equals(const Submodule& other) const {
+        return contains(other) && other.contains(*this);
+    }
+
     Submodule sum(const Submodule& other) const {
         if (parent_.get() != other.parent_.get())
             throw std::invalid_argument("Submodule sum requires the same parent object");

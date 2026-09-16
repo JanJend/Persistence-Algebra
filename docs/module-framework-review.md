@@ -192,6 +192,16 @@ cache invalidation and the legacy copy-returning API.
 
 ## 4. Categorical operations
 
+The Stable-Decomposition extraction adds exact parent-aware Submodule
+containment/equality, canonical and translated Homomorphism shifts retaining
+all stored lifts, and images of submodules. New presentation adapters are in
+`presentation_operations.hpp`; matrix-family quotient reduction is in
+`matrix_family.hpp`. The latter uses coefficient spaces, not Hom classes modulo
+relations. Tests cover this distinction, incomparable degrees, rectangular
+families and preservation of ambient row bases. The old kernel-degree-multiset
+containment heuristic is not carried over: membership is solved directly by
+degree-admissible linear systems. See `module-framework.md` for the public APIs.
+
 `module_operations.hpp` returns objects together with their canonical maps:
 
 | Operation | Construction / returned maps |

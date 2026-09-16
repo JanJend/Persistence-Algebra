@@ -121,6 +121,48 @@ public:
         return Homomorphism(std::move(domain), std::move(target), std::move(zero));
     }
 
+    /** Translate both modules and every stored lift, preserving resolutions.
+     * Matrix::shift uses M(amount)_a = M_(a+amount), hence subtracts degrees.
+     */
+    Homomorphism shifted(const typename Matrix::degree_type& amount) const {
+        auto source = std::make_shared<module_type>(*domain_);
+        source->shift(amount);
+        auto destination = source;
+        if (domain_.get() != target_.get()) {
+            destination = std::make_shared<module_type>(*target_);
+            destination->shift(amount);
+        }
+        auto translated = lifts_;
+        for (auto& lift : translated) {
+            lift.shift(amount);
+            if (!lift.is_graded_matrix())
+                throw std::invalid_argument("Shift does not preserve the grading of this homomorphism");
+        }
+        return Homomorphism(source, destination, std::move(translated));
+    }
+
+    /** Canonical structure homomorphism M -> M(amount), including identity
+     * lifts on all stored projective groups. Reject shifts for which these
+     * identities are not degree-admissible. Exactness is inherited, not retested.
+     */
+    static Homomorphism canonical_shift(std::shared_ptr<const module_type> module,
+                                       const typename Matrix::degree_type& amount) {
+        if (!module) throw std::invalid_argument("Canonical shift requires a module");
+        auto shifted_module = std::make_shared<module_type>(*module);
+        shifted_module->shift(amount);
+        auto result = identity(module);
+        result.target_ = shifted_module;
+        for (std::size_t i = 0; i < result.lifts_.size(); ++i) {
+            auto& lift = result.lifts_[i];
+            lift.row_degrees = chain_group_degrees(*shifted_module, i);
+            lift.refresh_compatible_sorted();
+            if (!lift.is_graded_matrix())
+                throw std::invalid_argument("Canonical shift is not degree-admissible");
+        }
+        result.validate();
+        return result;
+    }
+
     module_type cokernel(bool minimize = true) const {
         return image(false).quotient_module(minimize);
     }
@@ -146,6 +188,15 @@ public:
 
     submodule_type image(bool minimize = true) const {
         submodule_type result(target_, generator_lift());
+        if (minimize) result.minimize_generators();
+        return result;
+    }
+
+    /** Image of a submodule under this homomorphism. */
+    submodule_type image(const submodule_type& submodule, bool minimize = true) const {
+        if (submodule.parent().get() != domain_.get())
+            throw std::invalid_argument("Image submodule belongs to a different domain module");
+        submodule_type result(target_, generator_lift() * submodule.generators());
         if (minimize) result.minimize_generators();
         return result;
     }
