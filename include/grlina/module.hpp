@@ -63,6 +63,11 @@ private:
 
 public:
     Module() = default;
+    virtual ~Module() = default;
+    Module(const Module&) = default;
+    Module(Module&&) = default;
+    Module& operator=(const Module&) = default;
+    Module& operator=(Module&&) = default;
     explicit Module(Matrix presentation)
         : projective_resolution_(std::vector<Matrix>{std::move(presentation)}) {}
     explicit Module(chain_complex_type resolution,
@@ -133,6 +138,15 @@ public:
     void clear_injective_resolution() noexcept { injective_resolution_.clear(); }
 
     const Matrix& presentation() const { require_presentation(); return projective_resolution_[0]; }
+
+    /** Obtain an explicit presentation in this object. Plain modules already
+     * require a supplied presentation; derived representations (e.g. Submodule)
+     * override this hook to construct one from their defining data.
+     */
+    virtual void compute_presentation(bool minimize = false) {
+        require_presentation();
+        if (minimize) minimize_presentation();
+    }
 
     /** Arbitrary edits invalidate higher projective maps and the injective model. */
     Matrix& mutable_presentation() {
@@ -223,6 +237,7 @@ public:
      * a terminating graded-kernel implementation (currently supplied for R2).
      */
     void compute_projective_resolution() {
+        if (!has_presentation()) compute_presentation();
         require_presentation();
         if (has_complete_projective_resolution()) return;
         if constexpr (has_matrix_graded_kernel<Matrix>::value) {

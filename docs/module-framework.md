@@ -16,7 +16,7 @@ All types live in `graded_linalg`.
   and injective chain complexes. `R2Module<index>` is the standard alias.
   The aggregate header also provides `R3Module`, `Z2Module`, `Z3Module`,
   `R4Module`, and `Z4Module` aliases.
-- `Submodule<Matrix>` owns a non-null `shared_ptr` to its parent module and a
+- `Submodule<Matrix>` publicly inherits `Module<Matrix>` and owns a non-null `shared_ptr` to its parent module and a
   generator-coordinate matrix. Its row degrees must exactly equal the row
   degrees of the parent's presentation.
 - `Homomorphism<Matrix>` (`ModuleMorphism` and `ModuleFunction` are compatibility aliases) owns pointers to its
@@ -186,6 +186,43 @@ auto image = f.image();
 auto kernel = f.kernel();
 Module image_as_module = image.presented_module();
 ```
+
+No separate module object is needed for a submodule's own presentation/resolution:
+
+```cpp
+auto image = f.image();
+image.compute_presentation();         // stores its own d1 in the Module base
+image.compute_projective_resolution(); // completes/stores its own resolution
+auto dimension = image.dimension_at({0.5, 1.0});
+image.to_file("image-resolution.scc");
+```
+
+`compute_projective_resolution()` also obtains a missing presentation automatically,
+including through a `Module<Matrix>&`. `Module::compute_presentation` is a virtual
+construction hook; `Module` has a virtual destructor and defaulted copy/move
+operations. Existing binaries using these header types should be rebuilt.
+
+By default, `Submodule::compute_presentation(false)` keeps its generator basis:
+the stored presentation's rows correspond exactly to `generators()`' columns.
+`compute_presentation(true)` minimizes the stored module, without replacing the
+defining family in parent coordinates. Consequently that family is not necessarily
+the generator lift from a subsequently minimized/sorted presentation. Use
+`number_of_embedding_generators()` for its size; after a presentation is stored,
+`number_of_generators()` reports that presentation's size, consistently with Module.
+The categorical adapter reconstructs the defining basis before building its inclusion.
+
+Generator reductions invalidate the submodule's own projective/injective storage;
+they do not invalidate or modify the parent's storage. A later computation rebuilds
+the submodule presentation. Explicit `compute_presentation` recomputes from the
+defining family and replaces older stored resolutions. The compatibility method
+`presented_module()` now stores the result on a mutable submodule and still returns
+a standalone copy; its const overload computes on a temporary without modifying it.
+
+As with parents of existing homomorphisms, do not use arbitrary inherited module
+edits to change the represented module while retaining a fixed embedding. In
+particular, shifting/editing the stored module alone does not shift/edit its parent
+or defining generator matrix. This update supports computing and processing the
+same module's representations, not automatic transport of embeddings under such edits.
 
 ## Migrated clients
 

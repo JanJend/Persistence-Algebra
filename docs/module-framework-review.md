@@ -158,6 +158,38 @@ completeness invalidation, const queries, explicit R4 completeness and the
 no-kernel fallback. Instrumented CRTP matrices count calls and prohibit local
 evaluation on Euler paths, proving that the optimization is actually selected.
 
+### Submodules as modules
+
+`Submodule<Matrix>` now publicly inherits `Module<Matrix>`. The base stores the
+submodule's own projective/injective representations, separately from its parent
+pointer and defining parent-coordinate generator matrix. `compute_presentation()`
+stores d1 directly; inherited `compute_projective_resolution()` invokes the virtual
+presentation-construction hook if needed and retains all resulting maps in that
+same object. This works through a Module reference/pointer. A virtual destructor
+supports polymorphic ownership; explicit defaulted copy/move operations preserve
+value semantics. Rebuild clients after this header-level layout change.
+
+Default presentation construction keeps the defining generator basis. Requested
+module minimization can choose a different basis without changing the defining
+family. `number_of_embedding_generators()` always counts that family, whereas
+`number_of_generators()` counts stored presentation generators once available.
+Do not assume that `generators()` is the inclusion lift from a minimized stored
+presentation; the existing categorical adapter explicitly reconstructs the matching
+unminimized basis. Arbitrary inherited edits that change the module itself (such
+as shifting only its presentation) do not update the embedding or parent and
+must not be used as parent-aware submodule edits.
+
+Lazy/exact generator reductions clear the submodule's stored representations,
+preventing stale bases; the parent's representations remain unchanged. Mutable
+`presented_module()` remains a copy-returning adapter but also populates the base
+storage. Const calls preserve their old non-mutating behavior. Zero submodules
+can store their 0-by-0 presentation/resolution even without a graded kernel.
+
+`tests/submodule_module_test.cpp` covers in-place computation, polymorphic dispatch
+and destruction, conversion to homomorphism domain/target pointers, nested
+submodules, inherited Hilbert/SCC operations, copy/move, the two generator bases,
+cache invalidation and the legacy copy-returning API.
+
 ## 4. Categorical operations
 
 `module_operations.hpp` returns objects together with their canonical maps:

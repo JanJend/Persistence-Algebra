@@ -12,7 +12,7 @@
 namespace graded_linalg {
 
 template <typename Matrix>
-class Submodule {
+class Submodule : public Module<Matrix> {
 public:
     static_assert(is_graded_sparse_matrix_v<Matrix>,
                   "Submodule<Matrix> requires the GradedSparseMatrix CRTP contract");
@@ -22,6 +22,11 @@ public:
 private:
     std::shared_ptr<const module_type> parent_;
     Matrix generators_;
+
+    void invalidate_module_representation() {
+        this->clear_projective_resolution();
+        this->clear_injective_resolution();
+    }
 
     void validate() const {
         if (!parent_) throw std::invalid_argument("A submodule requires a parent module");
@@ -49,7 +54,14 @@ public:
 
     const std::shared_ptr<const module_type>& parent() const noexcept { return parent_; }
     const Matrix& generators() const noexcept { return generators_; }
-    index_type number_of_generators() const noexcept { return generators_.get_num_cols(); }
+    /** Size of the stored module presentation, or the defining generating
+     * family if no presentation has been computed yet.
+     */
+    index_type number_of_generators() const {
+        return this->has_presentation() ? module_type::number_of_generators()
+                                       : number_of_embedding_generators();
+    }
+    index_type number_of_embedding_generators() const noexcept { return generators_.get_num_cols(); }
     /** Every supplied vector must vanish modulo the parent's relations. */
     bool is_zero() const {
         return generators_.get_num_cols() == 0 ||
@@ -89,6 +101,7 @@ public:
         validate();
         const Matrix& presentation = parent_->presentation();
         presentation.validate();
+        invalidate_module_representation();
         array<index_type> relations_by_pivot(presentation.get_num_rows());
         for (index_type j = 0; j < presentation.get_num_cols(); ++j) {
             const auto pivot = presentation.col_last(j);
@@ -121,6 +134,7 @@ public:
      */
     void minimize_generators(bool lazy_preprocessing = true) {
         if constexpr (has_matrix_graded_kernel<Matrix>::value) {
+            invalidate_module_representation();
             if (lazy_preprocessing) reduce_generators_lazy();
             if (generators_.get_num_cols() == 0) return;
             Matrix ambient = parent_->presentation();
@@ -183,7 +197,18 @@ public:
         }
     }
 
-    module_type presented_module(bool minimize = true) const {
+    /** Store this submodule's own presentation in the Module base, not in its
+     * parent. Without minimization its F0 basis is exactly generators_' columns.
+     * Minimizing the stored module can change that basis; generators_ remains
+     * the separate defining family in the parent's coordinates.
+     * Explicit recomputation always uses that defining family, not an old cache.
+     */
+    void compute_presentation(bool minimize = false) override {
+        validate();
+        if (generators_.get_num_cols() == 0) {
+            module_type::operator=(module_type(Matrix(0, 0, {}, {}, {})));
+            return;
+        }
         if constexpr (!has_matrix_graded_kernel<Matrix>::value) {
             // Jan: implement the poset-specific graded kernel.
             throw std::logic_error("Submodule presentation requires a poset-specific graded_kernel");
@@ -191,8 +216,23 @@ public:
             Matrix presentation = parent_->presentation().submodule_generated_by(generators_);
             module_type result(std::move(presentation));
             if (minimize) result.minimize();
-            return result;
+            // Commit only after construction/minimization succeeds. Parent and
+            // defining generators are unchanged; older stored resolutions are replaced.
+            module_type::operator=(std::move(result));
         }
+    }
+
+    /** Compatibility API: compute/store in place, then return a standalone copy. */
+    module_type presented_module(bool minimize = true) {
+        compute_presentation(minimize);
+        return static_cast<const module_type&>(*this);
+    }
+
+    /** Const compatibility calls cannot populate this object's storage. */
+    module_type presented_module(bool minimize = true) const {
+        Submodule working(parent_, generators_);
+        working.compute_presentation(minimize);
+        return static_cast<const module_type&>(working);
     }
 
     module_type quotient_module(bool minimize = true) const {
