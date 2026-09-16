@@ -12,21 +12,23 @@ All types live in `graded_linalg`.
 - `ChainComplex<Matrix>` stores `d1, d2, ...` in that order. It validates matrix
   dimensions, degrees, gradedness, adjacent chain groups, and can check
   `d_i d_{i+1} = 0` with `is_chain_complex()`.
-- `PersistenceModule<Matrix>` (also `Module<Matrix>`) owns optional projective
+- `Module<Matrix>` (`PersistenceModule` is a compatibility alias) owns optional projective
   and injective chain complexes. `R2Module<index>` is the standard alias.
   The aggregate header also provides `R3Module`, `Z2Module`, `Z3Module`,
   `R4Module`, and `Z4Module` aliases.
 - `Submodule<Matrix>` owns a non-null `shared_ptr` to its parent module and a
   generator-coordinate matrix. Its row degrees must exactly equal the row
   degrees of the parent's presentation.
-- `ModuleMorphism<Matrix>` (also `ModuleFunction<Matrix>`) owns pointers to its
+- `Homomorphism<Matrix>` (`ModuleMorphism` and `ModuleFunction` are compatibility aliases) owns pointers to its
   domain and target and stores the lifts to their projective resolutions.
 - `module_hom_space_basis` and `module_endomorphism_basis` adapt the established
-  Hom algorithms and return typed module morphisms.
+  Hom algorithms and return typed module homomorphisms.
 
 The implementation is split across `chain_complex.hpp`, `module.hpp`,
-`submodule.hpp`, `module_morphism.hpp`, and `module_homomorphisms.hpp`.
+`submodule.hpp`, `homomorphism.hpp`, and `module_homomorphisms.hpp`.
 Including `grlina/modules.hpp` loads the whole public layer.
+See [the correction/review guide](module-framework-review.md) for the latest
+algorithm contracts, categorical operations and a suggested walkthrough.
 
 ## Conventions and invariants
 
@@ -44,8 +46,9 @@ A module created from a presentation has a one-differential projective
 resolution. A module created from a chain complex trusts the caller's exactness,
 as requested, but still validates structural compatibility. Calling
 `mutable_presentation()` discards higher projective differentials first, because
-an arbitrary edit would make them stale. `minimize()` has the same invalidation
-rule. `compute_projective_resolution()` currently computes `d2` for matrix types
+an arbitrary edit would make them stale. `minimize_presentation()` also discards
+higher projective maps; standard `minimize()` instead minimizes the stored
+resolution when it has multiple maps. `compute_projective_resolution()` computes `d2` for matrix types
 whose `graded_kernel()` returns that same matrix type. A uniform `shift()` is
 applied to every stored projective and injective differential and therefore
 preserves the resolutions.
@@ -63,12 +66,13 @@ and graded column reduction throw `std::invalid_argument` when their required
 certificate is absent or stale. A module's `minimize()` sorts by default;
 `minimize(false)` selects strict rejection instead.
 
-Minimization now uses graded basis operations. It admissibly column-reduces and
-removes zero relation columns, then finds unit entries where a relation and a
-generator have equal degree. Before deleting such a row/column pair it adds the
-pivot relation to every other relation containing that generator, making the
-full pivot row zero outside the pivot column. The three historical minimizer
-names share this correctness-first implementation.
+Minimization first cancels equal-degree generator/relation pairs, clearing the
+entire pivot row by column operations before deletion. It then uses the concrete
+graded kernel to remove redundant relations. Ordinary graded column reduction
+alone is insufficient at incomparable grades. `minimize_variant()` performs that
+cheap reduction as a preliminary optimization, then the standard algorithm.
+`semi_minimize()` performs only local pair cancellations. Resolution minimization
+transports basis changes into both adjacent differentials before deleting pairs.
 
 ## SCC I/O
 
@@ -86,13 +90,12 @@ are:
 
 Custom degree traits may use any stable string. The chain dimensions on line
 three determine the number of differentials. A one-matrix presentation keeps
-the historical trailing zero (`relations generators 0`). The reader also
-accepts legacy SCC files where line two was the number of nonzero chain groups;
-new output always uses the poset ID.
+the historical trailing zero (`relations generators 0`). The poset ID is strict:
+there is no chain-length heuristic. `0 0 0` means a zero module represented by
+one 0-by-0 presentation, not an absent presentation.
 
 `ChainComplex::to_stream`, `from_stream`, `to_file`, and `from_file` are the
-canonical generic SCC operations. The older matrix and `R2Resolution` readers
-and writers are unchanged.
+canonical generic SCC operations. Older matrix SCC readers also check the ID.
 
 `homology_module(complex, k)` computes a presentation of
 `ker(d_k) / im(d_(k+1))`: incoming boundary columns are lifted degree by degree
@@ -121,7 +124,7 @@ auto source = std::make_shared<Module>("source.scc");
 auto target = std::make_shared<Module>("target.scc");
 Matrix lift = /* generators(source) -> generators(target) */;
 
-graded_linalg::ModuleMorphism<Matrix> f(source, target, std::move(lift));
+graded_linalg::Homomorphism<Matrix> f(source, target, std::move(lift));
 auto image = f.image();
 auto kernel = f.kernel();
 Module image_as_module = image.presented_module();
@@ -148,17 +151,17 @@ Module image_as_module = image.presented_module();
   unverified higher-dimensional kernel algorithm was added.
 - Injective resolutions can be stored, read, written, sorted, and replaced, but
   no injective-resolution algorithm existed to wrap.
-- Exactness of supplied resolutions and the chain-map equations for supplied
-  higher morphism lifts are trusted. Structural dimensions, degrees, and
-  gradedness are checked.
-- A morphism created by the Hom adapter currently contains the generator lift;
-  users may supply higher lifts explicitly when available.
+- Exactness of supplied resolutions and the homomorphism equations for manual
+  lifts are trusted. Structural dimensions, degrees and gradedness are checked.
+  Optional `lift_to_relations` and `Homomorphism::check_lifts` validate equations.
+- Hom adapters provide generator lifts; `lift_to_resolution()` can extend them
+  through the common available projective resolution using graded linear systems.
 
 ## Verification
 
 `tests/modules_test.cpp` exercises CRTP enforcement, sorting certificates and
 stale-flag detection, correct unit cancellation and redundant-relation
-deletion, legacy and canonical SCC round trips, real fixture loading, chain
+deletion, strict SCC round trips, real fixture loading, chain
 validation, module Hilbert functions, resolution invalidation/recomputation,
 submodule reduction/presentation/quotients/intersections, morphism
 image/kernel/Hom adapters, homology presentations, R³ colex sorting, and
@@ -167,7 +170,8 @@ It is registered as `module_framework_test` with CTest. The established dense,
 sparse, graded-matrix, and Hom tests are also registered, so the new layer and
 the compatibility API run together. `cli_programs_test` runs all 15 installed
 Persistence-Algebra executables on small hand-computed fixtures and compares
-their SCC/quiver output or exact mathematical invariants. A fixture sweep successfully loads all 95
-valid `scc2020` files in `test_presentations` (excluding the intentionally
-ungraded examples and the SCC-sum container), and the module/Hom tests pass
-with AddressSanitizer and UndefinedBehaviorSanitizer enabled.
+their SCC/quiver output or exact mathematical invariants. The fixture with a
+three-parameter header but two-coordinate degrees is now explicitly rejected;
+its round-trip test corrects only an in-memory copy. The additional
+`module_operations_test` covers categorical maps, exact syzygy minimization,
+resolution cancellation, sorting and optional homomorphism validation.

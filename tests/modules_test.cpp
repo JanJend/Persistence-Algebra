@@ -293,7 +293,7 @@ static void test_named_poset_io() {
     NamedGradedMatrix<int> cancellable(
         2, 2, array<int>{{0, 1}, {0}},
         vec<NamedDegree>{{0}, {1}}, vec<NamedDegree>{{0}, {0}});
-    cancellable.minimize();
+    cancellable.semi_minimize(); // named poset has no graded-kernel implementation
     assert(cancellable.get_num_cols() == 1);
     assert(cancellable.get_num_rows() == 1);
     assert(cancellable.data == array<int>{{0}});
@@ -306,10 +306,18 @@ static void test_existing_scc_files() {
     assert(presentation.size() == 1);
     assert(presentation[0].get_num_rows() != 0);
 
-    // This legacy file uses "3" as chain length on line two.  The new reader
-    // accepts it and writes the canonical R^2 poset identifier "2".
-    ChainComplex<Matrix> resolution(
-        (base / "full_rips_size_1_instance_5_min_pres_resolution.scc").string());
+    // The old fixture has an incorrect parameter identifier and must be rejected.
+    const auto path = base / "full_rips_size_1_instance_5_min_pres_resolution.scc";
+    bool rejected = false;
+    try { ChainComplex<Matrix> wrong(path.string()); }
+    catch (const std::runtime_error&) { rejected = true; }
+    assert(rejected);
+    // Correct only the in-memory header to exercise its actual R2 data.
+    std::ifstream input(path);
+    std::string text{std::istreambuf_iterator<char>(input), {}};
+    text.replace(text.find('\n') + 1, 1, "2");
+    std::stringstream corrected(text);
+    ChainComplex<Matrix> resolution(corrected);
     assert(resolution.size() == 2);
     std::stringstream canonical;
     resolution.to_stream(canonical);
@@ -444,7 +452,7 @@ static void test_r3_colex_sorting() {
         2, 2, array<int>{{0, 1}, {0}},
         vec<triple>{{0, 0, 0}, {1, 1, 1}},
         vec<triple>{{0, 0, 0}, {0, 0, 0}});
-    cancellable.minimize();
+    cancellable.semi_minimize(); // R3 kernel currently does not return a graded matrix
     assert(cancellable.get_num_cols() == 1);
     assert(cancellable.get_num_rows() == 1);
     assert(cancellable.data == array<int>{{0}});

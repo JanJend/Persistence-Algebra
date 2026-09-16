@@ -30,6 +30,13 @@
 
 namespace graded_linalg {
 
+// Orders supplied by Degree_traits are part of the poset contract. Only a
+// caller-supplied comparator needs the quadratic finite-poset validation.
+template <typename D> struct TraitLinearOrder {
+    std::function<bool(const D&, const D&)> compare;
+    bool operator()(const D& a, const D& b) const { return compare(a, b); }
+};
+
 template<typename index>
 using Hom_space_temp = std::pair< SparseMatrix<index>, vec<std::pair<index,index>> >;
 
@@ -50,6 +57,12 @@ struct is_graded_sparse_matrix<Matrix, std::void_t<typename Matrix::degree_type,
 template <typename Matrix>
 inline constexpr bool is_graded_sparse_matrix_v = is_graded_sparse_matrix<Matrix>::value;
 
+template <typename Matrix, typename = void>
+struct has_matrix_graded_kernel : std::false_type {};
+template <typename Matrix>
+struct has_matrix_graded_kernel<Matrix, std::void_t<decltype(std::declval<Matrix&>().graded_kernel())>>
+    : std::is_same<std::decay_t<decltype(std::declval<Matrix&>().graded_kernel())>, Matrix> {};
+
 
 /**
  * @brief A graded matrix with generic degree-type.
@@ -59,6 +72,10 @@ inline constexpr bool is_graded_sparse_matrix_v = is_graded_sparse_matrix<Matrix
  */
 template <typename D, typename index, typename DERIVED>
 struct GradedSparseMatrix : public SparseMatrix<index> {
+
+    static_assert(std::is_integral_v<index> && std::is_signed_v<index> &&
+                  static_cast<index>(-1) < 0,
+                  "Graded matrix indices must represent the -1 sentinel");
 
     using degree_type = D;
     using index_type = index;
@@ -72,7 +89,26 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
      * comparator stored in compatible_order_. Explicit-degree construction
      * and parsing check the mandatory Degree_traits order without reordering.
      */
-    bool compatibly_sorted = false;
+    // Preserve legacy public degree vectors while making flag reads checked.
+    // A bool& cannot be taken; use refresh/invalidate for certificate changes.
+    class SortedFlag {
+        const GradedSparseMatrix* owner_;
+        mutable bool certified_ = false;
+    public:
+        explicit SortedFlag(const GradedSparseMatrix* owner) : owner_(owner) {}
+        SortedFlag(const GradedSparseMatrix* owner, const SortedFlag& other)
+            : owner_(owner), certified_(other.certified_) {}
+        SortedFlag& operator=(bool value) { certified_ = value; return *this; }
+        SortedFlag& operator=(const SortedFlag& other) {
+            certified_ = other.certified_; return *this;
+        }
+        operator bool() const {
+            if (certified_ && (!owner_->compatible_order_ ||
+                !owner_->degrees_are_sorted(owner_->compatible_order_))) certified_ = false;
+            return certified_;
+        }
+    };
+    SortedFlag compatibly_sorted{this};
 
 protected:
     /** Comparator which certified compatibly_sorted; kept to detect stale flags. */
@@ -142,9 +178,9 @@ public:
 
     GradedSparseMatrix() : SparseMatrix<index>() {};
 
-    GradedSparseMatrix(const GradedSparseMatrix& other) : SparseMatrix<index>(other), col_degrees(other.col_degrees), row_degrees(other.row_degrees), compatibly_sorted(other.compatibly_sorted), compatible_order_(other.compatible_order_), col_batches(other.col_batches), k_max(other.k_max) {}
+    GradedSparseMatrix(const GradedSparseMatrix& other) : SparseMatrix<index>(other), col_degrees(other.col_degrees), row_degrees(other.row_degrees), compatibly_sorted(this, other.compatibly_sorted), compatible_order_(other.compatible_order_), col_batches(other.col_batches), k_max(other.k_max) {}
 
-    GradedSparseMatrix(GradedSparseMatrix&& other) : SparseMatrix<index>(std::move(other)), col_degrees(std::move(other.col_degrees)), row_degrees(std::move(other.row_degrees)), compatibly_sorted(other.compatibly_sorted), compatible_order_(std::move(other.compatible_order_)), col_batches(std::move(other.col_batches)), k_max(other.k_max) {}
+    GradedSparseMatrix(GradedSparseMatrix&& other) : SparseMatrix<index>(std::move(other)), col_degrees(std::move(other.col_degrees)), row_degrees(std::move(other.row_degrees)), compatibly_sorted(this, other.compatibly_sorted), compatible_order_(std::move(other.compatible_order_)), col_batches(std::move(other.col_batches)), k_max(other.k_max) {}
 
     GradedSparseMatrix(index m, index n) : SparseMatrix<index>(m, n), col_degrees(vec<D>(m)), row_degrees(vec<D>(n)) {}
 
@@ -197,9 +233,52 @@ public:
     /** Recompute the cached flag for a particular compatible linear order. */
     template <typename Compare>
     bool refresh_compatible_sorted(Compare compare) {
+        require_linear_extension(compare);
         compatible_order_ = compare;
         compatibly_sorted = degrees_are_sorted(compatible_order_);
         return compatibly_sorted;
+    }
+
+    /** Validate a supplied order on the finite set of degrees in this matrix. */
+    template <typename Compare>
+    void require_linear_extension(Compare compare) const {
+        if constexpr (std::is_same_v<Compare, TraitLinearOrder<D>>) return;
+        vec<D> all_degrees = row_degrees;
+        all_degrees.insert(all_degrees.end(), col_degrees.begin(), col_degrees.end());
+        vec<D> degrees;
+        for (const auto& degree : all_degrees) {
+            bool duplicate = false;
+            for (const auto& existing : degrees) {
+                if (Degree_traits<D>::equals(degree, existing)) {
+                    if (compare(degree, existing) || compare(existing, degree))
+                        throw std::invalid_argument("Degree order distinguishes equal degrees");
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (!duplicate) degrees.push_back(degree);
+        }
+        std::vector<std::size_t> predecessors(degrees.size(), 0);
+        for (std::size_t i = 0; i < degrees.size(); ++i) {
+            const auto& a = degrees[i];
+            if (compare(a, a)) throw std::invalid_argument("Degree order is not strict");
+            for (std::size_t j = 0; j < degrees.size(); ++j) {
+                const auto& b = degrees[j];
+                if (i != j && compare(a, b) == compare(b, a))
+                    throw std::invalid_argument("Degree comparator is not a strict total order");
+                if (i != j &&
+                    Degree_traits<D>::smaller_equal(a, b) && !compare(a, b))
+                    throw std::invalid_argument("Degree order is not a linear extension of the poset");
+                if (compare(b, a)) ++predecessors[i];
+            }
+        }
+        // A tournament is transitive iff its predecessor counts are 0,...,n-1.
+        // Check before std::sort, whose comparator must already be transitive.
+        std::vector<bool> ranks(degrees.size(), false);
+        for (auto rank : predecessors) {
+            if (ranks[rank]) throw std::invalid_argument("Degree order is not transitive");
+            ranks[rank] = true;
+        }
     }
 
     void invalidate_compatible_sorting() noexcept {
@@ -222,6 +301,24 @@ public:
             throw std::invalid_argument(operation +
                 " requires rows and columns sorted by one certified compatible linear order");
         }
+    }
+
+    /** Check storage before any access through a user-supplied sparse index. */
+    void validate() const {
+        if (this->num_cols < 0 || this->num_rows < 0 ||
+            col_degrees.size() != static_cast<std::size_t>(this->num_cols) ||
+            row_degrees.size() != static_cast<std::size_t>(this->num_rows) ||
+            this->data.size() != static_cast<std::size_t>(this->num_cols))
+            throw std::invalid_argument("Inconsistent graded matrix dimensions");
+        for (const auto& column : this->data) {
+            if (!std::is_sorted(column.begin(), column.end()) ||
+                std::adjacent_find(column.begin(), column.end()) != column.end())
+                throw std::invalid_argument("Sparse columns must have sorted unique entries");
+            for (index row : column)
+                if (row < 0 || row >= this->num_rows)
+                    throw std::invalid_argument("Sparse entry outside matrix rows");
+        }
+        if (!is_graded_matrix()) throw std::invalid_argument("Matrix is not graded");
     }
 
     bool is_admissible_column_operation(index i, index j) const {
@@ -325,13 +422,13 @@ public:
         std::vector<index> rel;
 
         D deg = Degree_traits<D>::from_stream(iss);
+        if (!iss) throw std::runtime_error("Invalid SCC degree: " + line);
 
         // Consume the semicolon
         std::string tmp;
         iss >> tmp;
         if(tmp != ";"){
-            std::cerr << "Error: Expecting a semicolon. Invalid format in the following line: " << line << std::endl;
-            std::abort();
+            throw std::runtime_error("Expected SCC degree separator: " + line);
         }
 
         // Parse relation
@@ -340,6 +437,7 @@ public:
             while (iss >> num) {
                 rel.push_back(num);
             }
+            if (!iss.eof()) throw std::runtime_error("Invalid SCC entry: " + line);
         }
 
         return std::move(std::make_pair(deg, rel));
@@ -355,8 +453,12 @@ public:
             std::getline(file_stream, line);
             std::getline(file_stream, line);
         } else if (line.find("scc2020") != std::string::npos) {
-            // Skip 1 line for SCC2020
             std::getline(file_stream, line);
+            std::istringstream poset_line(line);
+            std::string id, extra;
+            if (!(poset_line >> id) || (poset_line >> extra) ||
+                id != std::string(Degree_traits<D>::poset_id))
+                throw std::runtime_error("SCC poset identifier does not match matrix degree type");
         } else {
             // Invalid file type
             std::cerr << "Error: Unsupported file format. The first line must contain firep or scc2020." << std::endl;
@@ -686,6 +788,7 @@ public:
      * @param get_statistics
      */
     void compute_col_batches(bool get_statistics = false){
+        this->require_compatibly_sorted("compute_col_batches");
         if(this->get_num_cols() == 0) {
             this->col_batches.clear();
             this->k_max = 0;
@@ -740,6 +843,8 @@ public:
      *
      */
     void get_k_statistics(){
+        this->require_compatibly_sorted("get_k_statistics");
+        if (this->num_cols == 0 || this->num_rows == 0) return;
 		D tmp = col_degrees[0];
 		index counter = 1;
 		for(index i = 1; i < this->num_cols; i++){
@@ -774,6 +879,7 @@ public:
      * @return array<index>
      */
     array<index> get_column_graph() {
+        require_compatibly_sorted("get_column_graph");
         return minimal_directed_graph<D, index>(col_degrees);
     }
 
@@ -783,6 +889,7 @@ public:
      * @return array<index>
      */
     array<index> get_row_graph() {
+        require_compatibly_sorted("get_row_graph");
         return minimal_directed_graph<D, index>(row_degrees);
     }
 
@@ -821,12 +928,13 @@ public:
      *
      */
     void sort_columns_lexicographically_with_pointers() {
-        sort_columns(Degree_traits<D>::lex_lambda());
+        sort_columns(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()});
     }
 
     /** Sort columns by an arbitrary compatible linear order. */
     template <typename Compare>
     void sort_columns(Compare compare) {
+        require_linear_extension(compare);
         vec<index> permutation = sort_and_get_permutation<D, index>(this->col_degrees, compare);
         array<index> new_data(this->data.size());
         for(index i = 0; i < static_cast<index>(this->data.size()); i++) {
@@ -840,6 +948,7 @@ public:
     /** Sort rows by an arbitrary compatible linear order. */
     template <typename Compare>
     void sort_rows(Compare compare) {
+        require_linear_extension(compare);
         vec<index> permutation = sort_and_get_permutation<D, index>(this->row_degrees, compare);
         vec<index> reverse(permutation.size());
         for (index i = 0; i < static_cast<index>(permutation.size()); ++i) {
@@ -854,6 +963,7 @@ public:
     /** Sort rows and columns by the same compatible linear order. */
     template <typename Compare>
     void sort_compatibly(Compare compare) {
+        require_linear_extension(compare);
         sort_columns(compare);
         sort_rows(compare);
         if (!this->refresh_compatible_sorted(compare)) {
@@ -863,7 +973,43 @@ public:
 
     /** Sort with the mandatory linear order supplied by Degree_traits. */
     void sort_compatibly() {
-        sort_compatibly(Degree_traits<D>::lex_lambda());
+        sort_compatibly(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()});
+    }
+
+    struct SortingPermutation {
+        vec<index> old_to_new;
+        vec<index> new_to_old;
+    };
+
+    /** Unambiguous alternative to the historical *_with_output conventions. */
+    template <typename Compare>
+    SortingPermutation sort_columns_with_permutation(Compare compare) {
+        require_linear_extension(compare);
+        auto degrees = col_degrees;
+        auto new_to_old = sort_and_get_permutation<D, index>(degrees, compare);
+        vec<index> old_to_new(new_to_old.size());
+        for (index i = 0; i < static_cast<index>(new_to_old.size()); ++i)
+            old_to_new[new_to_old[i]] = i;
+        sort_columns(compare);
+        return {std::move(old_to_new), std::move(new_to_old)};
+    }
+    SortingPermutation sort_columns_with_permutation() {
+        return sort_columns_with_permutation(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()});
+    }
+    template <typename Compare>
+    SortingPermutation sort_rows_with_permutation(Compare compare) {
+        require_linear_extension(compare);
+        auto degrees = row_degrees;
+        auto new_to_old = sort_and_get_permutation<D, index>(degrees, compare);
+        vec<index> old_to_new(new_to_old.size());
+        for (index i = 0; i < static_cast<index>(new_to_old.size()); ++i)
+            old_to_new[new_to_old[i]] = i;
+        permute_rows_graded(old_to_new);
+        refresh_compatible_sorted(compare);
+        return {std::move(old_to_new), std::move(new_to_old)};
+    }
+    SortingPermutation sort_rows_with_permutation() {
+        return sort_rows_with_permutation(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()});
     }
 
     /**
@@ -872,7 +1018,7 @@ public:
      *
      */
     void sort_columns_lexicographically() {
-        sort_columns(Degree_traits<D>::lex_lambda());
+        sort_columns(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()});
     }
 
     /**
@@ -893,7 +1039,7 @@ public:
         for (int i = 0; i < permutation.size(); ++i) {
             reverse[permutation[i]] = i;
         }
-        this->refresh_compatible_sorted(Degree_traits<D>::lex_lambda());
+        this->refresh_compatible_sorted(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()});
         return reverse;
     }
 
@@ -902,7 +1048,7 @@ public:
      *
      */
     void sort_rows_lexicographically(){
-        sort_rows(Degree_traits<D>::lex_lambda());
+        sort_rows(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()});
     }
 
     /**
@@ -920,7 +1066,7 @@ public:
         this->transform_data(reverse);
         this->sort_data();
         this->invalidate_cached_rows();
-        this->refresh_compatible_sorted(Degree_traits<D>::lex_lambda());
+        this->refresh_compatible_sorted(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()});
         return permutation;
     }
 
@@ -983,97 +1129,85 @@ public:
             }
     }
 
-    /**
-     * Compute a minimal presentation using only graded basis operations.
-     *
-     * Redundant relation columns are first reduced to zero and removed.  A
-     * unit entry (a relation and generator of equal degree) is cancelled only
-     * after its row has been cleared from every other relation column.  This
-     * substitution step is essential: deleting the pair before it changes the
-     * presented module whenever another relation contains that generator.
+    /** Cancel same-degree generator/relation pairs by admissible operations.
+     * This is valid for every degree poset and needs no kernel algorithm.
      */
-    void minimize(){
-        this->require_compatibly_sorted("minimize");
-        if (this->get_num_cols() != static_cast<index>(this->col_degrees.size()) ||
-            this->get_num_rows() != static_cast<index>(this->row_degrees.size()) ||
-            this->get_num_cols() != static_cast<index>(this->data.size())) {
-            throw std::invalid_argument("minimize received inconsistent matrix dimensions");
-        }
-        if (!this->is_graded_matrix()) {
-            throw std::invalid_argument("minimize requires a graded presentation matrix");
-        }
-
+    void cancel_local_pairs() {
+        require_compatibly_sorted("cancel_local_pairs");
+        validate();
         while (true) {
-            // Replace the relation columns by an admissibly reduced generating
-            // set. Columns which reduce to zero are redundant relations.
-            this->column_reduction_graded();
-            vec<index> zero_columns;
-            for (index column = 0; column < this->num_cols; ++column) {
-                if (this->data[column].empty()) zero_columns.push_back(column);
-            }
-            this->delete_columns(zero_columns);
-
-            bool cancelled_any_unit = false;
-            while (true) {
-                // A unit can occur anywhere in a sparse column, not only at
-                // its last row index.
-                index pivot_column = static_cast<index>(-1);
-                index pivot_row = static_cast<index>(-1);
-                for (index column = 0;
-                     column < this->num_cols && pivot_column == static_cast<index>(-1);
-                     ++column) {
-                    for (index row : this->data[column]) {
-                        if (Degree_traits<D>::equals(this->col_degrees[column],
-                                                      this->row_degrees[row])) {
-                            pivot_column = column;
-                            pivot_row = row;
-                            break;
-                        }
+            index c = -1, r = -1;
+            for (index j = 0; j < this->num_cols && c == -1; ++j)
+                for (index i : this->data[j])
+                    if (Degree_traits<D>::equals(col_degrees[j], row_degrees[i])) {
+                        c = j; r = i; break;
                     }
-                }
-                if (pivot_column == static_cast<index>(-1)) break;
-
-                // Substitute the pivot relation in all other relations so
-                // that the pivot generator occurs only in pivot_column.
-                for (index column = 0; column < this->num_cols; ++column) {
-                    if (column == pivot_column) continue;
-                    if (std::binary_search(this->data[column].begin(),
-                                           this->data[column].end(), pivot_row)) {
-                        if (!this->is_admissible_column_operation(pivot_column, column)) {
-                            throw std::logic_error(
-                                "Internal error: unit cancellation required a non-graded column operation");
-                        }
-                        this->col_op(pivot_column, column);
-                    }
-                }
-                for (index column = 0; column < this->num_cols; ++column) {
-                    if (column != pivot_column &&
-                        std::binary_search(this->data[column].begin(),
-                                           this->data[column].end(), pivot_row)) {
-                        throw std::logic_error(
-                            "Internal error: unit pivot row was not cleared before cancellation");
-                    }
-                }
-
-                vec<index> cancelled_column{pivot_column};
-                vec<index> cancelled_row{pivot_row};
-                this->delete_columns(cancelled_column);
-                this->delete_rows(cancelled_row);
-                cancelled_any_unit = true;
-            }
-            if (!cancelled_any_unit) break;
+            if (c == -1) break;
+            for (index j = 0; j < this->num_cols; ++j)
+                if (j != c && std::binary_search(this->data[j].begin(), this->data[j].end(), r))
+                    this->col_op(c, j);
+            vec<index> columns{c}, rows{r};
+            delete_columns(columns);
+            delete_rows(rows);
         }
+        invalidate_cached_rows();
+    }
 
-        if (!this->compatible_sorting_is_verified()) {
-            this->invalidate_compatible_sorting();
-            throw std::logic_error(
-                "Internal error: minimization destroyed compatible degree ordering");
+    /** Delete redundant relations using the concrete poset's graded kernel.
+     * A unit in a syzygy expresses that relation using the other relations.
+     * Clearing that syzygy row before deletion retains a generating kernel.
+     */
+    void remove_redundant_relations() {
+        require_compatibly_sorted("remove_redundant_relations");
+        validate();
+        if constexpr (has_matrix_graded_kernel<DERIVED>::value) {
+            DERIVED source = static_cast<const DERIVED&>(*this);
+            DERIVED syzygies = source.graded_kernel();
+            while (true) {
+                index c = -1, r = -1;
+                for (index j = 0; j < syzygies.get_num_cols() && c == -1; ++j)
+                    for (index i : syzygies.data[j])
+                        if (Degree_traits<D>::equals(syzygies.col_degrees[j], syzygies.row_degrees[i])) {
+                            c = j; r = i; break;
+                        }
+                if (c == -1) break;
+                for (index j = 0; j < syzygies.get_num_cols(); ++j)
+                    if (j != c && std::binary_search(syzygies.data[j].begin(), syzygies.data[j].end(), r))
+                        syzygies.col_op(c, j);
+                vec<index> redundant{r}, syzygy{c};
+                delete_columns(redundant);
+                syzygies.delete_rows(redundant);
+                syzygies.delete_columns(syzygy);
+            }
+        } else {
+            // Jan: implement the poset-specific graded_kernel() returning DERIVED.
+            // Local cancellation is available as semi_minimize() in the meantime.
+            throw std::logic_error("Relation minimization requires a poset-specific graded_kernel");
         }
     }
 
-    /** Backwards-compatible name for the correctness-first minimizer. */
-    void minimize_variant(){
-        this->minimize();
+    /** Standard minimization: local cancellation, then graded-kernel relations. */
+    void minimize() {
+        require_compatibly_sorted("minimize");
+        validate();
+        if constexpr (!has_matrix_graded_kernel<DERIVED>::value) {
+            // Jan: supply the graded kernel to enable full presentation minimization.
+            throw std::logic_error("minimize requires a poset-specific graded_kernel; use semi_minimize for local pairs");
+        } else {
+            cancel_local_pairs();
+            remove_redundant_relations();
+        }
+    }
+
+    /** Optional cheap reduction before the same complete minimization. */
+    void minimize_variant() {
+        require_compatibly_sorted("minimize_variant");
+        if constexpr (!has_matrix_graded_kernel<DERIVED>::value) {
+            throw std::logic_error("minimize_variant requires a poset-specific graded_kernel");
+        } else {
+            column_reduction_graded_w_deletion();
+            minimize();
+        }
     }
 
     void shift (D d){
@@ -1181,7 +1315,7 @@ public:
     
     /** Backwards-compatible name for the correctness-first minimizer. */
     void semi_minimize(){
-        this->minimize();
+        this->cancel_local_pairs();
     }
 
 
@@ -1275,7 +1409,8 @@ public:
         auto K = static_cast<DERIVED&>(*this).graded_kernel();
         K.cull_columns(row_temp, false);
         
-        K.column_reduction_graded_w_deletion();
+        // Keep the original domain basis: sorting these rows would invalidate
+        // the returned coordinates. Full generator minimization is optional.
          // TO-DO: If we want to fully reduce, we need to compute a kernel in the derived class.
         return K;
     }
@@ -1295,7 +1430,7 @@ public:
         copy.append_matrix(M);
         auto K = copy.graded_kernel();
         K.cull_columns(row_temp, false);
-        K.column_reduction_graded_w_deletion();
+        // Preserve the original domain coordinates, even when unsorted.
         // TO-DO: could also fully minimize if we want to?
         return K;
     }
@@ -1305,7 +1440,7 @@ public:
         assert(l.row_degrees == r.row_degrees);
         auto k = l.inverse_image_copy(static_cast<const DERIVED&>(*this), r);
         auto i = l*k;
-        i.column_reduction_graded_w_deletion();
+        // Rows are still the parent's fixed generator basis.
         return i;
     };
 

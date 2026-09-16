@@ -11,8 +11,9 @@
 #include <grlina/chain_complex.hpp>
 #include <grlina/module.hpp>
 #include <grlina/submodule.hpp>
-#include <grlina/module_morphism.hpp>
+#include <grlina/homomorphism.hpp>
 #include <grlina/module_homomorphisms.hpp>
+#include <grlina/module_operations.hpp>
 #include <grlina/r3graded_matrix.hpp>
 #include <grlina/z2graded_matrix.hpp>
 #include <grlina/z3graded_matrix.hpp>
@@ -21,10 +22,10 @@
 
 namespace graded_linalg {
 
-template <typename index> using R3Module = PersistenceModule<R3GradedSparseMatrix<index>>;
-template <typename index> using Z2Module = PersistenceModule<Z2GradedSparseMatrix<index>>;
-template <typename index> using Z3Module = PersistenceModule<Z3GradedSparseMatrix<index>>;
-template <typename index> using R4Module = PersistenceModule<R4GradedSparseMatrix<index>>;
-template <typename index> using Z4Module = PersistenceModule<Z4GradedSparseMatrix<index>>;
+template <typename index> using R3Module = Module<R3GradedSparseMatrix<index>>;
+template <typename index> using Z2Module = Module<Z2GradedSparseMatrix<index>>;
+template <typename index> using Z3Module = Module<Z3GradedSparseMatrix<index>>;
+template <typename index> using R4Module = Module<R4GradedSparseMatrix<index>>;
+template <typename index> using Z4Module = Module<Z4GradedSparseMatrix<index>>;
 
 } // namespace graded_linalg

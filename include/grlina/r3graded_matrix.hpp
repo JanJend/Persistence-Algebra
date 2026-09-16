@@ -186,7 +186,7 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMa
         : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(m, n, data, std::move(c_degrees), std::move(r_degrees)) {}
 
     void sort_rows_colexicographically() {
-        this->sort_rows(Degree_traits<triple>::colex_lambda());
+        this->sort_rows(TraitLinearOrder<triple>{Degree_traits<triple>::colex_lambda()});
     }
 
     vec<index> sort_rows_colexicographically_with_output() {
@@ -198,12 +198,12 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMa
         this->transform_data(reverse);
         this->sort_data();
         this->invalidate_cached_rows();
-        this->refresh_compatible_sorted(Degree_traits<triple>::colex_lambda());
+        this->refresh_compatible_sorted(TraitLinearOrder<triple>{Degree_traits<triple>::colex_lambda()});
         return permutation;
     }
 
     void sort_columns_colexicographically() {
-        this->sort_columns(Degree_traits<triple>::colex_lambda());
+        this->sort_columns(TraitLinearOrder<triple>{Degree_traits<triple>::colex_lambda()});
     }
 
     vec<index> sort_columns_colexicographically_with_output() {
@@ -214,12 +214,12 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMa
             new_data[i] = std::move(this->data[permutation[i]]);
         this->data = std::move(new_data);
         this->invalidate_cached_rows();
-        this->refresh_compatible_sorted(Degree_traits<triple>::colex_lambda());
+        this->refresh_compatible_sorted(TraitLinearOrder<triple>{Degree_traits<triple>::colex_lambda()});
         return permutation;
     }
 
     void sort_colexicographically() {
-        this->sort_compatibly(Degree_traits<triple>::colex_lambda());
+        this->sort_compatibly(TraitLinearOrder<triple>{Degree_traits<triple>::colex_lambda()});
     }
 
     /**

@@ -310,7 +310,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         this->transform_data(reverse);
         this->sort_data();
         this->invalidate_cached_rows();
-        this->refresh_compatible_sorted(Degree_traits<r2degree>::colex_lambda());
+        this->refresh_compatible_sorted(TraitLinearOrder<r2degree>{Degree_traits<r2degree>::colex_lambda()});
     }
 
     vec<index> sort_rows_colexicographically_with_output() {
@@ -322,7 +322,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         this->transform_data(reverse);
         this->sort_data();
         this->invalidate_cached_rows();
-        this->refresh_compatible_sorted(Degree_traits<r2degree>::colex_lambda());
+        this->refresh_compatible_sorted(TraitLinearOrder<r2degree>{Degree_traits<r2degree>::colex_lambda()});
         return permutation;
     }
 
@@ -338,7 +338,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         }
         this->data = new_data;
         this->invalidate_cached_rows();
-        this->refresh_compatible_sorted(Degree_traits<r2degree>::colex_lambda());
+        this->refresh_compatible_sorted(TraitLinearOrder<r2degree>{Degree_traits<r2degree>::colex_lambda()});
     }
 
     vec<index> sort_columns_colexicographically_with_output() {
@@ -349,12 +349,12 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         }
         this->data = new_data;
         this->invalidate_cached_rows();
-        this->refresh_compatible_sorted(Degree_traits<r2degree>::colex_lambda());
+        this->refresh_compatible_sorted(TraitLinearOrder<r2degree>{Degree_traits<r2degree>::colex_lambda()});
         return permutation;
     }
 
     void sort_colexicographically() {
-        this->sort_compatibly(Degree_traits<r2degree>::colex_lambda());
+        this->sort_compatibly(TraitLinearOrder<r2degree>{Degree_traits<r2degree>::colex_lambda()});
     }
 
     private:
@@ -663,6 +663,10 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      * @return SparseMatrix<index> 
      */
     R2GradedSparseMatrix graded_kernel() {
+        this->validate();
+        this->pivots.clear();
+        this->pq_row.clear();
+        this->invalidate_cached_rows();
         assert(this->col_degrees.size() == this->get_num_cols());
         assert(this->row_degrees.size() == this->get_num_rows());
         vec<index> column_permutation = this->compute_grid_representation();
@@ -731,9 +735,9 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         result.row_degrees = this->col_degrees;
     
         result.permute_rows_graded(column_permutation);
-        // Kernel clients (pullbacks, intersections, resolutions) receive a
-        // matrix with an established compatible-order invariant.
-        result.sort_compatibly();
+        // Rows are coordinates in the ORIGINAL input domain: never sort them
+        // independently. Pullbacks project these rows by their original index.
+        result.sort_columns_lexicographically();
 
         return result;
     }
@@ -888,8 +892,11 @@ struct R2Sequence{
             std::getline(file_stream, line);
             std::getline(file_stream, line);
         } else if (line.find("scc2020") != std::string::npos) {
-            // Skip 1 line for SCC2020
             std::getline(file_stream, line);
+            std::istringstream poset_line(line);
+            std::string id, extra;
+            if (!(poset_line >> id) || (poset_line >> extra) || id != "2")
+                throw std::runtime_error("R2 sequence requires SCC poset identifier 2");
         } else {
             // Invalid file type
             std::cerr << "Error: Unsupported file format. The first line must contain firep or scc2020." << std::endl;
@@ -995,9 +1002,10 @@ struct R2Resolution {
     R2Resolution(const R2GradedSparseMatrix<index>& d1, const bool& is_minimal = false) 
         : d1(d1) {
             // Kernel computation is easy if the presentation is minimal, sorted, and has one generator.
-            if(is_minimal && d1.get_num_rows() == 1){
-                // assert sorted! Todo
-                // This doesnt look right at the moment.
+            if(is_minimal && d1.get_num_rows() == 1 && d1.get_num_cols() > 0 &&
+               d1.are_columns_sorted_lexicographically()){
+                // A minimal one-generator presentation has incomparable
+                // relation grades; adjacent lex-ordered joins generate its kernel.
                 d2 = R2GradedSparseMatrix<index>(d1.get_num_cols()-1, d1.get_num_cols());
                 d2.data = vec< vec<index> >(d1.get_num_cols()-1);
                 d2.row_degrees = d1.col_degrees;
@@ -1005,10 +1013,11 @@ struct R2Resolution {
                 r2degree last_degree = d1.col_degrees[0];
                 for(index i = 1; i < d1.get_num_cols(); i++){
                     r2degree join = Degree_traits<r2degree>::join(last_degree, d1.col_degrees[i]);
-                    d2.data[i] = {i -1, i};
-                    d2.col_degrees[i] = join;
-                    r2degree last_degree = d1.col_degrees[i];
+                    d2.data[i - 1] = {i -1, i};
+                    d2.col_degrees[i - 1] = join;
+                    last_degree = d1.col_degrees[i];
                 }
+                d2.refresh_compatible_sorted();
             } else {
                 auto d1_copy = d1;
                 d2 = d1_copy.graded_kernel();

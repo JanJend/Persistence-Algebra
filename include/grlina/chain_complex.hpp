@@ -55,12 +55,6 @@ private:
         return value;
     }
 
-    static bool is_unsigned_integer(const std::string& value) {
-        return !value.empty() && std::all_of(value.begin(), value.end(), [](unsigned char c) {
-            return std::isdigit(c) != 0;
-        });
-    }
-
     static std::pair<degree_type, std::vector<index_type>> parse_degree_line(
         const std::string& line, bool with_entries, index_type row_count) {
         std::istringstream input(line);
@@ -86,6 +80,7 @@ private:
             }
             entries.push_back(entry);
         }
+        if (!input.eof()) throw std::runtime_error("Invalid token in SCC entries: " + line);
         if (!std::is_sorted(entries.begin(), entries.end()) ||
             std::adjacent_find(entries.begin(), entries.end()) != entries.end()) {
             throw std::runtime_error("SCC columns must contain sorted, unique row indices");
@@ -148,6 +143,7 @@ public:
     void validate_structure() const {
         for (std::size_t i = 0; i < differentials_.size(); ++i) {
             const auto& matrix = differentials_[i];
+            matrix.validate();
             if (matrix.col_degrees.size() != static_cast<std::size_t>(matrix.get_num_cols()) ||
                 matrix.row_degrees.size() != static_cast<std::size_t>(matrix.get_num_rows()) ||
                 matrix.data.size() != static_cast<std::size_t>(matrix.get_num_cols())) {
@@ -200,14 +196,84 @@ public:
     void clear() noexcept { differentials_.clear(); }
 
     void sort_compatibly() {
-        for (auto& differential : differentials_) differential.sort_compatibly();
-        validate_structure();
+        sort_compatibly(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::lex_lambda()});
     }
 
     template <typename Compare>
     void sort_compatibly(Compare compare) {
-        for (auto& differential : differentials_) differential.sort_compatibly(compare);
         validate_structure();
+        if (empty()) return;
+        for (const auto& d : differentials_) d.require_linear_extension(compare);
+        // Each group is sorted ONCE; its basis permutation is shared by both
+        // adjacent maps. This includes stable handling of repeated degrees.
+        for (std::size_t group = 0; group <= size(); ++group) {
+            auto degrees = group == 0 ? differentials_[0].row_degrees
+                                      : differentials_[group - 1].col_degrees;
+            auto new_to_old = sort_and_get_permutation<degree_type, index_type>(degrees, compare);
+            vec<index_type> old_to_new(new_to_old.size());
+            for (index_type i = 0; i < static_cast<index_type>(new_to_old.size()); ++i)
+                old_to_new[new_to_old[i]] = i;
+            if (group > 0) {
+                auto& outgoing = differentials_[group - 1];
+                auto data = outgoing.data;
+                for (index_type i = 0; i < outgoing.get_num_cols(); ++i)
+                    outgoing.data[i] = std::move(data[new_to_old[i]]);
+                outgoing.col_degrees = degrees;
+                outgoing.invalidate_cached_rows();
+                outgoing.invalidate_compatible_sorting();
+            }
+            if (group < size()) differentials_[group].permute_rows_graded(old_to_new);
+        }
+        for (auto& d : differentials_) d.refresh_compatible_sorted(compare);
+        validate_structure();
+    }
+
+    /** Minimize a supplied (possibly truncated) projective resolution.
+     * Exactness is the caller's guarantee. Unit cancellation transports every
+     * basis operation to both neighbors. The terminal map is then minimized
+     * as a generating set of the last syzygy module.
+     */
+    void minimize_resolution(bool sort_if_needed = true) {
+        if (empty()) throw std::logic_error("No resolution to minimize");
+        ChainComplex working = *this;
+        if (sort_if_needed) working.sort_compatibly();
+        for (auto& d : working.differentials_) d.require_compatibly_sorted("minimize_resolution");
+        if (!working.squares_to_zero()) throw std::invalid_argument("Resolution does not square to zero");
+        auto& maps = working.differentials_;
+        for (std::size_t level = 0; level < maps.size(); ++level) {
+            auto& d = maps[level];
+            while (true) {
+                index_type c = -1, r = -1;
+                for (index_type j = 0; j < d.get_num_cols() && c == -1; ++j)
+                    for (index_type i : d.data[j])
+                        if (Degree_traits<degree_type>::equals(d.col_degrees[j], d.row_degrees[i])) {
+                            c = j; r = i; break;
+                        }
+                if (c == -1) break;
+                // Column j += column c; inverse basis change: upper row c += row j.
+                for (index_type j = 0; j < d.get_num_cols(); ++j) {
+                    if (j != c && std::binary_search(d.data[j].begin(), d.data[j].end(), r)) {
+                        d.col_op(c, j);
+                        if (level + 1 < maps.size()) maps[level + 1].row_op_on_cols(j, c);
+                    }
+                }
+                // Row i += row r; inverse basis change: lower column r += column i.
+                const auto pivot_column = d.data[c];
+                for (index_type i : pivot_column) if (i != r) {
+                    d.row_op_on_cols(r, i);
+                    if (level > 0) maps[level - 1].col_op(i, r);
+                }
+                vec<index_type> columns{c}, rows{r};
+                d.delete_columns(columns);
+                d.delete_rows(rows);
+                if (level > 0) maps[level - 1].delete_columns(rows);
+                if (level + 1 < maps.size()) maps[level + 1].delete_rows(columns);
+            }
+        }
+        if (maps.back().get_num_cols() != 0) maps.back().remove_redundant_relations();
+        for (auto& d : maps) d.invalidate_cached_rows();
+        if (!working.squares_to_zero()) throw std::logic_error("Resolution cancellation broke d*d=0");
+        *this = std::move(working);
     }
 
     template <typename OutputStream>
@@ -257,6 +323,9 @@ public:
         std::string file_poset;
         if (!std::getline(input, file_poset)) throw std::runtime_error("Missing SCC poset identifier");
         file_poset = trim(file_poset);
+        if (file_poset != poset_identifier())
+            throw std::runtime_error("SCC poset identifier '" + file_poset +
+                                     "' does not match matrix poset '" + poset_identifier() + "'");
 
         if (!std::getline(input, line)) throw std::runtime_error("Missing SCC chain dimensions");
         std::istringstream dimensions_stream(line);
@@ -266,22 +335,12 @@ public:
             if (rank < 0) throw std::runtime_error("Negative SCC chain-group dimension");
             ranks.push_back(rank);
         }
+        if (!dimensions_stream.eof()) throw std::runtime_error("Invalid SCC chain dimensions");
         if (ranks.size() < 2) throw std::runtime_error("SCC requires at least two chain-group dimensions");
 
-        std::size_t effective_rank_count = ranks.size();
-        while (effective_rank_count != 0 && ranks[effective_rank_count - 1] == 0)
-            --effective_rank_count;
-        const std::string expected_poset = poset_identifier();
-        const bool legacy_chain_length = is_unsigned_integer(file_poset) &&
-            static_cast<std::size_t>(std::stoull(file_poset)) == effective_rank_count;
-        if (file_poset != expected_poset && !legacy_chain_length) {
-            throw std::runtime_error(
-                "SCC poset identifier '" + file_poset + "' does not match matrix poset '" + expected_poset + "'");
-        }
-
-        while (!ranks.empty() && ranks.back() == 0) ranks.pop_back();
-        if (ranks.empty()) return ChainComplex();
-        if (ranks.size() < 2) throw std::runtime_error("SCC contains only one nonzero chain group");
+        // A presentation's final zero is the conventional dummy chain group.
+        // Always retain at least two ranks: 0 0 0 represents the zero module.
+        while (ranks.size() > 2 && ranks.back() == 0) ranks.pop_back();
 
         struct Group {
             std::vector<degree_type> degrees;
@@ -310,14 +369,14 @@ public:
             differential.col_degrees = groups[i].degrees;
             differential.row_degrees = groups[i + 1].degrees;
             differential.data = groups[i].columns;
-            if (!differential.refresh_compatible_sorted() && sort_if_needed) {
-                differential.sort_compatibly();
-            }
+            differential.refresh_compatible_sorted();
             high_to_low.push_back(std::move(differential));
         }
 
         std::reverse(high_to_low.begin(), high_to_low.end());
-        return ChainComplex(std::move(high_to_low));
+        ChainComplex result(std::move(high_to_low));
+        if (sort_if_needed) result.sort_compatibly();
+        return result;
     }
 
     static ChainComplex from_file(const std::string& path, bool sort_if_needed = false) {

@@ -16,18 +16,11 @@ namespace graded_linalg {
 
 enum class ResolutionKind { projective, injective };
 
-template <typename Matrix, typename = void>
-struct has_matrix_graded_kernel : std::false_type {};
-
 template <typename Matrix>
-struct has_matrix_graded_kernel<Matrix, std::void_t<decltype(std::declval<Matrix&>().graded_kernel())>>
-    : std::is_same<std::decay_t<decltype(std::declval<Matrix&>().graded_kernel())>, Matrix> {};
-
-template <typename Matrix>
-class PersistenceModule {
+class Module {
 public:
     static_assert(is_graded_sparse_matrix_v<Matrix>,
-                  "PersistenceModule<Matrix> requires Matrix to inherit "
+                  "Module<Matrix> requires Matrix to inherit "
                   "GradedSparseMatrix<D, index, Matrix> via CRTP");
     using matrix_type = Matrix;
     using degree_type = typename Matrix::degree_type;
@@ -52,33 +45,33 @@ private:
     }
 
 public:
-    PersistenceModule() = default;
-    explicit PersistenceModule(Matrix presentation)
+    Module() = default;
+    explicit Module(Matrix presentation)
         : projective_resolution_(std::vector<Matrix>{std::move(presentation)}) {}
-    explicit PersistenceModule(chain_complex_type resolution,
+    explicit Module(chain_complex_type resolution,
                                ResolutionKind kind = ResolutionKind::projective) {
         resolution.validate_structure();
         if (kind == ResolutionKind::projective) projective_resolution_ = std::move(resolution);
         else injective_resolution_ = std::move(resolution);
     }
-    PersistenceModule(chain_complex_type projective, chain_complex_type injective)
+    Module(chain_complex_type projective, chain_complex_type injective)
         : projective_resolution_(std::move(projective)), injective_resolution_(std::move(injective)) {
         projective_resolution_.validate_structure();
         injective_resolution_.validate_structure();
     }
-    explicit PersistenceModule(const std::string& path, bool sort_if_needed = false)
+    explicit Module(const std::string& path, bool sort_if_needed = false)
         : projective_resolution_(chain_complex_type::from_file(path, sort_if_needed)) {}
-    explicit PersistenceModule(std::istream& input, bool sort_if_needed = false)
+    explicit Module(std::istream& input, bool sort_if_needed = false)
         : projective_resolution_(chain_complex_type::from_stream(input, sort_if_needed)) {}
 
-    static PersistenceModule from_presentation(Matrix presentation) {
-        return PersistenceModule(std::move(presentation));
+    static Module from_presentation(Matrix presentation) {
+        return Module(std::move(presentation));
     }
-    static PersistenceModule from_projective_resolution(chain_complex_type resolution) {
-        return PersistenceModule(std::move(resolution), ResolutionKind::projective);
+    static Module from_projective_resolution(chain_complex_type resolution) {
+        return Module(std::move(resolution), ResolutionKind::projective);
     }
-    static PersistenceModule from_injective_resolution(chain_complex_type resolution) {
-        return PersistenceModule(std::move(resolution), ResolutionKind::injective);
+    static Module from_injective_resolution(chain_complex_type resolution) {
+        return Module(std::move(resolution), ResolutionKind::injective);
     }
 
     bool has_projective_resolution() const noexcept { return !projective_resolution_.empty(); }
@@ -100,13 +93,14 @@ public:
 
     const Matrix& presentation() const { require_presentation(); return projective_resolution_[0]; }
 
-    /** Mutable access invalidates higher projective lifts before returning d1. */
+    /** Arbitrary edits invalidate higher projective maps and the injective model. */
     Matrix& mutable_presentation() {
         require_presentation();
         if (projective_resolution_.size() > 1) {
             Matrix d1 = projective_resolution_[0];
             projective_resolution_ = chain_complex_type(std::vector<Matrix>{std::move(d1)});
         }
+        injective_resolution_.clear();
         return projective_resolution_[0];
     }
 
@@ -135,12 +129,30 @@ public:
         if (!injective_resolution_.empty()) injective_resolution_.sort_compatibly(compare);
     }
 
-    /** Minimize d1; any now-stale higher projective lifts are discarded. */
+    /** Use the complete stored projective resolution whenever available. */
     void minimize(bool sort_if_needed = true) {
+        if (!has_presentation() && has_injective_resolution()) {
+            minimize_injective_resolution(sort_if_needed);
+            return;
+        }
+        require_presentation();
+        if (projective_resolution_.size() > 1)
+            projective_resolution_.minimize_resolution(sort_if_needed);
+        else minimize_presentation(sort_if_needed);
+    }
+
+    /** Explicit presentation-only operation; discard higher projective maps. */
+    void minimize_presentation(bool sort_if_needed = true) {
         Matrix minimized = presentation();
         if (sort_if_needed) minimized.sort_compatibly();
         minimized.minimize();
         projective_resolution_ = chain_complex_type(std::vector<Matrix>{std::move(minimized)});
+    }
+
+    void minimize_injective_resolution(bool /*sort_if_needed*/ = true) {
+        // Jan: define the injective/cochain degree convention and implement its
+        // dual cancellation. Projective cancellation must not be applied blindly.
+        throw std::logic_error("Injective-resolution minimization is not implemented");
     }
 
     /** Compute d2 where Matrix has a graded-kernel implementation returning Matrix. */
@@ -240,8 +252,9 @@ public:
     }
 };
 
-template <typename Matrix> using Module = PersistenceModule<Matrix>;
-template <typename index> using R2Module = PersistenceModule<R2GradedSparseMatrix<index>>;
+// Compatibility spelling from the first module API.
+template <typename Matrix> using PersistenceModule = Module<Matrix>;
+template <typename index> using R2Module = Module<R2GradedSparseMatrix<index>>;
 
 /**
  * Present H_k = ker(d_k) / im(d_{k+1}) from a chain complex.
@@ -252,7 +265,7 @@ template <typename index> using R2Module = PersistenceModule<R2GradedSparseMatri
  * the homology presentation.
  */
 template <typename Matrix>
-PersistenceModule<Matrix> homology_module(const ChainComplex<Matrix>& complex,
+Module<Matrix> homology_module(const ChainComplex<Matrix>& complex,
                                           std::size_t homological_degree = 1,
                                           bool minimize = true) {
     static_assert(is_graded_sparse_matrix_v<Matrix>,
@@ -268,7 +281,7 @@ PersistenceModule<Matrix> homology_module(const ChainComplex<Matrix>& complex,
 
         Matrix kernel_source = complex.differential(homological_degree);
         Matrix kernel_generators = kernel_source.graded_kernel();
-        kernel_generators.sort_compatibly();
+        kernel_generators.sort_columns_lexicographically();
 
         using index_type = typename Matrix::index_type;
         using degree_type = typename Matrix::degree_type;
@@ -331,7 +344,7 @@ PersistenceModule<Matrix> homology_module(const ChainComplex<Matrix>& complex,
             static_cast<index_type>(relation_coordinates.size()),
             kernel_generators.get_num_cols(), relation_coordinates,
             relation_degrees, kernel_generators.col_degrees);
-        PersistenceModule<Matrix> result(std::move(presentation));
+        Module<Matrix> result(std::move(presentation));
         if (minimize) result.minimize();
         return result;
     }

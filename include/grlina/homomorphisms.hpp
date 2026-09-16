@@ -20,6 +20,7 @@
 #define HOMOMORPHISMS_HPP
 
 #include <grlina/graded_matrix.hpp>
+#include <grlina/graded_linear_system.hpp>
 #include "grlina/r2graded_matrix.hpp"
 #include "grlina/sparse_matrix.hpp"
 #include <cstdlib>
@@ -29,6 +30,28 @@
 #include <boost/timer/timer.hpp>
 
 namespace graded_linalg {
+
+/** Optional check for manually supplied f0; trusted constructors need not call it.
+ * Returns f1 with target_presentation*f1 = f0*source_presentation, or nullopt.
+ */
+template <typename Matrix>
+std::optional<Matrix> lift_to_relations(const Matrix& source_presentation,
+                                      const Matrix& target_presentation,
+                                      const Matrix& f0) {
+    source_presentation.validate();
+    target_presentation.validate();
+    f0.validate();
+    if (f0.col_degrees != source_presentation.row_degrees ||
+        f0.row_degrees != target_presentation.row_degrees)
+        throw std::invalid_argument("Generator lift has incompatible source or target bases");
+    return solve_graded_linear_system(target_presentation, f0 * source_presentation);
+}
+
+template <typename Matrix>
+bool is_homomorphism(const Matrix& source_presentation,
+                    const Matrix& target_presentation, const Matrix& f0) {
+    return lift_to_relations(source_presentation, target_presentation, f0).has_value();
+}
 
     template <typename index>
 double avg_entries_per_column(const SparseMatrix<index>& S){

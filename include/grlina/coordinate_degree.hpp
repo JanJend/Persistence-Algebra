@@ -16,6 +16,17 @@
 
 namespace graded_linalg {
 
+/** Only explicitly supported scalar domains receive a grid identifier.
+ * Custom coordinate domains must specialize this trait (or Degree_traits).
+ */
+template <typename Scalar> struct CoordinatePosetDomain;
+template <> struct CoordinatePosetDomain<double> { static constexpr const char* suffix = ""; };
+template <> struct CoordinatePosetDomain<float> { static constexpr const char* suffix = ""; };
+template <> struct CoordinatePosetDomain<long double> { static constexpr const char* suffix = ""; };
+template <> struct CoordinatePosetDomain<int> { static constexpr const char* suffix = "Z"; };
+template <> struct CoordinatePosetDomain<long> { static constexpr const char* suffix = "Z"; };
+template <> struct CoordinatePosetDomain<long long> { static constexpr const char* suffix = "Z"; };
+
 template <typename Scalar, std::size_t Dimension>
 struct CoordinateDegree {
     std::array<Scalar, Dimension> coordinates{};
@@ -55,7 +66,7 @@ struct Degree_traits<CoordinateDegree<Scalar, Dimension>> {
     using degree_type = CoordinateDegree<Scalar, Dimension>;
 
     inline static const std::string poset_id =
-        std::to_string(Dimension) + (std::is_integral<Scalar>::value ? "Z" : "");
+        std::to_string(Dimension) + CoordinatePosetDomain<Scalar>::suffix;
 
     static bool equals(const degree_type& lhs, const degree_type& rhs) {
         return lhs == rhs;
@@ -164,7 +175,7 @@ struct CoordinateGradedSparseMatrix
         : Base(std::move(other)) {}
 
     void sort_rows_colexicographically() {
-        this->sort_rows(Degree_traits<degree_type>::colex_lambda());
+        this->sort_rows(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::colex_lambda()});
     }
 
     vec<index> sort_rows_colexicographically_with_output() {
@@ -176,12 +187,12 @@ struct CoordinateGradedSparseMatrix
         this->transform_data(reverse);
         this->sort_data();
         this->invalidate_cached_rows();
-        this->refresh_compatible_sorted(Degree_traits<degree_type>::colex_lambda());
+        this->refresh_compatible_sorted(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::colex_lambda()});
         return permutation;
     }
 
     void sort_columns_colexicographically() {
-        this->sort_columns(Degree_traits<degree_type>::colex_lambda());
+        this->sort_columns(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::colex_lambda()});
     }
 
     vec<index> sort_columns_colexicographically_with_output() {
@@ -192,12 +203,12 @@ struct CoordinateGradedSparseMatrix
             new_data[i] = std::move(this->data[permutation[i]]);
         this->data = std::move(new_data);
         this->invalidate_cached_rows();
-        this->refresh_compatible_sorted(Degree_traits<degree_type>::colex_lambda());
+        this->refresh_compatible_sorted(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::colex_lambda()});
         return permutation;
     }
 
     void sort_colexicographically() {
-        this->sort_compatibly(Degree_traits<degree_type>::colex_lambda());
+        this->sort_compatibly(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::colex_lambda()});
     }
 };
 

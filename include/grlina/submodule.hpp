@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <grlina/module.hpp>
+#include <grlina/graded_linear_system.hpp>
 
 namespace graded_linalg {
 
@@ -15,7 +16,7 @@ class Submodule {
 public:
     static_assert(is_graded_sparse_matrix_v<Matrix>,
                   "Submodule<Matrix> requires the GradedSparseMatrix CRTP contract");
-    using module_type = PersistenceModule<Matrix>;
+    using module_type = Module<Matrix>;
     using index_type = typename Matrix::index_type;
 
 private:
@@ -24,6 +25,7 @@ private:
 
     void validate() const {
         if (!parent_) throw std::invalid_argument("A submodule requires a parent module");
+        generators_.validate();
         const Matrix& parent_presentation = parent_->presentation();
         if (generators_.get_num_rows() != parent_presentation.get_num_rows() ||
             generators_.row_degrees != parent_presentation.row_degrees) {
@@ -40,12 +42,19 @@ private:
 
 public:
     Submodule(std::shared_ptr<const module_type> parent, Matrix generators)
-        : parent_(std::move(parent)), generators_(std::move(generators)) { validate(); }
+        : parent_(std::move(parent)), generators_(std::move(generators)) {
+        validate();
+        if (!generators_.compatible_sorting_is_verified()) generators_.refresh_compatible_sorted();
+    }
 
     const std::shared_ptr<const module_type>& parent() const noexcept { return parent_; }
     const Matrix& generators() const noexcept { return generators_; }
     index_type number_of_generators() const noexcept { return generators_.get_num_cols(); }
-    bool is_zero() const noexcept { return generators_.get_num_cols() == 0; }
+    /** Every supplied vector must vanish modulo the parent's relations. */
+    bool is_zero() const {
+        return generators_.get_num_cols() == 0 ||
+            solve_graded_linear_system(parent_->presentation(), generators_).has_value();
+    }
 
     static Submodule zero(std::shared_ptr<const module_type> parent) {
         if (!parent) throw std::invalid_argument("A submodule requires a parent module");
@@ -68,35 +77,36 @@ public:
         return Submodule(std::move(parent), std::move(identity));
     }
 
-    /** Stable-Decomposition's relation-aware generator reduction. */
+    /** Minimize generators modulo the parent's relations using graded syzygies. */
     void minimize_generators() {
-        Matrix ambient = parent_->presentation();
-        const index_type relation_count = ambient.get_num_cols();
-        ambient.append_matrix(generators_);
-        ambient.sort_rows_lexicographically();
-        auto old_to_new = ambient.sort_columns_lexicographically_with_output();
-        std::vector<index_type> generator_positions;
-        generator_positions.reserve(static_cast<std::size_t>(generators_.get_num_cols()));
-        for (index_type column = relation_count;
-             column < relation_count + generators_.get_num_cols(); ++column) {
-            generator_positions.push_back(old_to_new[column]);
+        if constexpr (has_matrix_graded_kernel<Matrix>::value) {
+            Matrix ambient = parent_->presentation();
+            const index_type relations = ambient.get_num_cols();
+            ambient.append_matrix(generators_);
+            Matrix syzygies = ambient.graded_kernel();
+            while (true) {
+                index_type c = -1, r = -1;
+                for (index_type j = 0; j < syzygies.get_num_cols() && c == -1; ++j)
+                    for (index_type i : syzygies.data[j])
+                        if (i >= relations && Degree_traits<typename Matrix::degree_type>::equals(
+                                syzygies.col_degrees[j], syzygies.row_degrees[i])) {
+                            c = j; r = i; break;
+                        }
+                if (c == -1) break;
+                for (index_type j = 0; j < syzygies.get_num_cols(); ++j)
+                    if (j != c && std::binary_search(syzygies.data[j].begin(), syzygies.data[j].end(), r))
+                        syzygies.col_op(c, j);
+                vec<index_type> row{r}, column{c}, generator{r - relations};
+                syzygies.delete_rows(row);
+                syzygies.delete_columns(column);
+                generators_.delete_columns(generator);
+            }
+            generators_.refresh_compatible_sorted();
+            validate();
+        } else {
+            // Jan: supply Matrix::graded_kernel() to enable this construction.
+            throw std::logic_error("Submodule minimization requires a poset-specific graded_kernel");
         }
-        std::sort(generator_positions.begin(), generator_positions.end());
-        auto nonzero_columns = ambient.column_reduction_graded();
-        nonzero_columns.erase(
-            std::remove_if(nonzero_columns.begin(), nonzero_columns.end(),
-                           [&](index_type column) {
-                               return !std::binary_search(generator_positions.begin(),
-                                                          generator_positions.end(), column);
-                           }),
-            nonzero_columns.end());
-        if (nonzero_columns.empty()) {
-            *this = zero(parent_);
-            return;
-        }
-        ambient.delete_all_but_columns_alt(nonzero_columns);
-        generators_ = std::move(ambient);
-        validate();
     }
 
     Submodule sum(const Submodule& other) const {
@@ -113,18 +123,28 @@ public:
     Submodule intersection(const Submodule& other, bool minimize = true) const {
         if (parent_.get() != other.parent_.get())
             throw std::invalid_argument("Submodule intersection requires the same parent object");
-        Matrix intersection_generators = parent_->presentation().submodule_intersection(
-            generators_, other.generators_);
-        Submodule result(parent_, std::move(intersection_generators));
-        if (minimize) result.minimize_generators();
-        return result;
+        if constexpr (!has_matrix_graded_kernel<Matrix>::value) {
+            // Jan: implement the poset-specific graded kernel.
+            throw std::logic_error("Intersection requires a poset-specific graded_kernel");
+        } else {
+            Matrix intersection_generators = parent_->presentation().submodule_intersection(
+                generators_, other.generators_);
+            Submodule result(parent_, std::move(intersection_generators));
+            if (minimize) result.minimize_generators();
+            return result;
+        }
     }
 
     module_type presented_module(bool minimize = true) const {
-        Matrix presentation = parent_->presentation().submodule_generated_by(generators_);
-        module_type result(std::move(presentation));
-        if (minimize) result.minimize();
-        return result;
+        if constexpr (!has_matrix_graded_kernel<Matrix>::value) {
+            // Jan: implement the poset-specific graded kernel.
+            throw std::logic_error("Submodule presentation requires a poset-specific graded_kernel");
+        } else {
+            Matrix presentation = parent_->presentation().submodule_generated_by(generators_);
+            module_type result(std::move(presentation));
+            if (minimize) result.minimize();
+            return result;
+        }
     }
 
     module_type quotient_module(bool minimize = true) const {
