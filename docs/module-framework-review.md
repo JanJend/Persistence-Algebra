@@ -82,17 +82,26 @@ generators and preserving all ambient row coordinates.
 `Submodule::is_zero()` checks vanishing modulo the parent relations with the
 graded solver, so it is correct even before generator minimization.
 
+`ChainComplex::minimize()` isolates equal-degree units using graded row/column
+operations, transports inverse basis changes into both adjacent maps, and removes
+only contractible summands. It preserves the chain-homotopy type and all homology,
+without assuming exactness or requiring a graded kernel. Empty complexes are a
+no-op. A complete projective resolution is a special case of this operation.
+
 Standard `Module::minimize()` dispatches on the stored projective map count:
 one map means presentation minimization; multiple maps mean
-`ChainComplex::minimize_resolution()`. The latter isolates equal-degree units
-using graded row/column operations, transports inverse basis changes into both
-adjacent maps, and removes the contractible summands. Terminal redundant
-generators are removed by their kernel. The implementation works on a copy and
-checks d*d=0 before and after, committing only on success.
+`Module::minimize_resolution()`. This module method first calls the chain-complex
+minimizer, then removes terminal redundant generators using their graded kernel.
+The additional step preserves the resolved module and exactness below truncation,
+but can change the terminal homology of a truncated resolution. Exactness is the
+caller's guarantee. Both operations work on copies and check d*d=0, committing
+only on success. Explicit `minimize_presentation()` ignores/discards higher maps.
 
-For a truncated resolution this preserves the resolved module and exactness
-below truncation, not necessarily the artificial top homology. Exactness itself
-is trusted. Explicit `minimize_presentation()` ignores/discards higher maps.
+For example, `[x x] : S(-1,0)^2 -> S` is already a minimal chain complex with
+nonzero H1, whereas its presentation of S/(x) has a redundant relation. Chain
+minimization retains both columns; module minimization can delete one. The
+previous `ChainComplex::minimize_resolution` method mixed these contracts and
+has been replaced by this separation, not retained as a misleading alias.
 With both projective and injective representations present, standard minimization
 acts on the projective one.
 

@@ -71,8 +71,14 @@ entire pivot row by column operations before deletion. It then uses the concrete
 graded kernel to remove redundant relations. Ordinary graded column reduction
 alone is insufficient at incomparable grades. `minimize_variant()` performs that
 cheap reduction as a preliminary optimization, then the standard algorithm.
-`semi_minimize()` performs only local pair cancellations. Resolution minimization
-transports basis changes into both adjacent differentials before deleting pairs.
+`semi_minimize()` performs only local pair cancellations.
+
+`ChainComplex::minimize()` only cancels contractible equal-degree pairs, transporting
+basis changes into both adjacent differentials. It preserves every homology module,
+does not assume exactness and needs no graded kernel. `Module::minimize_resolution()`
+first invokes that operation, then minimizes the terminal generating set via its
+kernel. That extra step is valid for a truncated resolution of a module, but can
+change its terminal homology, so it is not part of chain-complex minimization.
 
 ## SCC I/O
 

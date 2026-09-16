@@ -206,6 +206,70 @@ void test_resolution_minimization_and_sorting() {
     rejects([&] { injective.minimize(); });
 }
 
+void test_chain_vs_resolution_minimization() {
+    // [x x] is minimal as a complex, but not as a presentation of S/(x).
+    // Its nonzero H1 is free on (1,1) in degree (1,0).
+    Mat duplicate(2, 1, {{0}, {0}}, {{1,0}, {1,0}}, {{0,0}});
+    ChainComplex<Mat> C({duplicate});
+    C.minimize();
+    assert(C[0].data == duplicate.data && C[0].col_degrees == duplicate.col_degrees);
+    assert(homology_module(C, 1).dimension_at({1,0}) == 1);
+    assert(homology_module(C, 1).dimension_at({0,0}) == 0);
+    Mod presentation(C);
+    presentation.minimize_resolution(); // explicit method also accepts one map
+    assert(presentation.number_of_relations() == 1);
+    assert(presentation.dimension_at({0,0}) == 1 && presentation.dimension_at({1,0}) == 0);
+
+    // A truncated resolution of the square interval with duplicate top syzygies.
+    // It is exact at F1, but H2 is free in degree (1,1).
+    Mat square(2, 1, {{0}, {0}}, {{0,1}, {1,0}}, {{0,0}});
+    Mat syzygies(2, 2, {{0,1}, {0,1}}, {{1,1}, {1,1}}, square.col_degrees);
+    ChainComplex<Mat> truncated({square, syzygies});
+    truncated.minimize();
+    assert(truncated[1].data == syzygies.data);
+    assert(homology_module(truncated, 2).dimension_at({1,1}) == 1);
+    Mod M(truncated);
+    M.minimize(); // dispatches to module resolution minimization
+    assert(M.projective_resolution().size() == 2);
+    assert(M.projective_resolution()[1].data == array<int>({{0,1}}));
+    assert(M.projective_resolution().squares_to_zero());
+    assert(homology_module(M.projective_resolution(), 2).dimension_at({1,1}) == 0);
+    assert(M.dimension_at({0,0}) == 1 && M.dimension_at({1,0}) == 0);
+
+    // Completing the resolution exposes a contractible pair: ordinary chain
+    // minimization then removes both a duplicate syzygy and its dependency.
+    Mat dependency(1, 2, {{0,1}}, {{1,1}}, syzygies.col_degrees);
+    ChainComplex<Mat> complete({square, syzygies, dependency});
+    complete.minimize();
+    assert(complete[1].data == array<int>({{0,1}}));
+    assert(complete[2].get_num_cols() == 0 && complete.squares_to_zero());
+
+    // A zero differential is homology, not a contractible summand. The R4
+    // example also proves that chain minimization needs no graded_kernel.
+    using Higher = R4GradedSparseMatrix<int>;
+    Higher local(2, 2, {{0}, {}}, {r4degree(0,0,0,0), r4degree(1,1,1,1)},
+                                {r4degree(0,0,0,0), r4degree(0,0,0,0)});
+    ChainComplex<Higher> general({local});
+    general.minimize();
+    assert(general[0].get_num_rows() == 1 && general[0].data == array<int>({{}}));
+    assert(general[0].col_degrees == vec<r4degree>({r4degree(1,1,1,1)}));
+    Module<Higher> unsupported(ChainComplex<Higher>({local}));
+    rejects([&] { unsupported.minimize_resolution(); });
+    assert(unsupported.presentation().data == local.data); // strong exception guarantee
+
+    ChainComplex<Mat> empty;
+    empty.minimize();
+    assert(empty.empty());
+    Mat unit(1, 1, {{0}}, {{0,0}}, {{0,0}});
+    ChainComplex<Mat> invalid({unit, unit});
+    rejects([&] { invalid.minimize(); });
+    assert(invalid[0].data == unit.data && invalid[1].data == unit.data);
+    duplicate.col_degrees = {{2,0}, {1,0}};
+    ChainComplex<Mat> unsorted({duplicate});
+    rejects([&] { unsorted.minimize(false); });
+    assert(unsorted[0].col_degrees == duplicate.col_degrees);
+}
+
 void test_scc() {
     std::stringstream zero("scc2020\n2\n0 0 0\n");
     Mod Z(zero);
@@ -227,5 +291,6 @@ int main() {
     test_homomorphisms();
     test_kernel_minimization();
     test_resolution_minimization_and_sorting();
+    test_chain_vs_resolution_minimization();
     test_scc();
 }

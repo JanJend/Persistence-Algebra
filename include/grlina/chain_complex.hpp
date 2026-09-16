@@ -228,17 +228,17 @@ public:
         validate_structure();
     }
 
-    /** Minimize a supplied (possibly truncated) projective resolution.
-     * Exactness is the caller's guarantee. Unit cancellation transports every
-     * basis operation to both neighbors. The terminal map is then minimized
-     * as a generating set of the last syzygy module.
+    /** Remove contractible equal-degree pairs, preserving chain-homotopy type.
+     * No exactness assumption or graded kernel is needed. Every basis change
+     * is transported to both neighbors. In particular, terminal cycles are
+     * retained: deleting redundant terminal generators can change homology.
      */
-    void minimize_resolution(bool sort_if_needed = true) {
-        if (empty()) throw std::logic_error("No resolution to minimize");
+    void minimize(bool sort_if_needed = true) {
+        if (empty()) return;
         ChainComplex working = *this;
         if (sort_if_needed) working.sort_compatibly();
-        for (auto& d : working.differentials_) d.require_compatibly_sorted("minimize_resolution");
-        if (!working.squares_to_zero()) throw std::invalid_argument("Resolution does not square to zero");
+        for (auto& d : working.differentials_) d.require_compatibly_sorted("ChainComplex::minimize");
+        if (!working.squares_to_zero()) throw std::invalid_argument("Chain complex does not square to zero");
         auto& maps = working.differentials_;
         for (std::size_t level = 0; level < maps.size(); ++level) {
             auto& d = maps[level];
@@ -270,9 +270,8 @@ public:
                 if (level + 1 < maps.size()) maps[level + 1].delete_rows(columns);
             }
         }
-        if (maps.back().get_num_cols() != 0) maps.back().remove_redundant_relations();
         for (auto& d : maps) d.invalidate_cached_rows();
-        if (!working.squares_to_zero()) throw std::logic_error("Resolution cancellation broke d*d=0");
+        if (!working.squares_to_zero()) throw std::logic_error("Chain cancellation broke d*d=0");
         *this = std::move(working);
     }
 

@@ -137,8 +137,26 @@ public:
         }
         require_presentation();
         if (projective_resolution_.size() > 1)
-            projective_resolution_.minimize_resolution(sort_if_needed);
+            minimize_resolution(sort_if_needed);
         else minimize_presentation(sort_if_needed);
+    }
+
+    /** Minimize the stored projective resolution, which may be truncated.
+     * Exactness below the truncation is the caller's guarantee. After chain
+     * cancellation, minimize the terminal map's generating set via its kernel.
+     * This extra step preserves the resolved module, but may change terminal
+     * homology of a truncation; it does not belong to ChainComplex::minimize.
+     * Keep the original resolution intact if either step fails.
+     */
+    void minimize_resolution(bool sort_if_needed = true) {
+        require_presentation();
+        chain_complex_type working = projective_resolution_;
+        working.minimize(sort_if_needed);
+        auto& terminal = working[working.size() - 1];
+        if (terminal.get_num_cols() != 0) terminal.remove_redundant_relations();
+        if (!working.squares_to_zero())
+            throw std::logic_error("Resolution minimization broke d*d=0");
+        projective_resolution_ = std::move(working);
     }
 
     /** Explicit presentation-only operation; discard higher projective maps. */
