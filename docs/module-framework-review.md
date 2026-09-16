@@ -105,6 +105,32 @@ has been replaced by this separation, not retained as a misleading alias.
 With both projective and injective representations present, standard minimization
 acts on the projective one.
 
+### Euler Hilbert-query follow-up
+
+`module.hpp` now tracks completeness separately from the presence of resolution
+maps. Supplied resolutions default to truncated/unknown unless explicitly marked
+`ResolutionCompleteness::complete` (or terminated by a zero free group). Exactness
+and an explicit completeness assertion remain the caller's guarantees. This is
+essential: duplicate terminal syzygies can make the Euler sum of a truncation
+incorrect even though the represented module is unchanged.
+
+`compute_projective_resolution()` extends the stored maps without rebasing them
+and computes kernels until the terminal map is injective. It then records
+completeness. `dimension_at()` uses signed chain-group counts for complete
+resolutions and local presentation evaluation otherwise. `hilbert_euler.hpp`
+contains the degree-only routines: generic point evaluation, incremental R2
+query sweeps, and R2 Cartesian-grid prefix sums. Full-grid queries compute a
+resolution by default when the concrete matrix offers a graded kernel. Mutable
+queries retain it; const queries use a private copy. Without a kernel they retain
+the local-evaluation fallback. No new SCC metadata or injective convention is assumed.
+
+`tests/module_hilbert_test.cpp` checks square-interval dimensions on induced,
+non-induced and 100-by-100 grids, duplicates and unordered point lists, a
+three-map completion with a nonzero F3 contribution, empty/free modules,
+completeness invalidation, const queries, explicit R4 completeness and the
+no-kernel fallback. Instrumented CRTP matrices count calls and prohibit local
+evaluation on Euler paths, proving that the optimization is actually selected.
+
 ## 4. Categorical operations
 
 `module_operations.hpp` returns objects together with their canonical maps:

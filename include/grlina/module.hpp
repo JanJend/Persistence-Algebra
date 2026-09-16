@@ -10,11 +10,13 @@
 #include <vector>
 
 #include <grlina/chain_complex.hpp>
+#include <grlina/hilbert_euler.hpp>
 #include <grlina/r2graded_matrix.hpp>
 
 namespace graded_linalg {
 
 enum class ResolutionKind { projective, injective };
+enum class ResolutionCompleteness { truncated, complete };
 
 template <typename Matrix>
 class Module {
@@ -38,10 +40,25 @@ public:
 private:
     chain_complex_type projective_resolution_;
     chain_complex_type injective_resolution_;
+    bool projective_resolution_complete_ = false;
 
     void require_presentation() const {
         if (projective_resolution_.empty())
             throw std::logic_error("This module has no projective presentation");
+    }
+
+    void ensure_resolution_for_hilbert_grid() {
+        if constexpr (has_matrix_graded_kernel<Matrix>::value)
+            if (!has_complete_projective_resolution()) compute_projective_resolution();
+    }
+
+    static void validate_hilbert_axes(const vec<double>& xs, const vec<double>& ys) {
+        for (const auto* axis : {&xs, &ys}) {
+            if (!std::is_sorted(axis->begin(), axis->end()) ||
+                std::adjacent_find(axis->begin(), axis->end()) != axis->end() ||
+                std::any_of(axis->begin(), axis->end(), [](double x) { return x != x; }))
+                throw std::invalid_argument("Hilbert grid axes must be sorted and unique, without NaN");
+        }
     }
 
 public:
@@ -49,9 +66,13 @@ public:
     explicit Module(Matrix presentation)
         : projective_resolution_(std::vector<Matrix>{std::move(presentation)}) {}
     explicit Module(chain_complex_type resolution,
-                               ResolutionKind kind = ResolutionKind::projective) {
+                    ResolutionKind kind = ResolutionKind::projective,
+                    ResolutionCompleteness completeness = ResolutionCompleteness::truncated) {
         resolution.validate_structure();
-        if (kind == ResolutionKind::projective) projective_resolution_ = std::move(resolution);
+        if (kind == ResolutionKind::projective) {
+            projective_resolution_ = std::move(resolution);
+            projective_resolution_complete_ = completeness == ResolutionCompleteness::complete;
+        }
         else injective_resolution_ = std::move(resolution);
     }
     Module(chain_complex_type projective, chain_complex_type injective)
@@ -67,8 +88,9 @@ public:
     static Module from_presentation(Matrix presentation) {
         return Module(std::move(presentation));
     }
-    static Module from_projective_resolution(chain_complex_type resolution) {
-        return Module(std::move(resolution), ResolutionKind::projective);
+    static Module from_projective_resolution(chain_complex_type resolution,
+        ResolutionCompleteness completeness = ResolutionCompleteness::truncated) {
+        return Module(std::move(resolution), ResolutionKind::projective, completeness);
     }
     static Module from_injective_resolution(chain_complex_type resolution) {
         return Module(std::move(resolution), ResolutionKind::injective);
@@ -77,18 +99,37 @@ public:
     bool has_projective_resolution() const noexcept { return !projective_resolution_.empty(); }
     bool has_injective_resolution() const noexcept { return !injective_resolution_.empty(); }
     bool has_presentation() const noexcept { return has_projective_resolution(); }
+    /** A nonempty sequence alone is not evidence of completeness. An explicit
+     * zero terminal group certifies the endpoint, assuming supplied exactness.
+     */
+    bool has_complete_projective_resolution() const noexcept {
+        return has_projective_resolution() && (projective_resolution_complete_ ||
+            projective_resolution_[projective_resolution_.size() - 1].get_num_cols() == 0);
+    }
+    /** Trust the caller's guarantee, just as for exactness of supplied resolutions.
+     * SCC has no completeness marker; call this after loading a known full resolution.
+     */
+    void set_projective_resolution_completeness(ResolutionCompleteness completeness) {
+        require_presentation();
+        projective_resolution_complete_ = completeness == ResolutionCompleteness::complete;
+    }
     const chain_complex_type& projective_resolution() const noexcept { return projective_resolution_; }
     const chain_complex_type& injective_resolution() const noexcept { return injective_resolution_; }
 
-    void set_projective_resolution(chain_complex_type resolution) {
+    void set_projective_resolution(chain_complex_type resolution,
+        ResolutionCompleteness completeness = ResolutionCompleteness::truncated) {
         resolution.validate_structure();
         projective_resolution_ = std::move(resolution);
+        projective_resolution_complete_ = completeness == ResolutionCompleteness::complete;
     }
     void set_injective_resolution(chain_complex_type resolution) {
         resolution.validate_structure();
         injective_resolution_ = std::move(resolution);
     }
-    void clear_projective_resolution() noexcept { projective_resolution_.clear(); }
+    void clear_projective_resolution() noexcept {
+        projective_resolution_.clear();
+        projective_resolution_complete_ = false;
+    }
     void clear_injective_resolution() noexcept { injective_resolution_.clear(); }
 
     const Matrix& presentation() const { require_presentation(); return projective_resolution_[0]; }
@@ -96,6 +137,7 @@ public:
     /** Arbitrary edits invalidate higher projective maps and the injective model. */
     Matrix& mutable_presentation() {
         require_presentation();
+        projective_resolution_complete_ = false;
         if (projective_resolution_.size() > 1) {
             Matrix d1 = projective_resolution_[0];
             projective_resolution_ = chain_complex_type(std::vector<Matrix>{std::move(d1)});
@@ -161,10 +203,13 @@ public:
 
     /** Explicit presentation-only operation; discard higher projective maps. */
     void minimize_presentation(bool sort_if_needed = true) {
+        const bool was_complete_presentation = projective_resolution_.size() == 1 &&
+            has_complete_projective_resolution();
         Matrix minimized = presentation();
         if (sort_if_needed) minimized.sort_compatibly();
         minimized.minimize();
         projective_resolution_ = chain_complex_type(std::vector<Matrix>{std::move(minimized)});
+        projective_resolution_complete_ = was_complete_presentation;
     }
 
     void minimize_injective_resolution(bool /*sort_if_needed*/ = true) {
@@ -173,28 +218,48 @@ public:
         throw std::logic_error("Injective-resolution minimization is not implemented");
     }
 
-    /** Compute d2 where Matrix has a graded-kernel implementation returning Matrix. */
+    /** Complete the stored (possibly truncated) resolution, preserving existing
+     * bases. Repeated kernels stop at an injective terminal map. This requires
+     * a terminating graded-kernel implementation (currently supplied for R2).
+     */
     void compute_projective_resolution() {
         require_presentation();
+        if (has_complete_projective_resolution()) return;
         if constexpr (has_matrix_graded_kernel<Matrix>::value) {
-            Matrix d1 = presentation();
-            d1.sort_compatibly();
-            Matrix kernel_source = d1; // graded_kernel is destructive
-            Matrix d2 = kernel_source.graded_kernel();
-            projective_resolution_ = chain_complex_type(
-                std::vector<Matrix>{std::move(d1), std::move(d2)});
+            chain_complex_type working = projective_resolution_;
+            if (!working.squares_to_zero()) throw std::invalid_argument("Resolution does not square to zero");
+            while (true) {
+                Matrix source = working[working.size() - 1]; // kernel computation is destructive
+                Matrix kernel = source.graded_kernel();
+                const bool terminal = kernel.get_num_cols() == 0;
+                // Preserve the established d1,d2 shape for a presentation,
+                // even when d2 has zero columns. No further zero maps are needed.
+                if (!terminal || working.size() == 1) working.push_differential(std::move(kernel));
+                if (terminal) break;
+            }
+            projective_resolution_ = std::move(working);
+            projective_resolution_complete_ = true;
         } else {
             throw std::logic_error("This graded matrix type does not implement a graded kernel");
         }
     }
 
     index_type dimension_at(const degree_type& degree) const {
+        if (has_complete_projective_resolution())
+            return detail::euler_dimension_at(projective_resolution_, degree);
         auto local = presentation().map_at_degree_pair(degree, true).first;
         return static_cast<index_type>(local.coKernel_basis().size());
     }
     std::vector<HilbertValue> hilbert_function(const std::vector<degree_type>& locations) const {
         std::vector<HilbertValue> result;
         result.reserve(locations.size());
+        if constexpr (std::is_same_v<degree_type, r2degree>) {
+            if (has_complete_projective_resolution()) {
+                const auto dimensions = detail::euler_queries_r2(projective_resolution_, locations);
+                for (std::size_t i = 0; i < locations.size(); ++i) result.push_back({locations[i], dimensions[i]});
+                return result;
+            }
+        }
         for (const auto& degree : locations) result.push_back({degree, dimension_at(degree)});
         return result;
     }
@@ -211,19 +276,59 @@ public:
         return hilbert_function(support_degrees());
     }
 
-    /** Hilbert function on the full induced Cartesian grid for R^2 modules. */
+    /** Mutable grid queries retain a computed complete resolution for reuse.
+     * Const queries compute on a private copy if needed, leaving shared modules
+     * and references to their stored bases unchanged.
+     */
+    R2HilbertGrid hilbert_function_on_induced_grid() {
+        ensure_resolution_for_hilbert_grid();
+        return std::as_const(*this).hilbert_function_on_induced_grid();
+    }
+
+    /** Hilbert function on the full presentation-induced Cartesian grid. */
     R2HilbertGrid hilbert_function_on_induced_grid() const {
         static_assert(std::is_same<degree_type, r2degree>::value,
                       "This helper is only available for R2 modules");
-        R2HilbertGrid result;
+        vec<double> xs, ys;
         for (const auto& degree : support_degrees()) {
-            result.x_grid.push_back(degree.first);
-            result.y_grid.push_back(degree.second);
+            xs.push_back(degree.first);
+            ys.push_back(degree.second);
         }
-        std::sort(result.x_grid.begin(), result.x_grid.end());
-        result.x_grid.erase(std::unique(result.x_grid.begin(), result.x_grid.end()), result.x_grid.end());
-        std::sort(result.y_grid.begin(), result.y_grid.end());
-        result.y_grid.erase(std::unique(result.y_grid.begin(), result.y_grid.end()), result.y_grid.end());
+        std::sort(xs.begin(), xs.end());
+        xs.erase(std::unique(xs.begin(), xs.end()), xs.end());
+        std::sort(ys.begin(), ys.end());
+        ys.erase(std::unique(ys.begin(), ys.end()), ys.end());
+        return hilbert_function_on_grid(xs, ys);
+    }
+
+    /** Query sorted, unique Cartesian axes, which need not contain all births. */
+    R2HilbertGrid hilbert_function_on_grid(const vec<double>& xs, const vec<double>& ys) {
+        validate_hilbert_axes(xs, ys);
+        ensure_resolution_for_hilbert_grid();
+        return std::as_const(*this).hilbert_function_on_grid(xs, ys);
+    }
+
+    R2HilbertGrid hilbert_function_on_grid(const vec<double>& xs, const vec<double>& ys) const {
+        static_assert(std::is_same_v<degree_type, r2degree>, "This grid helper is only available for R2 modules");
+        require_presentation();
+        validate_hilbert_axes(xs, ys);
+        if constexpr (has_matrix_graded_kernel<Matrix>::value) {
+            if (!has_complete_projective_resolution()) {
+                Module working = *this;
+                working.compute_projective_resolution();
+                return std::as_const(working).hilbert_function_on_grid(xs, ys);
+            }
+        }
+        R2HilbertGrid result;
+        result.x_grid = xs;
+        result.y_grid = ys;
+        if (has_complete_projective_resolution()) {
+            result.values = detail::euler_grid_r2(projective_resolution_, xs, ys);
+            for (const auto& row : result.values)
+                for (auto value : row) result.maximum = std::max(result.maximum, value);
+            return result;
+        }
+        // No graded kernel is available: retain the local-presentation path.
         result.values.assign(result.x_grid.size(), vec<index_type>(result.y_grid.size(), 0));
         for (std::size_t x = 0; x < result.x_grid.size(); ++x) {
             for (std::size_t y = 0; y < result.y_grid.size(); ++y) {

@@ -48,8 +48,10 @@ as requested, but still validates structural compatibility. Calling
 `mutable_presentation()` discards higher projective differentials first, because
 an arbitrary edit would make them stale. `minimize_presentation()` also discards
 higher projective maps; standard `minimize()` instead minimizes the stored
-resolution when it has multiple maps. `compute_projective_resolution()` computes `d2` for matrix types
-whose `graded_kernel()` returns that same matrix type. A uniform `shift()` is
+resolution when it has multiple maps. `compute_projective_resolution()` completes
+the stored sequence by repeated kernels until the terminal map is injective,
+for matrix types whose `graded_kernel()` returns that same matrix type. Existing
+bases are preserved. A uniform `shift()` is
 applied to every stored projective and injective differential and therefore
 preserves the resolutions.
 
@@ -79,6 +81,38 @@ does not assume exactness and needs no graded kernel. `Module::minimize_resoluti
 first invokes that operation, then minimizes the terminal generating set via its
 kernel. That extra step is valid for a truncated resolution of a module, but can
 change its terminal homology, so it is not part of chain-complex minimization.
+
+## Euler-characteristic Hilbert queries
+
+`dimension_at` uses the alternating sum of free chain-group generators born at
+or below the queried degree when `has_complete_projective_resolution()` is true.
+Otherwise a point query retains the local-presentation method and does not
+compute a resolution just for that point.
+
+Completeness is distinct from merely storing several differentials. Use
+`ResolutionCompleteness::complete` when supplying a known full projective
+resolution, or `set_projective_resolution_completeness` after reading one.
+The guarantee is trusted, like exactness. Unmarked sequences are treated as
+truncated unless their terminal free group is explicitly zero. SCC itself has
+no completeness marker. Computed resolutions are marked complete; presentation
+edits/replacement invalidate the guarantee. Sorting, shifts and full-resolution
+minimization preserve it.
+
+R2 `hilbert_function_on_induced_grid()` and `hilbert_function_on_grid(xs, ys)`
+automatically complete a missing/truncated resolution when a graded kernel is
+available, then use a signed birth histogram and two-dimensional prefix sums.
+The axes of an explicit grid must be sorted and unique. For B total free
+summands and an X-by-Y grid this takes O(B(log X + log Y) + XY), excluding the
+one-time resolution computation. Arbitrary R2 location lists use an incremental
+x-sweep and y-prefix counts when the resolution is complete; output order and
+repeated locations are preserved. Generic point queries use the poset comparison.
+
+Mutable grid queries retain the computed resolution for reuse. Const grid queries
+compute on a private copy, so querying a shared const module does not invalidate
+references to its bases. Without a graded kernel, incomplete modules fall back to
+local presentation evaluations. A supplied complete resolution still enables Euler
+queries even when that matrix type cannot compute its own kernel. Cartesian-grid
+helpers remain R2-specific; generic point/list queries work with other degree traits.
 
 ## SCC I/O
 

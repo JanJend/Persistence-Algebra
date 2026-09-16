@@ -105,6 +105,9 @@ install(TARGETS shift_endo cut_module hom minimize pres_to_quiver resolution sna
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(module_hilbert_test tests/module_hilbert_test.cpp)
+    target_link_libraries(module_hilbert_test ${Boost_LIBRARIES})
+    add_test(NAME module_hilbert_test COMMAND module_hilbert_test)
     add_executable(module_operations_test tests/module_operations_test.cpp)
     target_link_libraries(module_operations_test ${Boost_LIBRARIES})
     add_test(NAME module_operations_test COMMAND module_operations_test)
@@ -141,7 +144,7 @@ if(BUILD_TESTING)
         set_tests_properties(${_legacy_test} PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     endforeach()
     # These tests use assert; keep checks active in Release builds as well.
-    foreach(_test module_operations_test module_framework_test cli_programs_test
+    foreach(_test module_hilbert_test module_operations_test module_framework_test cli_programs_test
                   dense_matrix_test sparse_matrix_test graded_matrix_test hom_space_test)
         if(MSVC)
             target_compile_options(${_test} PRIVATE /UNDEBUG)
