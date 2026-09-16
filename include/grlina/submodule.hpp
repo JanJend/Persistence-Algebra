@@ -77,13 +77,57 @@ public:
         return Submodule(std::move(parent), std::move(identity));
     }
 
-    /** Minimize generators modulo the parent's relations using graded syzygies. */
-    void minimize_generators() {
+    /** Cheap reduction modulo the supplied parent relations, without a kernel.
+     * Only matching pivots are considered, and a relation is added only when
+     * its degree is <= the generator degree. The pivot strictly decreases.
+     * Parent relations are neither reduced nor changed; dependencies requiring
+     * combinations of their nonmatching pivots may therefore be missed.
+     * No degree sorting is required: every operation checks admissibility and
+     * ambient rows stay fixed. Remove zero generators in one batch at the end.
+     */
+    void reduce_generators_lazy() {
+        validate();
+        const Matrix& presentation = parent_->presentation();
+        presentation.validate();
+        array<index_type> relations_by_pivot(presentation.get_num_rows());
+        for (index_type j = 0; j < presentation.get_num_cols(); ++j) {
+            const auto pivot = presentation.col_last(j);
+            if (pivot != -1) relations_by_pivot[pivot].push_back(j);
+        }
+        generators_.invalidate_cached_rows();
+        vec<index_type> zero_generators;
+        for (index_type g = 0; g < generators_.get_num_cols(); ++g) {
+            auto pivot = generators_.col_last(g);
+            while (pivot != -1) {
+                index_type reducer = -1;
+                for (auto relation : relations_by_pivot[pivot])
+                    if (Degree_traits<typename Matrix::degree_type>::smaller_equal(
+                            presentation.col_degrees[relation], generators_.col_degrees[g])) {
+                        reducer = relation;
+                        break;
+                    }
+                if (reducer == -1) break;
+                generators_.add_to_col(g, presentation.data[reducer]);
+                pivot = generators_.col_last(g);
+            }
+            if (pivot == -1) zero_generators.push_back(g);
+        }
+        if (!zero_generators.empty()) generators_.delete_columns(zero_generators);
+        if (!generators_.compatible_sorting_is_verified()) generators_.refresh_compatible_sorted();
+    }
+
+    /** Exact minimization modulo the parent relations, with optional cheap
+     * preprocessing (enabled by default). Pass false to use syzygies directly.
+     */
+    void minimize_generators(bool lazy_preprocessing = true) {
         if constexpr (has_matrix_graded_kernel<Matrix>::value) {
+            if (lazy_preprocessing) reduce_generators_lazy();
+            if (generators_.get_num_cols() == 0) return;
             Matrix ambient = parent_->presentation();
             const index_type relations = ambient.get_num_cols();
             ambient.append_matrix(generators_);
             Matrix syzygies = ambient.graded_kernel();
+            vec<index_type> redundant_generators;
             while (true) {
                 index_type c = -1, r = -1;
                 for (index_type j = 0; j < syzygies.get_num_cols() && c == -1; ++j)
@@ -96,12 +140,16 @@ public:
                 for (index_type j = 0; j < syzygies.get_num_cols(); ++j)
                     if (j != c && std::binary_search(syzygies.data[j].begin(), syzygies.data[j].end(), r))
                         syzygies.col_op(c, j);
-                vec<index_type> row{r}, column{c}, generator{r - relations};
-                syzygies.delete_rows(row);
-                syzygies.delete_columns(column);
-                generators_.delete_columns(generator);
+                // Row r is now zero in every other syzygy. Clearing column c
+                // removes its dependency without shifting any indices. Row r
+                // can never reappear under later column additions, so physical
+                // syzygy row/column deletion is unnecessary.
+                syzygies.data[c].clear();
+                redundant_generators.push_back(r - relations);
             }
-            generators_.refresh_compatible_sorted();
+            std::sort(redundant_generators.begin(), redundant_generators.end());
+            if (!redundant_generators.empty()) generators_.delete_columns(redundant_generators);
+            if (!generators_.compatible_sorting_is_verified()) generators_.refresh_compatible_sorted();
             validate();
         } else {
             // Jan: supply Matrix::graded_kernel() to enable this construction.

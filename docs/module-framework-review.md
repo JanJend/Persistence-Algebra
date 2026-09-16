@@ -82,6 +82,33 @@ generators and preserving all ambient row coordinates.
 `Submodule::is_zero()` checks vanishing modulo the parent relations with the
 graded solver, so it is correct even before generator minimization.
 
+Submodule reduction now has `reduce_generators_lazy()`, using only the parent's
+existing relation columns at matching pivots and checking degree admissibility
+at every addition. It never rebases ambient rows or modifies the parent. Multiple
+relations can share a pivot; an inadmissible first candidate does not prevent
+trying another. This works without a graded kernel and does not require sorted
+degrees, since admissibility is checked directly. It intentionally misses
+dependencies that require first forming combinations of parent relations.
+`minimize_generators(bool lazy_preprocessing = true)` uses it by default to reduce
+the kernel input; passing false selects the direct exact method.
+
+The repeated syzygy row/column deletions have been replaced with deferred
+elimination. For A=[P S], a syzygy q with an equal-degree unit in generator row r
+expresses that generator using the others modulo P. Adding q to each other
+syzygy containing r clears that coordinate. We can then clear q's column and
+leave row r as an unused zero row: subsequent additions cannot reintroduce it.
+Original indices stay fixed throughout. Only the selected columns of S are
+physically removed, in a single final batch; the temporary syzygy matrix is
+discarded after the loop. This is dependency bookkeeping, not an assertion that
+arbitrary row/column deletions preserve a chain complex's homology.
+
+`tests/submodule_reduction_test.cpp` checks pivot cascades, inadmissible and
+incomparable relation degrees, several relations sharing a pivot, fixed unsorted
+ambient coordinates, no-kernel R4 preprocessing, a dependency deliberately missed
+by lazy reduction, and preprocessing on/off. Instrumented matrices verify smaller
+kernel inputs, skipping the kernel for an empty result, and one final compaction
+for 127 exact eliminations with no syzygy row deletions.
+
 `ChainComplex::minimize()` isolates equal-degree units using graded row/column
 operations, transports inverse basis changes into both adjacent maps, and removes
 only contractible summands. It preserves the chain-homotopy type and all homology,

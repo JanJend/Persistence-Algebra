@@ -75,6 +75,23 @@ alone is insufficient at incomparable grades. `minimize_variant()` performs that
 cheap reduction as a preliminary optimization, then the standard algorithm.
 `semi_minimize()` performs only local pair cancellations.
 
+`Submodule::reduce_generators_lazy()` is a kernel-free preprocessing operation:
+look up parent relations with the same pivot as a generator, add one only if
+its degree is <= the generator degree, and continue while the pivot decreases.
+Zero generators are removed together at the end. It changes representatives
+modulo parent relations but neither the submodule nor its ambient row basis.
+It does not reduce the parent relations or combine submodule generators with
+one another, and it need not detect all redundant generators. No degree sorting
+is required because every column addition explicitly checks admissibility.
+
+`Submodule::minimize_generators()` runs this cheap pass by default before the
+exact syzygy computation; `minimize_generators(false)` disables it. During exact
+elimination, a pivot generator row is cleared in all other syzygies and its pivot
+syzygy column is cleared. The now-unused row remains in place, so indices stay
+fixed and no syzygy row/column compaction is needed. Redundant generator columns
+are removed in one final batch. If preprocessing leaves no generators, the kernel
+computation is skipped entirely.
+
 `ChainComplex::minimize()` only cancels contractible equal-degree pairs, transporting
 basis changes into both adjacent differentials. It preserves every homology module,
 does not assume exactness and needs no graded kernel. `Module::minimize_resolution()`
