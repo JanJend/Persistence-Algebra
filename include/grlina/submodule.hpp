@@ -113,7 +113,7 @@ public:
     /** Every supplied vector must vanish modulo the parent's relations. */
     bool is_zero() const {
         return generator_matrix().get_num_cols() == 0 ||
-            solve_graded_linear_system(parent()->presentation(), generator_matrix()).has_value();
+            graded_linear_system_is_solvable(parent()->presentation(), generator_matrix());
     }
 
     static Submodule zero(std::shared_ptr<const module_type> parent) {
@@ -226,7 +226,7 @@ public:
             throw std::invalid_argument("Submodule containment requires the same parent object");
         Matrix spanning = parent()->presentation();
         spanning.append_matrix(generator_matrix());
-        return solve_graded_linear_system(spanning, other.generator_matrix()).has_value();
+        return graded_linear_system_is_solvable(spanning, other.generator_matrix());
     }
 
     bool is_contained_in(const Submodule& other) const { return other.contains(*this); }

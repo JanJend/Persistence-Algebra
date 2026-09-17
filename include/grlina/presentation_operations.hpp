@@ -12,7 +12,7 @@ namespace graded_linalg {
  */
 template <typename Matrix>
 bool image_contained_in_image(const Matrix& contained, const Matrix& containing) {
-    return solve_graded_linear_system(containing, contained).has_value();
+    return graded_linear_system_is_solvable(containing, contained);
 }
 
 template <typename Matrix>
