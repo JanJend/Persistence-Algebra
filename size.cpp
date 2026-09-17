@@ -81,8 +81,8 @@ void get_size_decomp(std::filesystem::path input_path) {
             // Reset to position before header and let constructor handle parsing
             input_file.seekg(pos_before_header);
             
-            R2GradedSparseMatrix<int> minimal_presentation(input_file);
-            std::cout << minimal_presentation.num_of_entries() << std::endl;
+            R2Module<int> module(input_file);
+            std::cout << module.number_of_entries() << std::endl;
             processed_sections++;
             
         } catch (const std::exception& e) {
@@ -114,8 +114,8 @@ void get_size_decomp(std::filesystem::path input_path) {
 
 void get_size(std::filesystem::path input_path) {
     
-    R2GradedSparseMatrix<int> minimal_presentation = R2GradedSparseMatrix<int>(input_path.string());
-    std::cout << minimal_presentation.num_of_entries() << std::endl;
+    R2Module<int> module(input_path.string());
+    std::cout << module.number_of_entries() << std::endl;
 }
 
 

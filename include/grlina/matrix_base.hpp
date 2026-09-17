@@ -15,6 +15,7 @@
 
 
 #pragma once
+#include <grlina/checks.hpp>
 
 
 #ifndef MATRIX_BASE_HPP
@@ -141,7 +142,7 @@ class MatrixUtil{
     MatrixUtil(const MatrixUtil& other) : data(other.data), num_cols(other.num_cols), num_rows(other.num_rows), pivots(other.pivots) {}
 
     MatrixUtil(index m, index n, vec<COLUMN> d) : num_cols(m), num_rows(n), data(d) {
-        assert(m == d.size());
+        GRLINA_ASSERT(m == d.size());
     }
 
 
@@ -186,7 +187,7 @@ class MatrixUtil{
     MatrixUtil(index m, index n, const std::string& type, const index percent = -1) : num_cols(m), num_rows(n), data(vec<COLUMN>()) {
         data.reserve(m);
         if (type == "Identity") {
-            assert(m == n);
+            GRLINA_ASSERT(m == n);
             for(index i = 0; i < m; i++) {
                 this->data.emplace_back( CT::get_standard_vector(i, n) );
             }
@@ -251,8 +252,8 @@ class MatrixUtil{
     void cull_columns(const index& threshold, bool from_end = true){};
 
     void delete_columns(const index& threshold, bool from_end = true){
-        assert(threshold <= this->get_num_cols());
-        assert(threshold >= 0);
+        GRLINA_ASSERT(threshold <= this->get_num_cols());
+        GRLINA_ASSERT(threshold >= 0);
 
         if(from_end){
             data.erase(data.end() - threshold, data.end());
@@ -334,7 +335,7 @@ class MatrixUtil{
         if(data.size() != num_cols){
             std::cout << "Data size: " << data.size() << " num_cols: " << num_cols << std::endl;
         }
-        assert(data.size() == num_cols);
+        GRLINA_ASSERT(data.size() == num_cols);
         
         if(!suppress_description){
             std::cout << "Cols: " << num_cols << " rows: " << num_rows << std::endl;
@@ -475,7 +476,7 @@ class MatrixUtil{
                     index i = pivots[p];
                     col_op(i, j);
                     auto new_p = col_last(j);
-                    assert( new_p < p);
+                    GRLINA_ASSERT( new_p < p);
                     p = new_p;
                 } else {
                     pivots[p]=j;
@@ -508,7 +509,7 @@ class MatrixUtil{
                     index i = pivots[p];
                     col_op(i, j);
                     auto new_p = col_last(j);
-                    assert( new_p < p);
+                    GRLINA_ASSERT( new_p < p);
                     p = new_p;
                 } else {
                     pivots[p]=j;
@@ -533,8 +534,8 @@ class MatrixUtil{
      * @param delete_zero_columns If set to true, columns with only zero entries will be deleted.
      */
     void column_reduction_triangular(bitset& support, bitset& zero_cols) {
-        assert(support.size() == this->num_cols);
-        assert(zero_cols.size() == this->num_cols);
+        GRLINA_ASSERT(support.size() == this->num_cols);
+        GRLINA_ASSERT(zero_cols.size() == this->num_cols);
         pivots.clear();
         for(index j = support.find_first(); j < this->num_cols; j = support.find_next(j)) {
             index p = col_last(j);
@@ -543,7 +544,7 @@ class MatrixUtil{
                     index i = pivots[p];
                     col_op(i, j);
                     auto new_p = col_last(j);
-                    assert( new_p < p);
+                    GRLINA_ASSERT( new_p < p);
                     p = new_p;
                 } else {
                     pivots[p]=j;
@@ -612,7 +613,7 @@ class MatrixUtil{
                     col_op(i, j);
                     performed_ops.col_op(i, j);
                     auto new_p = col_last(j);
-                    assert( new_p < p);
+                    GRLINA_ASSERT( new_p < p);
                     p = new_p;
                 } else {
                     pivots[p]=j;
@@ -637,7 +638,7 @@ class MatrixUtil{
                     col_op(i, j);
                     performed_ops.col_op(i, j);
                     auto new_p = col_last(j);
-                    assert( new_p < p);
+                    GRLINA_ASSERT( new_p < p);
                     p = new_p;
                 } else {
                     pivots[p]=j;
@@ -713,7 +714,7 @@ class MatrixUtil{
     */
     DERIVED restricted_domain_copy(vec<index>& colIndices){
         for(index i : colIndices){
-            assert(i < this->num_cols);
+            GRLINA_ASSERT(i < this->num_cols);
         }
         DERIVED result(colIndices.size(), this->num_rows);
         for(index i = 0; i < colIndices.size(); i++){
@@ -730,7 +731,7 @@ class MatrixUtil{
     * @return sparseMatrix 
     */
     DERIVED restricted_domain_copy(bitset& colIndices, index start = 0){
-        assert(colIndices.size() + start <= this->num_cols);
+        GRLINA_ASSERT(colIndices.size() + start <= this->num_cols);
         DERIVED result(colIndices.count(), this->num_rows);
         index col = 0;
         for(index i = 0; i < colIndices.size(); i++){
@@ -765,7 +766,7 @@ class MatrixUtil{
     std::pair<index,index> delinearise_position_reverse(long k) {
         index n = this->num_cols;
         index m = this->num_rows;
-        assert( linearise_position_reverse(n-1-k/m,k%m)==k);
+        GRLINA_ASSERT( linearise_position_reverse(n-1-k/m,k%m)==k);
         return std::make_pair(n-1-k/m, k%m);
     }
 
@@ -792,7 +793,7 @@ class MatrixUtil{
         index m = this->num_rows;
         index i = k/n;
         index j = k%n;
-        assert( linearise_position(i,j)==k);
+        GRLINA_ASSERT( linearise_position(i,j)==k);
         return std::make_pair(i,j);
     }
 
@@ -875,7 +876,7 @@ class MatrixUtil{
                     }
                 }
                 auto p_new = CT::last_entry_index(c);
-                assert(p_new < p);
+                GRLINA_ASSERT(p_new < p);
                 p = p_new;
             } else {
                 return false;
@@ -1015,7 +1016,7 @@ class MatrixUtil{
      * 
      */
     void divide_right_nocopy(DERIVED& other) {
-        assert(other.is_invertible());
+        GRLINA_ASSERT(other.is_invertible());
         other.column_gauss_jordan(this);
     }
 
@@ -1026,7 +1027,7 @@ class MatrixUtil{
      * @param other 
      */
     void append_matrix(const DERIVED& other) {
-        assert(this->num_rows == other.num_rows);
+        GRLINA_ASSERT(this->num_rows == other.num_rows);
         for(index i = 0; i < other.num_cols; i++) {
             this->data.push_back(other.data[i]);
         }
@@ -1044,7 +1045,7 @@ class MatrixUtil{
         if(this->num_cols == 1){
             return {0};
         }
-        assert(this->num_cols == this->num_rows);
+        GRLINA_ASSERT(this->num_cols == this->num_rows);
         vec<index> minor_indices = vec<index>(this->num_cols-1);
         vec<index> permutation = vec<index>(this->num_cols);
 
@@ -1097,7 +1098,7 @@ class MatrixUtil{
      * @param permutation 
      */
     void reorder_columns(vec<index> permutation){
-        assert(permutation.size() == this->num_cols);
+        GRLINA_ASSERT(permutation.size() == this->num_cols);
         DERIVED copy(static_cast<DERIVED&>(*this));
         for(index i = 0; i < this->num_cols; i++){
             this->data[permutation[i]] = copy.data[i];
@@ -1211,8 +1212,8 @@ class MatrixUtil{
      */
     DERIVED operator+(const DERIVED& other) const {
         // Ensure the matrices have the same dimensions
-        assert(this->num_cols == other.num_cols);
-        assert(this->num_rows == other.num_rows);
+        GRLINA_ASSERT(this->num_cols == other.num_cols);
+        GRLINA_ASSERT(this->num_rows == other.num_rows);
 
         // Create a new DERIVED object to store the result
         DERIVED result(this->num_cols, this->num_rows);
@@ -1233,8 +1234,8 @@ class MatrixUtil{
      */
     void add_matrix_to(MatrixUtil& other){
         // Ensure the matrices have the same dimensions
-        assert(this->num_cols == other.num_cols);
-        assert(this->num_rows == other.num_rows);
+        GRLINA_ASSERT(this->num_cols == other.num_cols);
+        GRLINA_ASSERT(this->num_rows == other.num_rows);
 
         // Add the columns of the two matrices
         for (index i = 0; i < this->num_cols; ++i) {
@@ -1270,12 +1271,12 @@ class MatrixUtil{
 template<typename index, typename T>
 vec<index> general_reduction(vec< T > matrices) {
     // Ensure all matrices have the same dimensions
-    assert(!matrices.empty());
+    GRLINA_ASSERT(!matrices.empty());
     index num_cols = matrices[0].get_num_cols();
     index num_rows = matrices[0].get_num_rows();
     for (const T& matrix : matrices) {
-        assert(matrix.get_num_cols() == num_cols);
-        assert(matrix.get_num_rows() == num_rows);
+        GRLINA_ASSERT(matrix.get_num_cols() == num_cols);
+        GRLINA_ASSERT(matrix.get_num_rows() == num_rows);
     }
 
     vec<index> non_zero_indices;
@@ -1314,7 +1315,7 @@ bitset simultaneous_column_reduction(std::unordered_map<index, DERIVED>& N_map,
     
     
     index num_cols = N_map[all_blocks[0]].get_num_cols();
-    assert(support.size() == num_cols);
+    GRLINA_ASSERT(support.size() == num_cols);
     bitset non_zero_cols = bitset(num_cols, false);
 
     for(index col = support.find_first(); col != bitset::npos; col = support.find_next(col)){

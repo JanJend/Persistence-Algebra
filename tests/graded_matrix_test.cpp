@@ -128,11 +128,14 @@ void algebraic_functionality_demo() {
     // Minimality:
 
     std::cout << "  Are they minimal?" << std::endl;
+    // Minimisation requires a compatible ordering of both chain groups.
+    M.sort_compatibly();
+    N.sort_compatibly();
     std::cout << "  M is not minimal: " << M.is_minimal() << std::endl;
     std::cout << "  N is minimal: " << N.is_minimal() << std::endl;
     M.print_graded();
-    std::cout << " We can minimise them, but the algorithm only works if the columns are sorted:" << std::endl;
-    M.sort_columns_lexicographically();
+    std::cout << " We can minimise them after compatibly sorting rows and columns:" << std::endl;
+    M.sort_compatibly();
     M.print_graded();
     M.minimize();
     M.print_graded();
@@ -144,7 +147,7 @@ void algebraic_functionality_demo() {
     "I.e. a non-graded matrix whose cokernel is that vector space." << std::endl;
     r2degree deg = {0.45, -0.15};
     // auto P = N.map_at_degree(deg);
-    auto [P, rows] = N.map_at_degree_pair(deg);
+    auto [P, rows] = N.map_at_degree_pair(deg, false);
     std::cout << "  The presentation at degree " << deg << " is: " << std::endl;
     P.print();
     std::cout << "  The set of generators at this degree is given by:" << std::endl;

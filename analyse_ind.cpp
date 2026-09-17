@@ -5,7 +5,9 @@
 using namespace graded_linalg;
 
 
-int compute_hom_space(R2GradedSparseMatrix<int> A, R2GradedSparseMatrix<int> B, int type, bool info = false, bool timed = false) {
+int compute_hom_space(R2Module<int> domain, R2Module<int> target, int type, bool info = false, bool timed = false) {
+    R2GradedSparseMatrix<int> A = domain.presentation();
+    R2GradedSparseMatrix<int> B = target.presentation();
     
     using aida_result = std::pair< SparseMatrix<int>, vec<std::pair<int,int>> >;
 
@@ -100,14 +102,11 @@ bool is_decomp_file(const std::filesystem::path& filepath) {
 }
 
 void compute_end(std::filesystem::path input_path) {
-    R2GradedSparseMatrix<int> A(input_path.string());
-    R2GradedSparseMatrix<int> B = A;
-    int dim = compute_hom_space(A, B, -1, false);
+    R2Module<int> A(input_path.string());
+    int dim = compute_hom_space(A, A, -1, false);
     std::cout << "Dimension of hom-space: " << dim << std::endl;
-    int thickness = 0;
-    R2Resolution<int> res(A, true);
-    auto v = res.dimension_vector_non_opt(thickness);
-    std::cout << "thickness: " << thickness << std::endl;
+    auto hilbert = A.hilbert_function_on_induced_grid();
+    std::cout << "thickness: " << hilbert.maximum << std::endl;
 }
 
 void compute_decomp_end(std::filesystem::path input_path, bool hom_timed) {
@@ -202,30 +201,27 @@ void compute_decomp_end(std::filesystem::path input_path, bool hom_timed) {
             input_file.seekg(pos_before_header);
             
             if(type == "free" || type == "cyclic" || type == "interval"){
-                R2GradedSparseMatrix<int> A(input_file);
-                int_gens += A.get_num_cols();
-                max_gen = std::max(max_gen, A.get_num_cols());
+                R2Module<int> A(input_file);
+                int_gens += A.number_of_relations();
+                max_gen = std::max(max_gen, A.number_of_relations());
             } else {
-                R2GradedSparseMatrix<int> A(input_file);
-                non_int_gens += A.get_num_cols();
-                max_gen = std::max(max_gen, A.get_num_cols());
-                R2GradedSparseMatrix<int> B = A;
-                non_int_dims.push_back(std::make_pair(std::make_pair(A.get_num_rows(), A.get_num_cols()), std::make_pair(0,0)));
+                R2Module<int> A(input_file);
+                non_int_gens += A.number_of_relations();
+                max_gen = std::max(max_gen, A.number_of_relations());
+                non_int_dims.push_back(std::make_pair(std::make_pair(A.number_of_generators(), A.number_of_relations()), std::make_pair(0,0)));
                 int dim;
-                int thickness = 0;
-                R2Resolution<int> res(A, true);
-                auto v = res.dimension_vector_non_opt(thickness);
-                if(A.get_num_rows() < 100){
-                    dim = compute_hom_space(A, B, -1, false, false);
+                auto hilbert = A.hilbert_function_on_induced_grid();
+                if(A.number_of_generators() < 100){
+                    dim = compute_hom_space(A, A, -1, false, false);
                 } else {
                     if(hom_timed){
-                        std::cout << "Noninterval of size " << A.get_num_rows() << "x" << A.get_num_cols() 
-                        << " and thickness: " << thickness << std::endl; 
+                        std::cout << "Noninterval of size " << A.number_of_generators() << "x" << A.number_of_relations()
+                        << " and thickness: " << hilbert.maximum << std::endl;
                     }
-                    dim = compute_hom_space(A, B, -1, hom_timed, hom_timed);
+                    dim = compute_hom_space(A, A, -1, hom_timed, hom_timed);
                 }
                 non_int_dims.back().second.first = dim;
-                non_int_dims.back().second.second = thickness;
+                non_int_dims.back().second.second = hilbert.maximum;
             }
             
             processed_sections++;

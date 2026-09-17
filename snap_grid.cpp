@@ -7,16 +7,15 @@ using namespace graded_linalg;
 
 void snap_presentation(std::filesystem::path input_path, std::filesystem::path output_path, const int grid_size = 5) {
     
-    R2GradedSparseMatrix<int> presentation = R2GradedSparseMatrix<int>(input_path.string());
-
-   presentation.snap_to_equidistant_grid(grid_size, true);
+    R2Module<int> module(input_path.string());
+    module.snap_to_equidistant_grid(grid_size, true);
 
     std::ofstream output_file(output_path);
     if (!output_file.is_open()) {
         std::cerr << "Error: Unable to open output file " << output_path << std::endl;
         return;
     } else {
-        presentation.to_stream(output_file);
+        module.to_stream(output_file);
         output_file.close();
         std::cout << "Restricted module to " << grid_size << "x" << grid_size << " grid and saved to: " << output_path << std::endl;
     }

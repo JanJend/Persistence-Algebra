@@ -8,17 +8,15 @@ using namespace graded_linalg;
 
 
 void endomorphism_sizes(std::filesystem::path input_path) {
-    
-    R2GradedSparseMatrix<int> presentation = R2GradedSparseMatrix<int>(input_path.string());
-    std::cout << presentation.get_num_rows() << " x " << presentation.get_num_cols() << std::endl;
+    auto module = std::make_shared<R2Module<int>>(input_path.string());
+    module->sort_compatibly();
+    std::cout << module->number_of_generators() << " x " << module->number_of_relations() << std::endl;
     for(int i = 0; i < 5; ++i) {
         double eps = 0.005 * i;
-        auto pres_shift = presentation;
-        presentation.sort_columns_lexicographically();
-        presentation.sort_rows_lexicographically();
-        pres_shift.shift({eps, eps});
-        presentation.compute_rows_forward();
-        auto endos = hom_space_basis_new(presentation, pres_shift, true);
+        auto shifted = std::make_shared<R2Module<int>>(*module);
+        shifted->shift({eps, eps});
+        auto endos = module_hom_space_basis< R2GradedSparseMatrix<int> >(
+            module, shifted, true);
         std::cout << "Epsilon: " << eps << " Number of endomorphisms: " << endos.size() << std::endl;
     }
 }

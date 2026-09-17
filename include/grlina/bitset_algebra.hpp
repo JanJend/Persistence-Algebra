@@ -1,4 +1,5 @@
 #pragma once
+#include <grlina/checks.hpp>
 
 #ifndef BITSET_ALGEBRA_HPP
 #define BITSET_ALGEBRA_HPP
@@ -153,7 +154,7 @@ inline vec<boost::dynamic_bitset<>> compute_sum_of_standard_vectors(int k){
  */
 inline bitset glue(const bitset& a, const bitset& b){
     bitset result = a;
-    assert(a.count() == b.size());
+    GRLINA_ASSERT(a.count() == b.size());
     size_t counter = 0;
     for(auto it = result.find_first(); it != bitset::npos; it = result.find_next(it)){
         if(!b[counter]){
@@ -171,7 +172,7 @@ inline bitset glue(const bitset& a, const bitset& b){
  * @param b 
  */
 inline void glue_to(bitset& a, const bitset& b){
-    assert(a.count() == b.size());
+    GRLINA_ASSERT(a.count() == b.size());
     size_t counter = 0;
     for(auto it = a.find_first(); it != bitset::npos; it = a.find_next(it)){
         if(!b[counter]){

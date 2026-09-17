@@ -14,6 +14,7 @@
  */
 
 #pragma once
+#include <grlina/checks.hpp>
 
 #ifndef R2GRADED_MATRIX_HPP
 #define R2GRADED_MATRIX_HPP
@@ -67,6 +68,7 @@ inline r2degree operator/(const r2degree& p, double scalar) {
 
 template<>
 struct Degree_traits<r2degree> {
+    inline static constexpr const char* poset_id = "2";
     static bool equals(const r2degree& lhs, const r2degree& rhs) {
         return lhs.first == rhs.first && lhs.second == rhs.second;
     }
@@ -308,6 +310,9 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         }
         this->transform_data(reverse);
         this->sort_data();
+        this->invalidate_cached_rows();
+        this->compatible_order_ = Degree_traits<r2degree>::colex_lambda();
+        this->compatibly_sorted = std::is_sorted(this->col_degrees.begin(), this->col_degrees.end(), this->compatible_order_);
     }
 
     vec<index> sort_rows_colexicographically_with_output() {
@@ -318,6 +323,9 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         }
         this->transform_data(reverse);
         this->sort_data();
+        this->invalidate_cached_rows();
+        this->compatible_order_ = Degree_traits<r2degree>::colex_lambda();
+        this->compatibly_sorted = std::is_sorted(this->col_degrees.begin(), this->col_degrees.end(), this->compatible_order_);
         return permutation;
     }
 
@@ -332,6 +340,9 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
             new_data[i] = this->data[permutation[i]];
         }
         this->data = new_data;
+        this->invalidate_cached_rows();
+        this->compatible_order_ = Degree_traits<r2degree>::colex_lambda();
+        this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(), this->compatible_order_);
     }
 
     vec<index> sort_columns_colexicographically_with_output() {
@@ -341,7 +352,14 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
             new_data[i] = this->data[permutation[i]];
         }
         this->data = new_data;
+        this->invalidate_cached_rows();
+        this->compatible_order_ = Degree_traits<r2degree>::colex_lambda();
+        this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(), this->compatible_order_);
         return permutation;
+    }
+
+    void sort_colexicographically() {
+        this->sort_compatibly(TraitLinearOrder<r2degree>{Degree_traits<r2degree>::colex_lambda()});
     }
 
     private:
@@ -514,7 +532,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      */
     void snap_to_grid( vec<double>& new_x_grid, vec<double>& new_y_grid){
 
-        assert(!new_x_grid.empty() && !new_y_grid.empty());
+        GRLINA_ASSERT(!new_x_grid.empty() && !new_y_grid.empty());
+        this->invalidate_compatible_sorting();
         index m = new_x_grid.size();
         index n = new_y_grid.size();
         vec<index> columns_to_remove = vec<index>();
@@ -649,8 +668,12 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      * @return SparseMatrix<index> 
      */
     R2GradedSparseMatrix graded_kernel() {
-        assert(this->col_degrees.size() == this->get_num_cols());
-        assert(this->row_degrees.size() == this->get_num_rows());
+        GRLINA_DEBUG_CHECK(this->validate());
+        this->pivots.clear();
+        this->pq_row.clear();
+        this->invalidate_cached_rows();
+        GRLINA_ASSERT(this->col_degrees.size() == this->get_num_cols());
+        GRLINA_ASSERT(this->row_degrees.size() == this->get_num_rows());
         vec<index> column_permutation = this->compute_grid_representation();
         this->initialise_grid_scheduler();
         
@@ -677,7 +700,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
 
             index start_xy = range_xy.first;
             index end_xy = range_xy.second;
-            assert(start_xy <= end_xy);
+            GRLINA_ASSERT(start_xy <= end_xy);
 
             // Add indices in the range to the priority queue
             for (index i = start_xy; i < end_xy; ++i) {
@@ -692,8 +715,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
                     pq.pop();
                 }
 
-                assert(z2_col_degrees[i].first <= x);
-                assert(z2_col_degrees[i].second == y);
+                GRLINA_ASSERT(z2_col_degrees[i].first <= x);
+                GRLINA_ASSERT(z2_col_degrees[i].second == y);
 
                 // Reduce the column and check if it's part of the kernel
                 kernel_column_reduction(i, new_degree, col_operations, true, true);
@@ -717,6 +740,9 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         result.row_degrees = this->col_degrees;
     
         result.permute_rows_graded(column_permutation);
+        // Rows are coordinates in the ORIGINAL input domain: never sort them
+        // independently. Pullbacks project these rows by their original index.
+        result.sort_columns_lexicographically();
 
         return result;
     }
@@ -816,14 +842,14 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
             if(this->row_degrees[i].first > bound.first || this->row_degrees[i].second > bound.second){
                 rows_to_remove.push_back(i);
             } else {
-                this->col_degrees.push_back(std::make_pair(bound.first,this->row_degrees[i].second));
-                this->data.push_back( std::vector<index>({i}));
-                this->col_degrees.push_back(std::make_pair(this->row_degrees[i].first, bound.second));
-                this->data.push_back( std::vector<index>({i}));
+                this->append_column(std::vector<index>({i}),
+                                    std::make_pair(bound.first, this->row_degrees[i].second));
+                this->append_column(std::vector<index>({i}),
+                                    std::make_pair(this->row_degrees[i].first, bound.second));
             }
         }
-        this->compute_num_cols();
         this->delete_rows(rows_to_remove);
+        this->sort_compatibly();
         this->minimize();
     }
 
@@ -871,8 +897,11 @@ struct R2Sequence{
             std::getline(file_stream, line);
             std::getline(file_stream, line);
         } else if (line.find("scc2020") != std::string::npos) {
-            // Skip 1 line for SCC2020
             std::getline(file_stream, line);
+            std::istringstream poset_line(line);
+            std::string id, extra;
+            if (!(poset_line >> id) || (poset_line >> extra) || id != "2")
+                throw std::runtime_error("R2 sequence requires SCC poset identifier 2");
         } else {
             // Invalid file type
             std::cerr << "Error: Unsupported file format. The first line must contain firep or scc2020." << std::endl;
@@ -978,9 +1007,10 @@ struct R2Resolution {
     R2Resolution(const R2GradedSparseMatrix<index>& d1, const bool& is_minimal = false) 
         : d1(d1) {
             // Kernel computation is easy if the presentation is minimal, sorted, and has one generator.
-            if(is_minimal && d1.get_num_rows() == 1){
-                // assert sorted! Todo
-                // This doesnt look right at the moment.
+            if(is_minimal && d1.get_num_rows() == 1 && d1.get_num_cols() > 0 &&
+               d1.are_columns_sorted_lexicographically()){
+                // A minimal one-generator presentation has incomparable
+                // relation grades; adjacent lex-ordered joins generate its kernel.
                 d2 = R2GradedSparseMatrix<index>(d1.get_num_cols()-1, d1.get_num_cols());
                 d2.data = vec< vec<index> >(d1.get_num_cols()-1);
                 d2.row_degrees = d1.col_degrees;
@@ -988,10 +1018,11 @@ struct R2Resolution {
                 r2degree last_degree = d1.col_degrees[0];
                 for(index i = 1; i < d1.get_num_cols(); i++){
                     r2degree join = Degree_traits<r2degree>::join(last_degree, d1.col_degrees[i]);
-                    d2.data[i] = {i -1, i};
-                    d2.col_degrees[i] = join;
-                    r2degree last_degree = d1.col_degrees[i];
+                    d2.data[i - 1] = {i -1, i};
+                    d2.col_degrees[i - 1] = join;
+                    last_degree = d1.col_degrees[i];
                 }
+                d2.refresh_compatible_sorted();
             } else {
                 auto d1_copy = d1;
                 d2 = d1_copy.graded_kernel();
@@ -1140,7 +1171,7 @@ struct R2Resolution {
                 for (const auto& [rx, ry] : relations) 
                     if (x >= rx && y >= ry) val--;
                 
-                assert(val >= 0);
+                GRLINA_ASSERT(val >= 0);
                 hilbert[i][j] = val;
                 max_value = std::max(max_value, val);
             }

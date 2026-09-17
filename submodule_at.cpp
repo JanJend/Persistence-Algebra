@@ -8,14 +8,14 @@ using namespace graded_linalg;
 
 void  compute_submodule_at(std::filesystem::path input_path, std::filesystem::path output_path, r2degree degree) {
     
-    R2GradedSparseMatrix<int> presentation = R2GradedSparseMatrix<int>(input_path.string());
-    R2GradedSparseMatrix<int> submodule = presentation.submodule_generated_at(degree);
+    R2Module<int> module(input_path.string());
+    R2Module<int> generated_module(module.presentation().submodule_generated_at(degree));
     std::ofstream output_file(output_path);
     if (!output_file.is_open()) {
         std::cerr << "Error: Unable to open output file " << output_path << std::endl;
         return;
     } else {
-        submodule.to_stream(output_file);
+        generated_module.to_stream(output_file);
         output_file.close();
         std::cout << "Submodule at degree (" << degree.first << ", " << degree.second << ") computed and saved to: " << output_path << std::endl;
     }

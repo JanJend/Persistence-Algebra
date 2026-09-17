@@ -14,6 +14,7 @@
  */
 
 #pragma once
+#include <grlina/checks.hpp>
 
 #ifndef COLUMN_TYPES_HPP
 #define COLUMN_TYPES_HPP
@@ -126,7 +127,7 @@ vec<index> operator+(const vec<index>& a, vec<index>& b) {
             c.push_back(*b_it);
             b_it++;
         } else { // *a_it==*b_it
-            assert(*a_it==*b_it);
+            GRLINA_ASSERT(*a_it==*b_it);
             a_it++;
             b_it++;
         }      
@@ -162,7 +163,7 @@ vec<index> rev_add(vec<index>& a, vec<index>& b) {
             c.push_back(*b_it);
             b_it++;
         } else { // *a_it==*b_it
-            assert(*a_it==*b_it);
+            GRLINA_ASSERT(*a_it==*b_it);
             a_it++;
             b_it++;
         }      
@@ -353,7 +354,7 @@ template <typename index>
 struct Column_traits<bitset, index> {
 
     static void add_to(bitset& v, bitset& w) {
-        assert(v.size() == w.size());
+        GRLINA_ASSERT(v.size() == w.size());
         w ^= v;
     }
 

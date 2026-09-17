@@ -56,6 +56,7 @@ struct triple {
 
 template<>
 struct Degree_traits<triple> {
+    inline static constexpr const char* poset_id = "3";
     static bool equals(const triple& lhs, const triple& rhs) {
         return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
     }
@@ -104,9 +105,24 @@ struct Degree_traits<triple> {
         }
     }
 
+    static bool colex_order(const triple& lhs, const triple& rhs) {
+        if (lhs.z != rhs.z) {
+            return lhs.z < rhs.z;
+        } else if (lhs.y != rhs.y) {
+            return lhs.y < rhs.y;
+        }
+        return lhs.x < rhs.x;
+    }
+
     static std::function<bool(const triple&, const triple&)> lex_lambda() {
         return [](const triple& a, const triple& b) {
             return Degree_traits<triple>::lex_order(a, b);
+        };
+    }
+
+    static std::function<bool(const triple&, const triple&)> colex_lambda() {
+        return [](const triple& a, const triple& b) {
+            return Degree_traits<triple>::colex_order(a, b);
         };
     }
 
@@ -124,6 +140,18 @@ struct Degree_traits<triple> {
 
     static triple meet(const triple& a, const triple& b) {
         return {std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z)};
+    }
+
+    static void add(const triple& amount, triple& degree) {
+        degree.x += amount.x;
+        degree.y += amount.y;
+        degree.z += amount.z;
+    }
+
+    static void subtract(const triple& amount, triple& degree) {
+        degree.x -= amount.x;
+        degree.y -= amount.y;
+        degree.z -= amount.z;
     }
 
     /**
@@ -152,6 +180,49 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMa
     R3GradedSparseMatrix(index m, index n) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(m, n) {}
     R3GradedSparseMatrix(index n, vec<index> indicator) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(n, indicator) {}
     R3GradedSparseMatrix(SparseMatrix<index>&& other) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(std::move(other)) {}
+    R3GradedSparseMatrix(index m, index n, vec<triple> c_degrees, vec<triple> r_degrees)
+        : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(m, n, std::move(c_degrees), std::move(r_degrees)) {}
+    R3GradedSparseMatrix(index m, index n, const array<index>& data, vec<triple> c_degrees, vec<triple> r_degrees)
+        : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(m, n, data, std::move(c_degrees), std::move(r_degrees)) {}
+
+    void sort_rows_colexicographically() {
+        this->sort_rows(TraitLinearOrder<triple>{Degree_traits<triple>::colex_lambda()});
+    }
+
+    vec<index> sort_rows_colexicographically_with_output() {
+        vec<index> permutation = sort_and_get_permutation<triple, index>(
+            this->row_degrees, Degree_traits<triple>::colex_lambda());
+        vec<index> reverse(permutation.size());
+        for (index i = 0; i < static_cast<index>(permutation.size()); ++i)
+            reverse[permutation[i]] = i;
+        this->transform_data(reverse);
+        this->sort_data();
+        this->invalidate_cached_rows();
+        this->compatible_order_ = Degree_traits<triple>::colex_lambda();
+        this->compatibly_sorted = std::is_sorted(this->col_degrees.begin(), this->col_degrees.end(), this->compatible_order_);
+        return permutation;
+    }
+
+    void sort_columns_colexicographically() {
+        this->sort_columns(TraitLinearOrder<triple>{Degree_traits<triple>::colex_lambda()});
+    }
+
+    vec<index> sort_columns_colexicographically_with_output() {
+        vec<index> permutation = sort_and_get_permutation<triple, index>(
+            this->col_degrees, Degree_traits<triple>::colex_lambda());
+        array<index> new_data(this->data.size());
+        for (index i = 0; i < static_cast<index>(this->data.size()); ++i)
+            new_data[i] = std::move(this->data[permutation[i]]);
+        this->data = std::move(new_data);
+        this->invalidate_cached_rows();
+        this->compatible_order_ = Degree_traits<triple>::colex_lambda();
+        this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(), this->compatible_order_);
+        return permutation;
+    }
+
+    void sort_colexicographically() {
+        this->sort_compatibly(TraitLinearOrder<triple>{Degree_traits<triple>::colex_lambda()});
+    }
 
     /**
      * @brief Constructs an R^3 graded matrix from an scc or firep data file.

@@ -7,7 +7,8 @@ using namespace graded_linalg;
 
 void compute_quiver_rep(std::filesystem::path input_path, std::filesystem::path output_path, const int optional_value = 0, const bool gap_output = false) {
     
-    R2GradedSparseMatrix<int> presentation = R2GradedSparseMatrix<int>(input_path.string());
+    R2Module<int> module(input_path.string());
+    auto presentation = module.presentation();
 
     vec<r2degree> vertices;
     array<int> edges;

@@ -7,16 +7,15 @@ using namespace graded_linalg;
 
 void cut_presentation(std::filesystem::path input_path, std::filesystem::path output_path, double x_cutoff = 1.0, double y_cutoff = 1.0) {
     
-    R2GradedSparseMatrix<int> presentation = R2GradedSparseMatrix<int>(input_path.string());
-
-    presentation.bound_support(std::make_pair(x_cutoff, y_cutoff));
+    R2Module<int> module(input_path.string());
+    module.bound_support(std::make_pair(x_cutoff, y_cutoff));
 
     std::ofstream output_file(output_path);
     if (!output_file.is_open()) {
         std::cerr << "Error: Unable to open output file " << output_path << std::endl;
         return;
     } else {
-        presentation.to_stream(output_file);
+        module.to_stream(output_file);
         output_file.close();
         std::cout << "Restricted module with cutoffs " << x_cutoff << " and " << y_cutoff << " and saved to: " << output_path << std::endl;
     }
