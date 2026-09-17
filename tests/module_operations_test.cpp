@@ -127,6 +127,13 @@ void test_kernel_minimization() {
         assert(Mod(P).dimension_at(d) == Mod(minimized).dimension_at(d));
     cheap.minimize_variant();
     assert(cheap.data == minimized.data && cheap.col_degrees == minimized.col_degrees);
+    // Module preprocessing must retain exact kernel-based minimization, even
+    // when ordinary column reduction misses a relation at a join degree.
+    Mod module(P);
+    module.minimize();
+    assert(module.number_of_generators() == 3 && module.number_of_relations() == 2);
+    for (const r2degree d : {r2degree{-1,-1}, {0,1}, {1,0}, {1,1}, {2,2}})
+        assert(module.dimension_at(d) == Mod(P).dimension_at(d));
     auto parent = std::make_shared<Mod>(Mat(0, 3, {}, {}, P.row_degrees));
     Submodule<Mat> S(parent, P);
     S.minimize_generators();

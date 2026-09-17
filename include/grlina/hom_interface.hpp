@@ -70,9 +70,9 @@ std::vector<Matrix> End_2d_0(
     // Reduction uses coefficients only; the canonical identity changes none.
     reduce_matrix_family_modulo(inherited, additional);
     if (info)
-        std::cout << "dim additional lifts = " << additional.size()
-                  << " vs dim shifted lifts = " << shifted_dimension
-                  << " and dim endomorphism lifts = " << inherited.size() << std::endl;
+        std::cout << "dim End_0 = " << inherited.size()
+                  << ", dim End_2eps = " << shifted_dimension
+                  << ", dim End_2eps/0 = " << additional.size() << std::endl;
     return additional;
 }
 
@@ -94,7 +94,7 @@ std::vector<Homomorphism<Matrix>> End_2d_0(
     const Matrix& presentation = domain->presentation();
     if (presentation.get_num_rows() == 0) {
         if (info)
-            std::cout << "dim additional lifts = 0 vs dim shifted lifts = 0 and dim endomorphism lifts = 0" << std::endl;
+            std::cout << "dim End_0 = 0, dim End_2eps = 0, dim End_2eps/0 = 0" << std::endl;
         return {};
     }
 
@@ -106,9 +106,9 @@ std::vector<Homomorphism<Matrix>> End_2d_0(
     // The canonical identity leaves the transported coefficients unchanged.
     reduce_matrix_family_modulo(inherited, additional);
     if (info)
-        std::cout << "dim additional lifts = " << additional.size()
-                  << " vs dim shifted lifts = " << shifted_dimension
-                  << " and dim endomorphism lifts = " << inherited.size() << std::endl;
+        std::cout << "dim End_0 = " << inherited.size()
+                  << ", dim End_2eps = " << shifted_dimension
+                  << ", dim End_2eps/0 = " << additional.size() << std::endl;
 
     std::vector<Homomorphism<Matrix>> result;
     result.reserve(additional.size());
@@ -135,7 +135,7 @@ std::vector<Homomorphism<Matrix>> End_2d_0(
         throw std::invalid_argument("Canonical shift requires a nonnegative amount");
     if (presentation.get_num_rows() == 0) {
         if (info)
-            std::cout << "dim additional lifts = 0 vs dim shifted lifts = 0 and dim endomorphism lifts = 0" << std::endl;
+            std::cout << "dim End_0 = 0, dim End_2eps = 0, dim End_2eps/0 = 0" << std::endl;
         return {};
     }
 
@@ -149,9 +149,9 @@ std::vector<Homomorphism<Matrix>> End_2d_0(
     // the canonical identity changes no coefficients.
     reduce_matrix_family_modulo(inherited, additional);
     if (info)
-        std::cout << "dim additional lifts = " << additional.size()
-                  << " vs dim shifted lifts = " << shifted_dimension
-                  << " and dim endomorphism lifts = " << inherited.size() << std::endl;
+        std::cout << "dim End_0 = " << inherited.size()
+                  << ", dim End_2eps = " << shifted_dimension
+                  << ", dim End_2eps/0 = " << additional.size() << std::endl;
 
     std::vector<Homomorphism<Matrix>> result;
     if (additional.empty()) return result;

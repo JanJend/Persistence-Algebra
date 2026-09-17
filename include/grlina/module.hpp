@@ -349,6 +349,7 @@ public:
             has_complete_projective_resolution();
         Matrix minimized = presentation();
         if (sort_if_needed) minimized.sort_compatibly();
+        minimized.column_reduction_graded_w_deletion();
         minimized.cancel_local_pairs();
         Module working(std::move(minimized));
         working.remove_extra_rels(false);

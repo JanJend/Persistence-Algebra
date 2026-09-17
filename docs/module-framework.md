@@ -368,8 +368,8 @@ Both the matrix and module overloads are defined side by side in
 `hom_interface.hpp`. Their algorithms are unchanged.
 
 `hom_interface.hpp` provides `module_hom_space_basis` and
-`module_endomorphism_basis`. The former header names `homomorphism.hpp` and
-`module_homomorphisms.hpp` remain as compatibility includes.
+`module_endomorphism_basis`. Include `hom_interface.hpp` directly; the former
+`homomorphism.hpp` and `module_homomorphisms.hpp` forwarding headers were removed.
 
 
 ### Identity lifts and composition

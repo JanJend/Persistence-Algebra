@@ -42,6 +42,22 @@ void containment() {
     auto p4 = std::make_shared<const Module<Four>>(Four(0, 1, {}, {}, {r4degree(0,0,0,0)}));
     auto z4 = Submodule<Four>::zero(p4), w4 = Submodule<Four>::whole(p4);
     assert(w4.contains(z4) && !z4.contains(w4) && w4.equals(w4));
+
+    // Compare batched containment with the coefficient solver, including
+    // repeated, nonadjacent degrees and incomparable available columns.
+    for (int mask = 0; mask < 64; ++mask) {
+        array<int> columns(3);
+        for (int j = 0; j < 3; ++j)
+            for (int i = 0; i < 2; ++i)
+                if (mask & (1 << (2*j+i))) columns[j].push_back(i);
+        Mat A(3, 2, columns, {{1,0}, {0,1}, {1,1}}, {{0,0}, {0,0}});
+        for (r2degree degree : {r2degree{0,0}, {1,0}, {0,1}, {1,1}}) {
+            Mat B(4, 2, {{0}, {1}, {0,1}, {}},
+                  {degree, {1,1}, degree, {0,0}}, A.row_degrees);
+            assert(image_contained_in_image(B, A) == solve_graded_linear_system(A, B).has_value());
+            assert(A.data == columns && B.data == array<int>({{0}, {1}, {0,1}, {}}));
+        }
+    }
 }
 
 void presentation_adapters() {
