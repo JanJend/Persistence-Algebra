@@ -6,13 +6,13 @@ of every older library routine. Arithmetic and categorical formulas are over F2.
 
 ## 1. Types, ownership and homomorphisms
 
-- Actual classes: `Module` in `module.hpp`, `Homomorphism` in `homomorphism.hpp`.
-  Earlier names remain compatibility aliases; `module_morphism.hpp` forwards to
-  the new header. `module_homomorphisms.hpp` returns the canonical type.
+- Actual classes: `Module` in `module.hpp`, `Homomorphism` in `homomorphism_core.hpp`,
+  and `Submodule` in `submodule.hpp`. Earlier type names remain aliases.
 - CRTP enforcement requires `GradedSparseMatrix<D, index, Matrix>`. Generic
   constructions call the concrete `graded_kernel`, not a poset-blind substitute.
   The index type must be signed integral, with -1 available as a sentinel.
-- Shared const module pointers keep parents/domain/target alive. Null pointers
+- Supplied shared module owners keep ordinary endpoints alive. The inclusion
+  stored inside a Submodule instead borrows that object's Module base. Null pointers
   fail before dereference, including both Hom-space adapters. Do not mutate a
   parent through another alias once submodule or homomorphism coordinates refer
   to its basis; these objects are not automatically transported by minimization.
@@ -166,18 +166,16 @@ pointer and defining parent-coordinate generator matrix. `compute_presentation()
 stores d1 directly; inherited `compute_projective_resolution()` invokes the virtual
 presentation-construction hook if needed and retains all resulting maps in that
 same object. This works through a Module reference/pointer. A virtual destructor
-supports polymorphic ownership; explicit defaulted copy/move operations preserve
-value semantics. Rebuild clients after this header-level layout change.
+supports polymorphic ownership; explicit copy/move operations rebind the self inclusion. Rebuild clients after this header-level layout change.
 
-Default presentation construction keeps the defining generator basis. Requested
-module minimization can choose a different basis without changing the defining
-family. `number_of_embedding_generators()` always counts that family, whereas
-`number_of_generators()` counts stored presentation generators once available.
-`generator_map()` is now the typed inclusion from a stable source in the defining
-basis. Its `generator_lift()` need not match a separately minimized presentation
-cached in the Module base; the categorical adapter reuses the map's own source. Arbitrary inherited edits that change the module itself (such
-as shifting only its presentation) do not update the embedding or parent and
-must not be used as parent-aware submodule edits.
+The inclusion's domain is the Submodule object's own Module base. Domain access
+never computes a presentation. Explicit presentation computation calls the matrix
+submodule-presentation algorithm; minimization updates the inclusion's generator
+family too, so the base and the map share one F0 basis. There is no second domain
+module or cache. Copy/move operations rebind the self endpoint. Copies of a map
+borrow its source and cannot outlive it or survive changes to its source basis.
+Arbitrary inherited edits that change the module itself (such as shifting only
+its presentation) still require a parent-aware interpretation or a standalone copy.
 
 Lazy/exact generator reductions clear the submodule's stored projective representation,
 preventing stale bases; the parent's representations remain unchanged. Mutable
@@ -276,3 +274,40 @@ graded/Hom tests remain enabled. `cli_programs_test` exercises all 15 installed
 PA executables on handcrafted fixtures. Stable and Skyscraper add downstream
 regressions. Consult the final handoff for the builds and sanitizer runs actually
 completed on this revision; coverage is not exhaustive for all legacy routines.
+
+
+## Architecture and header audit (2026-09-17)
+
+Removed the lazy domain factory/cache, synchronization, shared lift-storage wrapper,
+and empty `hom_operations.hpp`. Submodules now own their only presentation in the
+Module base; domain access performs no computation. Copy/move operations rebind
+the inclusion. Submodule operations no longer call structural validation automatically;
+`validate()` remains available explicitly. Removed the extra sorted-input check
+in the submodule minimizer and redundant grading checks after homomorphism shifts.
+
+Remaining candidates, identified rather than removed:
+
+- `hom_interface.hpp`: duplicated shifted-Hom computations across overloads.
+- `presentation_operations.hpp`: shared-module allocations for trivial matrices.
+- `graded_linalg.hpp` / `modules.hpp`: broad includes for otherwise optional features.
+- `module.hpp`: convenience forwarding methods, aliases, and arbitrary edits that
+  require care when applied to a Submodule with an inclusion.
+- `r4graded_matrix.hpp`, `z2graded_matrix.hpp`, `z3graded_matrix.hpp`,
+  `z4graded_matrix.hpp`: four thin wrappers around generic coordinate matrices.
+- `graded_matrix.hpp`: sorting-certificate machinery and repeated validation scans.
+- `progress.hpp`: application-style threaded progress reporting in the library.
+
+Header origins (Git records creation, not user authorization):
+
+| First commit | Added headers |
+| --- | --- |
+| `f2322c6` | `chain_complex.hpp`, `module.hpp`, `submodule.hpp`, `coordinate_degree.hpp`, `r4graded_matrix.hpp`, `z2graded_matrix.hpp`, `z3graded_matrix.hpp`, `z4graded_matrix.hpp` |
+| `d82d073` | `graded_linear_system.hpp`, `module_operations.hpp` |
+| `2060662` | `hilbert_euler.hpp` |
+| `99034a6` | `matrix_family.hpp`, `presentation_operations.hpp`, `progress.hpp` |
+| `da01012` | `checks.hpp`, `epsilon_functors.hpp`, `hom_interface.hpp`, `homomorphism_core.hpp`, `hom_operations.hpp` (now removed) |
+
+`modules.hpp` predates this framework (`350d7f1`). The former `homomorphism.hpp`,
+`module_morphism.hpp`, and `module_homomorphisms.hpp` were already absent before
+this cleanup. Solver, kernel, and Euler-query headers contain actual algorithms;
+their small size alone does not make them redundant.

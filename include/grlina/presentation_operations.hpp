@@ -2,7 +2,7 @@
  * Prefer Submodule/Homomorphism when parent objects are already available.
  */
 #pragma once
-#include <grlina/hom_operations.hpp>
+#include <grlina/submodule.hpp>
 #include <grlina/matrix_family.hpp>
 
 namespace graded_linalg {

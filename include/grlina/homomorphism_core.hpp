@@ -1,16 +1,13 @@
 /** @file homomorphism_core.hpp @brief Trusted module homomorphisms and their lifts. */
 #pragma once
 
-#include <functional>
 #include <memory>
-#include <mutex>
 #include <stdexcept>
 #include <utility>
 #include <vector>
 
 #include <grlina/module.hpp>
 #include <grlina/homomorphisms.hpp>
-#include <grlina/matrix_family.hpp>
 
 namespace graded_linalg {
 
@@ -26,56 +23,15 @@ public:
 private:
     friend class Submodule<Matrix>;
 
-    // Copies of a map share this endpoint, including before lazy materialization.
-    // The factory owns only matrix storage and the parent, never the Submodule.
-    struct Domain {
-        mutable std::shared_ptr<const module_type> module;
-        mutable std::function<std::shared_ptr<const module_type>()> factory;
-        mutable std::once_flag initialized;
-        explicit Domain(std::shared_ptr<const module_type> value) : module(std::move(value)) {}
-        const std::shared_ptr<const module_type>& get() const {
-            std::call_once(initialized, [&] {
-                if (factory) {
-                    module = factory();
-                    factory = {};
-                }
-            });
-            return module;
-        }
-    };
-    std::shared_ptr<Domain> domain_;
+    std::shared_ptr<const module_type> domain_;
     std::shared_ptr<const module_type> target_;
-    // These maps form a lift sequence, not a chain complex on their own.
-    std::shared_ptr<const std::vector<Matrix>> lifts_;
+    // Lifts between the source and target resolutions, not a chain complex.
+    std::vector<Matrix> lifts_;
     bool id_matrix_ = false;
     // Only this prefix is known to have identity coefficients. Extending a
     // quotient map to relations need not produce further identity lifts.
     std::size_t identity_lift_count_ = 0;
 
-
-    Homomorphism with_same_domain(std::shared_ptr<const module_type> target,
-                                 std::vector<Matrix> lifts) const {
-        Homomorphism result(std::shared_ptr<const module_type>{}, std::move(target), std::move(lifts));
-        result.domain_ = domain_;
-        return result;
-    }
-
-    static Homomorphism from_image_generators(std::shared_ptr<const module_type> parent,
-                                             Matrix generators, bool id_matrix = false) {
-        Homomorphism result(std::shared_ptr<const module_type>{}, parent, std::move(generators), id_matrix);
-        auto storage = result.lifts_;
-        result.domain_->factory = [parent = std::move(parent), storage] {
-            const Matrix& matrix = (*storage)[0];
-            if (matrix.get_num_cols() == 0)
-                return std::make_shared<const module_type>(Matrix(0, 0, {}, {}, {}));
-            if constexpr (has_matrix_graded_kernel<Matrix>::value) {
-                return std::make_shared<const module_type>(parent->presentation().submodule_generated_by(matrix));
-            } else {
-                throw std::logic_error("Submodule presentation requires a poset-specific graded_kernel");
-            }
-        };
-        return result;
-    }
 
     static const std::vector<typename Matrix::degree_type>& chain_group_degrees(
         const module_type& module, std::size_t degree) {
@@ -88,21 +44,28 @@ private:
 
 public:
     /** Explicit structural check for untrusted input. Does not check the
-     * homomorphism equations; use check_lifts() for those.
+     * homomorphism equations; use check_lifts() for those. Endpoint bases are
+     * checked only when their presentations have been explicitly supplied.
      */
     void validate() const {
         if (!domain() || !target_)
             throw std::invalid_argument("A module map requires domain and target modules");
-        if (lifts_->empty()) throw std::invalid_argument("A module map requires a generator lift");
-        for (std::size_t i = 0; i < lifts_->size(); ++i) {
-            const auto& lift = (*lifts_)[i];
+        if (lifts_.empty()) throw std::invalid_argument("A module map requires a generator lift");
+        for (std::size_t i = 0; i < lifts_.size(); ++i) {
+            const auto& lift = lifts_[i];
             lift.validate();
-            const auto& source = chain_group_degrees(*domain(), i);
-            const auto& destination = chain_group_degrees(*target_, i);
-            if (lift.col_degrees != source || lift.row_degrees != destination ||
-                lift.get_num_cols() != static_cast<typename Matrix::index_type>(source.size()) ||
-                lift.get_num_rows() != static_cast<typename Matrix::index_type>(destination.size()))
-                throw std::invalid_argument("A lift has incompatible source or target generators");
+            if (domain_->has_presentation()) {
+                const auto& source = chain_group_degrees(*domain_, i);
+                if (lift.col_degrees != source ||
+                    lift.get_num_cols() != static_cast<typename Matrix::index_type>(source.size()))
+                    throw std::invalid_argument("A lift has incompatible source generators");
+            }
+            if (target_->has_presentation()) {
+                const auto& destination = chain_group_degrees(*target_, i);
+                if (lift.row_degrees != destination ||
+                    lift.get_num_rows() != static_cast<typename Matrix::index_type>(destination.size()))
+                    throw std::invalid_argument("A lift has incompatible target generators");
+            }
         }
     }
 
@@ -126,28 +89,26 @@ private:
     Homomorphism(std::shared_ptr<const module_type> domain,
                    std::shared_ptr<const module_type> target, Matrix generator_lift,
                    bool id_matrix)
-        : domain_(std::make_shared<Domain>(std::move(domain))), target_(std::move(target)),
+        : domain_(std::move(domain)), target_(std::move(target)),
           id_matrix_(id_matrix), identity_lift_count_(id_matrix ? 1 : 0) {
-        std::vector<Matrix> lifts;
-        lifts.push_back(std::move(generator_lift));
-        lifts_ = std::make_shared<const std::vector<Matrix>>(std::move(lifts));
+        lifts_.push_back(std::move(generator_lift));
     }
 
     Homomorphism(std::shared_ptr<const module_type> domain,
                    std::shared_ptr<const module_type> target, std::vector<Matrix> lifts,
                    bool id_matrix)
-        : domain_(std::make_shared<Domain>(std::move(domain))), target_(std::move(target)),
-          lifts_(std::make_shared<const std::vector<Matrix>>(std::move(lifts))), id_matrix_(id_matrix),
-          identity_lift_count_(id_matrix ? lifts_->size() : 0) {}
+        : domain_(std::move(domain)), target_(std::move(target)),
+          lifts_(std::move(lifts)), id_matrix_(id_matrix),
+          identity_lift_count_(id_matrix ? lifts_.size() : 0) {}
 
 public:
-    /** Accessing a submodule inclusion's source materializes its presentation
-     * on first use. Copies share that source; coefficient access stays lazy.
+    /** Access endpoints without computing a presentation. A submodule's own
+     * inclusion borrows its Module base; it does not own a second module.
      */
-    const std::shared_ptr<const module_type>& domain() const { return domain_->get(); }
+    const std::shared_ptr<const module_type>& domain() const noexcept { return domain_; }
     const std::shared_ptr<const module_type>& target() const noexcept { return target_; }
-    const std::vector<Matrix>& lifts() const noexcept { return *lifts_; }
-    const Matrix& generator_lift() const { return (*lifts_)[0]; }
+    const std::vector<Matrix>& lifts() const noexcept { return lifts_; }
+    const Matrix& generator_lift() const { return lifts_[0]; }
     /** True means identity coefficients, not necessarily an identity map:
      * endpoints and generator degrees may differ. This is a construction
      * invariant, never checked by scanning matrix coefficients.
@@ -155,10 +116,10 @@ public:
     bool id_matrix() const noexcept { return id_matrix_; }
 
     bool check_lifts() const {
-        if (!is_homomorphism(domain()->presentation(), target_->presentation(), (*lifts_)[0])) return false;
-        for (std::size_t i = 1; i < lifts_->size(); ++i) {
-            auto left = target_->projective_resolution()[i - 1] * (*lifts_)[i];
-            auto right = (*lifts_)[i - 1] * domain()->projective_resolution()[i - 1];
+        if (!is_homomorphism(domain()->presentation(), target_->presentation(), lifts_[0])) return false;
+        for (std::size_t i = 1; i < lifts_.size(); ++i) {
+            auto left = target_->projective_resolution()[i - 1] * lifts_[i];
+            auto right = lifts_[i - 1] * domain()->projective_resolution()[i - 1];
             if (left.data != right.data) return false;
         }
         return true;
@@ -166,7 +127,7 @@ public:
 
     /** Extend through the common stored part of the two resolutions. */
     void lift_to_resolution() {
-        auto result = *lifts_;
+        auto result = lifts_;
         const auto& source = domain()->projective_resolution();
         const auto& destination = target_->projective_resolution();
         const auto length = std::min(source.size(), destination.size());
@@ -176,7 +137,7 @@ public:
             if (!next) throw std::invalid_argument("Homomorphism cannot be lifted through the supplied resolutions");
             result.push_back(std::move(*next));
         }
-        lifts_ = std::make_shared<const std::vector<Matrix>>(std::move(result));
+        lifts_ = std::move(result);
     }
 
     static Homomorphism identity(std::shared_ptr<const module_type> module) {
@@ -225,11 +186,9 @@ public:
             destination = std::make_shared<module_type>(*target_);
             destination->shift(amount);
         }
-        auto translated = *lifts_;
+        auto translated = lifts_;
         for (auto& lift : translated) {
             lift.shift(amount);
-            GRLINA_DEBUG_CHECK(if (!lift.is_graded_matrix())
-                throw std::invalid_argument("Shift does not preserve the grading of this homomorphism"));
         }
         auto result = Homomorphism(source, destination, std::move(translated));
         result.id_matrix_ = id_matrix_;
@@ -256,7 +215,7 @@ public:
             auto& lift = lifts[i];
             lift.row_degrees = chain_group_degrees(*shifted_module, i);
         }
-        result.lifts_ = std::make_shared<const std::vector<Matrix>>(std::move(lifts));
+        result.lifts_ = std::move(lifts);
         return result;
     }
 
@@ -278,19 +237,19 @@ public:
     }
 
     Homomorphism operator+(const Homomorphism& other) const {
-        if ((domain_ != other.domain_ && domain().get() != other.domain().get()) ||
+        if (domain_.get() != other.domain_.get() ||
             target_.get() != other.target_.get())
             throw std::invalid_argument("Homomorphism addition requires the same domain and target");
         std::vector<Matrix> result;
-        for (std::size_t i = 0; i < std::min(lifts_->size(), other.lifts_->size()); ++i) {
-            Matrix sum = (*lifts_)[i];
+        for (std::size_t i = 0; i < std::min(lifts_.size(), other.lifts_.size()); ++i) {
+            Matrix sum = lifts_[i];
             for (std::size_t j = 0; j < sum.data.size(); ++j)
                 Column_traits<vec<typename Matrix::index_type>, typename Matrix::index_type>::add_to(
-                    (*other.lifts_)[i].data[j], sum.data[j]);
+                    other.lifts_[i].data[j], sum.data[j]);
             sum.invalidate_cached_rows();
             result.push_back(std::move(sum));
         }
-        return with_same_domain(target_, std::move(result));
+        return Homomorphism(domain_, target_, std::move(result));
     }
 
     submodule_type image(bool minimize = true) const {
@@ -339,20 +298,20 @@ public:
         if (target_.get() != after_this.domain().get())
             throw std::invalid_argument("Module-map composition has incompatible middle module");
         std::vector<Matrix> composite;
-        for (std::size_t i = 0; i < std::min(lifts_->size(), after_this.lifts_->size()); ++i) {
+        for (std::size_t i = 0; i < std::min(lifts_.size(), after_this.lifts_.size()); ++i) {
             if (i < after_this.identity_lift_count_) {
-                Matrix lift = (*lifts_)[i];
-                lift.row_degrees = (*after_this.lifts_)[i].row_degrees;
+                Matrix lift = lifts_[i];
+                lift.row_degrees = after_this.lifts_[i].row_degrees;
                 composite.push_back(std::move(lift));
             } else if (i < identity_lift_count_) {
-                Matrix lift = (*after_this.lifts_)[i];
-                lift.col_degrees = (*lifts_)[i].col_degrees;
+                Matrix lift = after_this.lifts_[i];
+                lift.col_degrees = lifts_[i].col_degrees;
                 composite.push_back(std::move(lift));
             } else {
-                composite.push_back((*after_this.lifts_)[i] * (*lifts_)[i]);
+                composite.push_back(after_this.lifts_[i] * lifts_[i]);
             }
         }
-        auto result = with_same_domain(after_this.target_, std::move(composite));
+        auto result = Homomorphism(domain_, after_this.target_, std::move(composite));
         result.identity_lift_count_ = std::min(identity_lift_count_, after_this.identity_lift_count_);
         result.id_matrix_ = result.identity_lift_count_ != 0;
         return result;

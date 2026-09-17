@@ -3,7 +3,7 @@
  * canonical maps. Call Module::minimize() on a COPY if only the object is needed.
  */
 #pragma once
-#include <grlina/hom_operations.hpp>
+#include <grlina/submodule.hpp>
 
 namespace graded_linalg {
 
@@ -66,9 +66,13 @@ struct Subobject {
 };
 
 template <typename Matrix>
-Subobject<Matrix> as_subobject(const Submodule<Matrix>& submodule) {
-    const auto& inclusion = submodule.generator_map();
-    return {inclusion.domain(), inclusion};
+Subobject<Matrix> as_subobject(Submodule<Matrix> submodule) {
+    // This adapter explicitly requests a presented, owning subobject. The
+    // inclusion's source is that same Submodule, not a separate Module cache.
+    auto object = std::make_shared<Submodule<Matrix>>(std::move(submodule));
+    object->compute_presentation();
+    Homomorphism<Matrix> inclusion(object, object->parent(), object->generator_map().generator_lift());
+    return {std::move(object), std::move(inclusion)};
 }
 
 template <typename Matrix>

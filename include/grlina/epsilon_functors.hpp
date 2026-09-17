@@ -4,7 +4,7 @@
 #pragma once
 
 #include <cmath>
-#include <grlina/hom_operations.hpp>
+#include <grlina/submodule.hpp>
 #include <grlina/coordinate_degree.hpp>
 #include <grlina/r3graded_matrix.hpp>
 

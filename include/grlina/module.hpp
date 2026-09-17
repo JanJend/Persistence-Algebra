@@ -279,7 +279,7 @@ public:
         return matrix.induced_quiver_rep(std::move(vertices), std::move(edges));
     }
 
-    void sort_compatibly() {
+    virtual void sort_compatibly() {
         projective_resolution_.sort_compatibly();
         if (!injective_resolution_.empty()) injective_resolution_.sort_compatibly();
     }
@@ -308,7 +308,7 @@ public:
      * homology of a truncation; it does not belong to ChainComplex::minimize.
      * Keep the original resolution intact if either step fails.
      */
-    void minimize_resolution(bool sort_if_needed = true) {
+    virtual void minimize_resolution(bool sort_if_needed = true) {
         require_presentation();
         chain_complex_type working = projective_resolution_;
         working.minimize(sort_if_needed);
@@ -344,7 +344,7 @@ public:
     /** Presentation-only minimization: discard higher projective maps while
      * preserving the independently stored injective resolution.
      */
-    void minimize_presentation(bool sort_if_needed = true) {
+    virtual void minimize_presentation(bool sort_if_needed = true) {
         const bool was_complete_presentation = projective_resolution_.size() == 1 &&
             has_complete_projective_resolution();
         Matrix minimized = presentation();

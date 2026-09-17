@@ -1,4 +1,4 @@
-#include <grlina/hom_operations.hpp>
+#include <grlina/submodule.hpp>
 #include <grlina/hom_interface.hpp>
 #include <grlina/modules.hpp>
 #include <cassert>

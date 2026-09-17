@@ -26,7 +26,7 @@ All types live in `graded_linalg`.
   Hom algorithms and return typed module homomorphisms.
 
 The implementation is split across `chain_complex.hpp`, `module.hpp`,
-`submodule.hpp`, `hom_operations.hpp`, and `hom_interface.hpp`.
+`submodule.hpp`, `homomorphism_core.hpp`, and `hom_interface.hpp`.
 Including `grlina/modules.hpp` loads the whole public layer.
 See [the correction/review guide](module-framework-review.md) for the latest
 algorithm contracts, categorical operations and a suggested walkthrough.
@@ -223,18 +223,19 @@ operations. Existing binaries using these header types should be rebuilt.
 
 By default, `Submodule::compute_presentation(false)` keeps its generator basis:
 the stored presentation's rows correspond exactly to `generator_map().generator_lift()`'s columns.
-`compute_presentation(true)` minimizes the stored module, without replacing the
-defining family in parent coordinates. Consequently that family is not necessarily
-the generator lift from a subsequently minimized/sorted presentation. Use
-`number_of_embedding_generators()` for its size; after a presentation is stored,
-`number_of_generators()` reports that presentation's size, consistently with Module.
-The categorical adapter reuses `generator_map()` and its exact source endpoint.
+`compute_presentation(true)` removes redundant inclusion generators and stores the
+presentation in that same basis. The domain of `generator_map()` is this object's
+`Module` base, whether or not a presentation exists. `domain()` never computes it.
+After computation, `number_of_embedding_generators()` and `number_of_generators()`
+agree. Normal minimization through a `Module&` dispatches to the submodule's
+presentation/resolution minimizer, preserving the inclusion basis.
 
-Generator reductions invalidate the submodule's own projective storage, preserving its injective resolution;
-they do not invalidate or modify the parent's storage. A later computation rebuilds
-the submodule presentation. Explicit `compute_presentation` copies the generator map's unminimized source presentation (materializing it once if needed) and replaces older stored resolutions. The compatibility method
-`presented_module()` now stores the result on a mutable submodule and still returns
-a standalone copy; its const overload computes on a temporary without modifying it.
+Generator reductions invalidate the submodule's projective storage, preserving its
+injective resolution; they do not modify the parent. Explicit `compute_presentation`
+computes the kernel of the combined generators and parent relations, then stores
+the projected relations in the base. There is no second presentation cache.
+`presented_module()` explicitly computes and returns a standalone copy; its const
+overload performs this work on a temporary submodule.
 
 As with parents of existing homomorphisms, do not use arbitrary inherited module
 edits to change the represented module while retaining a fixed embedding. In
@@ -256,7 +257,7 @@ Stable-Decomposition's reusable helpers are exposed in
 - `f.image(S)` computes the image of a submodule of its domain.
 - Matrix-level adapters cover zero/whole/sum/reduction, canonical shift lifts,
   free-target image inclusion and equality in a presented parent. They preserve
-  ambient row coordinates and validate grading; containment needs no sorting.
+  ambient row coordinates; containment needs no sorting.
 - `homomorphism_lift_basis` and `End_2d_0` intentionally
   operate on spaces of generator lifts. Use `module_hom_space_basis` when maps
   differing by target relations should be identified. `reduce_matrix_family_modulo`
@@ -433,52 +434,44 @@ result.shift({-epsilon, -epsilon});
 
 ### Submodule generator maps
 
-The defining embedding is a homomorphism, accessible through:
-
 ```cpp
-const auto& inclusion = I.generator_map();       // Homomorphism<Matrix>
-const auto& matrix = inclusion.generator_lift();  // underlying graded matrix
-const auto& parent = inclusion.target();         // exactly I.parent()
-auto source = inclusion.domain();                // I in its defining generator basis
-auto shifted_inclusion = inclusion.compose(eta); // I -> X -> X(amount)
+Submodule<Mat> I(parent, generators);
+const auto& inclusion = I.generator_map();
+assert(inclusion.domain().get() == static_cast<const Module<Mat>*>(&I));
+assert(!inclusion.domain()->has_presentation());
+I.compute_presentation();                       // explicit kernel computation
+assert(inclusion.domain()->has_presentation());
 ```
 
-This replaces the old matrix-valued `generators()` accessor. No generator matrix
-is stored separately. Matrix adapters use `generator_map().generator_lift()`;
-`as_subobject(I)` returns the existing map and its source instead of rebuilding
-an unrelated source object.
+The homomorphism's domain is the submodule's own Module base, not a separately
+materialized module. Accessing either endpoint or its lift never computes a
+presentation. `presentation()` throws if none was supplied/computed. Homomorphism
+`validate()` checks available endpoint bases without constructing missing ones;
+`check_lifts()` needs presentations and throws if they are missing.
 
-The source is the actual image module, with all relations among the defining
-generators, not a free module on those generators. Obtaining `domain()` for the
-first time computes its unminimized presentation using the graded kernel
-(except for the empty generator family). The whole submodule reuses its parent
-as the source directly, without a kernel computation. `validate()`, `check_lifts()` and
-operations that need source relations can therefore also trigger this work.
-Reading `generator_map()`, its target, or its generator lift does not. Composing
-an inclusion into an already defined map does not materialize its source.
-Degree types without a graded kernel can still use these lazy operations.
+The member inclusion holds a non-owning alias to its containing object, avoiding
+an ownership cycle. Copy/move construction and assignment of a Submodule rebind
+that alias to the destination object's base. Copies of the inclusion borrow the
+original submodule and must not outlive it, or be used after its generator basis
+changes. They no longer preserve snapshots across submodule destruction or mutation.
+Ordinary homomorphisms still retain the shared endpoint owners supplied by callers.
+Lift matrices are stored directly in a vector with ordinary value semantics.
 
-The source is a shared, stable module object representing I in the embedding's
-basis, not a pointer back to the mutable Submodule wrapper. This distinction
-allows value semantics and avoids ownership cycles. Copies made before source
-materialization share the same eventual source object. The map and its copies
-own shared immutable lift storage; extending a copied map to a resolution does
-not mutate the original map's lifts. Source materialization is synchronized and
-retries safely if construction throws.
+Explicit minimization updates the inclusion generators and presentation together.
+Sorting a Submodule directly, or invoking default sorting through a Module reference,
+also permutes its inclusion columns. Arbitrary inherited edits that change the
+represented module or its basis require corresponding embedding updates; use a
+standalone Module copy for edits without a parent interpretation. Custom-comparator
+sorting through a statically typed Module reference remains a base-class operation.
 
-Generator reductions, shifts, quotients and parent minimization publish a new
-generator map with a fresh source. Previously copied maps retain their original
-source, target and coefficients, even after the Submodule is destroyed.
-Minimizing the optional presentation in the Submodule's Module base still affects
-only that alternative representation; it does not change the defining inclusion.
-Use `generator_map().domain()` whenever a homomorphism must use the inclusion's
-exact source coordinates and identity. Calling `generator_map().image(false)`
-recovers the represented submodule, and its kernel is zero.
+`as_subobject(I)` explicitly copies I into an owning Submodule, computes its
+presentation, and returns that same object with an owning inclusion. This keeps
+categorical results such as `kernel(f)` valid after local temporaries disappear;
+it does not add a hidden domain object to I.
 
-`homomorphism_core.hpp` defines the homomorphism type without requiring a complete
-Submodule type; `hom_operations.hpp` remains the public include providing both.
-This lets `submodule.hpp` store a Homomorphism directly without a circular type
-definition.
+`homomorphism_core.hpp` defines the map class before Submodule is complete;
+`submodule.hpp` then defines Submodule with its member map. Include the latter when
+using both types. The empty `hom_operations.hpp` forwarding header was removed.
 
 
 Identity image/composition shortcuts retain the copied sorting metadata: their

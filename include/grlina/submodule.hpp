@@ -25,22 +25,20 @@ private:
 
     const Matrix& generator_matrix() const noexcept { return generator_map_.generator_lift(); }
 
-    static homomorphism_type make_generator_map(std::shared_ptr<const module_type> parent,
-                                               Matrix matrix, bool id_matrix = false) {
-        return homomorphism_type::from_image_generators(std::move(parent), std::move(matrix), id_matrix);
+    homomorphism_type make_generator_map(std::shared_ptr<const module_type> parent,
+                                        Matrix matrix, bool id_matrix = false) {
+        // An alias with no owner: the member map must not own its containing
+        // object. Copying/moving a Submodule rebinds this endpoint below.
+        return homomorphism_type(std::shared_ptr<const module_type>(std::shared_ptr<const module_type>{}, this),
+                                 std::move(parent), std::move(matrix), id_matrix);
     }
 
     void replace_generator_map(Matrix matrix, bool id_matrix = false) {
         generator_map_ = make_generator_map(parent(), std::move(matrix), id_matrix);
-        invalidate_projective_representation();
-    }
-
-    void invalidate_projective_representation() {
         this->clear_projective_resolution();
     }
 
-    // Work on copies and commit together: no other submodule/map sharing the
-    // old parent is silently changed, and exceptions leave this object intact.
+    // Replace the parent and transport generators without changing other submodules.
     void minimize_parent_impl(bool remove_extra_relations) {
         Matrix presentation = parent()->presentation();
         Matrix generators = generator_matrix();
@@ -54,11 +52,11 @@ private:
         if (parent()->has_injective_resolution())
             minimized_parent->set_injective_resolution(parent()->injective_resolution());
         generator_map_ = make_generator_map(std::move(minimized_parent), std::move(generators));
-        invalidate_projective_representation();
+        this->clear_projective_resolution();
     }
 
 public:
-    /** Explicit structural validation, available in every build. */
+    /** Optional structural validation; never called by submodule operations. */
     void validate() const {
         if (!parent()) throw std::invalid_argument("A submodule requires a parent module");
         generator_matrix().validate();
@@ -72,20 +70,27 @@ public:
     }
 
     Submodule(std::shared_ptr<const module_type> parent, Matrix generators)
-        : Submodule(make_generator_map(std::move(parent), std::move(generators))) {}
+        : generator_map_(make_generator_map(std::move(parent), std::move(generators))) {}
 
-private:
-    explicit Submodule(homomorphism_type generator_map)
-        : generator_map_(std::move(generator_map)) {
-        GRLINA_DEBUG_CHECK(validate());
+    Submodule(const Submodule& other)
+        : module_type(other), generator_map_(other.generator_map_) {
+        generator_map_.domain_ = std::shared_ptr<const module_type>(std::shared_ptr<const module_type>{}, this);
+    }
+    Submodule(Submodule&& other)
+        : module_type(std::move(other)), generator_map_(std::move(other.generator_map_)) {
+        generator_map_.domain_ = std::shared_ptr<const module_type>(std::shared_ptr<const module_type>{}, this);
+    }
+    Submodule& operator=(Submodule other) {
+        module_type::operator=(std::move(other));
+        generator_map_ = std::move(other.generator_map_);
+        generator_map_.domain_ = std::shared_ptr<const module_type>(std::shared_ptr<const module_type>{}, this);
+        return *this;
     }
 
-public:
     const std::shared_ptr<const module_type>& parent() const noexcept { return generator_map_.target(); }
-    /** Inclusion of the represented submodule into its parent. The source is
-     * materialized lazily in the defining generator basis, independently of
-     * any minimized presentation cached in this object's Module base.
-     * Copies retain stable endpoints and survive later submodule mutations.
+    /** Inclusion from this object's Module base to its parent. Access never
+     * computes a presentation. Copies of the map borrow this object: they must
+     * not outlive it or be used after its generator basis changes.
      */
     const homomorphism_type& generator_map() const noexcept { return generator_map_; }
 
@@ -103,13 +108,7 @@ public:
         this->clear_injective_resolution(); // This changes the represented submodule.
     }
 
-    /** Size of the stored module presentation, or the defining generating
-     * family if no presentation has been computed yet.
-     */
-    index_type number_of_generators() const {
-        return this->has_presentation() ? module_type::number_of_generators()
-                                       : number_of_embedding_generators();
-    }
+    index_type number_of_generators() const noexcept { return generator_matrix().get_num_cols(); }
     index_type number_of_embedding_generators() const noexcept { return generator_matrix().get_num_cols(); }
     /** Every supplied vector must vanish modulo the parent's relations. */
     bool is_zero() const {
@@ -122,8 +121,6 @@ public:
         const Matrix& presentation = parent->presentation();
         Matrix generators(0, presentation.get_num_rows());
         generators.row_degrees = presentation.row_degrees;
-        generators.col_degrees.clear();
-        generators.data.clear();
         generators.inherit_compatible_sorting(presentation);
         return Submodule(std::move(parent), std::move(generators));
     }
@@ -135,9 +132,10 @@ public:
         identity.row_degrees = presentation.row_degrees;
         identity.col_degrees = presentation.row_degrees;
         identity.inherit_compatible_sorting(presentation);
-        // Both the identity coefficients and the exact source endpoint are
-        // known here; neither needs to be discovered by inspecting the matrix.
-        return Submodule(homomorphism_type(parent, parent, std::move(identity), true));
+        Submodule result(parent, std::move(identity));
+        result.generator_map_.id_matrix_ = true;
+        result.generator_map_.identity_lift_count_ = 1;
+        return result;
     }
 
     /** Cheap reduction modulo the supplied parent relations, without a kernel.
@@ -149,9 +147,7 @@ public:
      * ambient rows stay fixed. Remove zero generators in one batch at the end.
      */
     void reduce_generators_lazy() {
-        GRLINA_DEBUG_CHECK(validate());
         const Matrix& presentation = parent()->presentation();
-        GRLINA_DEBUG_CHECK(presentation.validate());
         Matrix generators = generator_matrix();
         array<index_type> relations_by_pivot(presentation.get_num_rows());
         for (index_type j = 0; j < presentation.get_num_cols(); ++j) {
@@ -185,7 +181,7 @@ public:
      */
     void minimize_generators(bool lazy_preprocessing = true) {
         if constexpr (has_matrix_graded_kernel<Matrix>::value) {
-            invalidate_projective_representation();
+            this->clear_projective_resolution();
             if (lazy_preprocessing) reduce_generators_lazy();
             if (generator_matrix().get_num_cols() == 0) return;
             Matrix generators = generator_matrix();
@@ -216,7 +212,6 @@ public:
             std::sort(redundant_generators.begin(), redundant_generators.end());
             if (!redundant_generators.empty()) generators.delete_columns(redundant_generators);
             replace_generator_map(std::move(generators));
-            GRLINA_DEBUG_CHECK(validate());
         } else {
             // Jan: supply Matrix::graded_kernel() to enable this construction.
             throw std::logic_error("Submodule minimization requires a poset-specific graded_kernel");
@@ -229,8 +224,6 @@ public:
     bool contains(const Submodule& other) const {
         if (parent().get() != other.parent().get())
             throw std::invalid_argument("Submodule containment requires the same parent object");
-        GRLINA_DEBUG_CHECK(validate());
-        GRLINA_DEBUG_CHECK(other.validate());
         Matrix spanning = parent()->presentation();
         spanning.append_matrix(generator_matrix());
         return solve_graded_linear_system(spanning, other.generator_matrix()).has_value();
@@ -268,45 +261,65 @@ public:
         }
     }
 
-    /** Store this submodule's own presentation in the Module base, not in its
-     * parent. Without minimization its F0 basis is exactly the generator map's columns.
-     * Minimizing the stored module can change that basis; generator_map_ retains
-     * the separate defining family in the parent's coordinates.
-     * Explicit recomputation always uses that defining family, not an old cache.
+    /** Explicitly compute relations among the inclusion's generators. The
+     * presentation is stored only in this object's Module base. Minimizing
+     * first removes redundant inclusion generators, keeping the same F0 basis
+     * in the presentation and the homomorphism.
      */
     void compute_presentation(bool minimize = false) override {
-        GRLINA_DEBUG_CHECK(validate());
+        if (minimize && generator_matrix().get_num_cols() != 0)
+            minimize_generators();
+        Matrix presentation;
         if (generator_matrix().get_num_cols() == 0) {
-            module_type result(Matrix(0, 0, {}, {}, {}));
-            if (this->has_injective_resolution())
-                result.set_injective_resolution(this->injective_resolution());
-            module_type::operator=(std::move(result));
-            return;
+            presentation = Matrix(0, 0, {}, {}, {});
+        } else if (generator_map_.id_matrix() &&
+                   generator_matrix().col_degrees == parent()->presentation().row_degrees) {
+            presentation = parent()->presentation();
+        } else if constexpr (has_matrix_graded_kernel<Matrix>::value) {
+            presentation = parent()->presentation().submodule_generated_by(generator_matrix());
+        } else {
+            throw std::logic_error("Submodule presentation requires a poset-specific graded_kernel");
         }
-        Matrix presentation = generator_map_.domain()->presentation();
         module_type result(std::move(presentation));
-        if (minimize) result.minimize();
+        // Generators are already minimal. Preserve their coordinates while
+        // removing redundant relations, rather than changing F0 independently.
+        if (minimize && result.number_of_relations() != 0) result.remove_extra_rels();
         if (this->has_injective_resolution())
             result.set_injective_resolution(this->injective_resolution());
-        // Commit only after construction/minimization succeeds. Parent and
-        // defining generators are unchanged; older stored resolutions are replaced.
         module_type::operator=(std::move(result));
     }
 
-    /** Compatibility API: compute/store in place, then return a standalone copy. */
+    void sort_compatibly() override {
+        sort_compatibly(TraitLinearOrder<typename Matrix::degree_type>{
+            Degree_traits<typename Matrix::degree_type>::lex_lambda()});
+    }
+
+    template <typename Compare>
+    void sort_compatibly(Compare compare) {
+        Matrix generators = generator_matrix();
+        generators.sort_columns(compare);
+        module_type::sort_compatibly(compare);
+        generator_map_ = make_generator_map(parent(), std::move(generators));
+    }
+
+    void minimize_presentation(bool /*sort_if_needed*/ = true) override {
+        compute_presentation(true);
+    }
+
+    void minimize_resolution(bool sort_if_needed = true) override {
+        minimize_presentation(sort_if_needed);
+        this->compute_projective_resolution();
+    }
+
+    /** Explicitly compute/store the presentation and return a standalone copy. */
     module_type presented_module(bool minimize = true) {
         compute_presentation(minimize);
         return static_cast<const module_type&>(*this);
     }
 
-    /** Const compatibility calls cannot populate this object's storage. */
     module_type presented_module(bool minimize = true) const {
-        const bool empty = generator_matrix().get_num_cols() == 0;
-        module_type result(empty ? Matrix(0, 0, {}, {}, {}) : generator_map_.domain()->presentation());
-        if (minimize && !empty) result.minimize();
-        if (this->has_injective_resolution())
-            result.set_injective_resolution(this->injective_resolution());
-        return result;
+        Submodule copy = *this;
+        return copy.presented_module(minimize);
     }
 
     /** Image of this submodule I in X/K, with K sharing the same parent X.

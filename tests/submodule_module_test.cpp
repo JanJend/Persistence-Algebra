@@ -100,25 +100,26 @@ void test_canonical_submodule_members() {
     assert(nested_parent->whole_submodule().parent().get() == nested_parent.get());
 }
 
-void test_basis_distinction_and_compatibility() {
+void test_shared_generator_basis() {
     auto parent = std::make_shared<Mod>(Mat(0, 1, {}, {}, {{0,0}}));
     Mat G(2, 1, {{0}, {0}}, {{1,1}, {1,1}}, {{0,0}});
     Sub S(parent, G);
-    auto standalone = S.presented_module(); // old API now stores on mutable S too
+    auto standalone = S.presented_module();
     assert(S.has_presentation() && S.number_of_generators() == 1);
-    assert(S.number_of_embedding_generators() == 2 && S.generator_map().generator_lift().data == G.data);
+    assert(S.number_of_embedding_generators() == 1);
+    assert(S.generator_map().domain().get() == static_cast<const Mod*>(&S));
+    assert(S.generator_map().check_lifts());
     assert(standalone.presentation().data == S.presentation().data);
-    const Sub& constant = S;
-    // Canonical maps use the defining generator basis, not a potentially
-    // minimized/reordered stored presentation. The compatibility path rebuilds it.
-    auto object = as_subobject(constant);
-    assert(object.module->number_of_generators() == 2 && object.inclusion.check_lifts());
-    assert(S.number_of_generators() == 1); // const adapter has not overwritten S
+    auto object = as_subobject(S);
+    assert(object.module->number_of_generators() == 1 && object.inclusion.check_lifts());
+    assert(object.inclusion.domain() == object.module);
     S.compute_presentation();
-    assert(S.number_of_generators() == 2 && S.presentation().row_degrees == G.col_degrees);
+    assert(S.number_of_generators() == 1);
     S.compute_projective_resolution();
-    S.minimize(); // inherited module minimization operates on the stored resolution
-    assert(S.number_of_generators() == 1 && S.number_of_embedding_generators() == 2);
+    Mod& base = S;
+    base.minimize();
+    assert(S.number_of_generators() == S.number_of_embedding_generators());
+    assert(S.generator_map().check_lifts() && S.has_complete_projective_resolution());
     assert(S.dimension_at({1,1}) == 1);
 
     const Sub fresh(parent, G);
@@ -162,7 +163,7 @@ void test_zero_without_kernel_and_polymorphic_destruction() {
     assert(zero.number_of_generators() == 0 && zero.dimension_at(r4degree(0,0,0,0)) == 0);
     auto whole = Submodule<Higher>::whole(parent);
     whole.compute_presentation(); // The whole submodule reuses the known parent.
-    assert(whole.generator_map().domain() == parent);
+    assert(whole.generator_map().domain().get() == static_cast<const Module<Higher>*>(&whole));
     Submodule<Higher> nontrivial(parent, Higher(1, 1, {{0}},
         {r4degree(1,1,1,1)}, parent->presentation().row_degrees));
     rejects([&] { nontrivial.compute_presentation(); }); // nontrivial kernel still unsupported
@@ -191,104 +192,140 @@ void test_generator_map_homomorphism() {
     auto parent = std::make_shared<const Mod>(Mat(1, 2, {{0}}, {{2,2}}, {{0,0}, {0,0}}));
     Mat matrix(3, 2, {{0}, {0}, {1}}, {{1,1}, {1,1}, {0,0}}, parent->presentation().row_degrees);
     Sub S(parent, matrix);
-    assert(!S.has_presentation());
-    auto inclusion = S.generator_map();
-    auto copied = inclusion; // Copy BEFORE either source has been materialized.
-    assert(&copied.generator_lift() == &inclusion.generator_lift());
+    const auto& inclusion = S.generator_map();
+    assert(inclusion.domain().get() == static_cast<const Mod*>(&S));
     assert(inclusion.target() == parent);
-    assert(inclusion.domain() == copied.domain());
+    assert(!inclusion.domain()->has_presentation());
+    inclusion.validate();
+    rejects([&] { (void)inclusion.domain()->presentation(); });
+    assert(!S.has_presentation());
+    S.compute_presentation();
     inclusion.validate();
     assert(inclusion.check_lifts() && inclusion.kernel(false).is_zero());
     assert(inclusion.domain()->number_of_generators() == 3);
     assert(inclusion.domain()->dimension_at({1,1}) == 2);
     assert(inclusion.domain()->dimension_at({2,2}) == 1);
     assert(inclusion.image(false).equals(S));
-    assert(!S.has_presentation()); // The domain cache is separate from the Module base.
-    auto subobject = as_subobject(S);
-    assert(subobject.module == inclusion.domain());
-    assert(subobject.inclusion.domain() == inclusion.domain());
 
     auto eta = Hom::canonical_shift(parent, {1,1});
     auto composite = inclusion.compose(eta);
     composite.validate();
-    assert(composite.domain() == inclusion.domain() && composite.target() == eta.target());
+    assert(composite.domain().get() == &S && composite.target() == eta.target());
     assert(composite.check_lifts());
     assert(composite.image(false).equals(eta.image(S, false)));
-    copied.lift_to_resolution();
-    assert(copied.lifts().size() > inclusion.lifts().size());
-    assert(copied.check_lifts() && inclusion.lifts().size() == 1);
+    auto copied_map = inclusion;
+    copied_map.lift_to_resolution();
+    assert(copied_map.lifts().size() > inclusion.lifts().size());
+    assert(copied_map.check_lifts() && inclusion.lifts().size() == 1);
 
-    // A minimized standalone presentation uses a different basis, but the
-    // stored generator map remains a valid inclusion from its original source.
     S.compute_presentation(true);
-    assert(S.number_of_generators() == 2 && S.number_of_embedding_generators() == 3);
-    assert(S.generator_map().domain() == inclusion.domain());
+    assert(S.number_of_generators() == 2 && S.number_of_embedding_generators() == 2);
+    assert(S.generator_map().domain().get() == &S);
     assert(S.generator_map().check_lifts());
+    // Earlier copies of a map must not be used after the source basis changes.
     Sub changed = S;
     changed.shift_generators({1,1});
     assert(!changed.has_presentation());
-    assert(changed.generator_map().domain() != inclusion.domain());
-    changed.generator_map().validate();
+    assert(changed.generator_map().domain().get() == &changed);
+    changed.compute_presentation();
     assert(changed.generator_map().check_lifts());
     S.minimize_generators();
-    assert(S.generator_map().domain() != inclusion.domain());
-    assert(S.number_of_embedding_generators() == 2);
+    assert(!S.has_presentation() && S.generator_map().domain().get() == &S);
+    S.compute_presentation();
     assert(S.generator_map().check_lifts());
-    assert(inclusion.generator_lift().data == matrix.data && inclusion.check_lifts());
     S.lazy_minimize_parent();
     assert(S.generator_map().target() == S.parent() && S.parent() != parent);
+    S.compute_presentation();
     assert(S.generator_map().check_lifts());
     auto quotient = S.submodule_quotient(Sub::zero(S.parent()));
-    assert(quotient.generator_map().target() == quotient.parent());
+    assert(quotient.generator_map().domain().get() == &quotient);
+    assert(!quotient.has_presentation());
+    quotient.compute_presentation();
     assert(quotient.generator_map().check_lifts());
-    assert(Sub::whole(parent).generator_map().id_matrix());
-    assert(Sub::whole(parent).generator_map().domain() == parent);
-    auto zero = Sub::zero(parent).generator_map();
-    zero.validate();
-    assert(zero.check_lifts() && zero.domain()->number_of_generators() == 0);
+    auto whole = Sub::whole(parent);
+    assert(whole.generator_map().id_matrix());
+    assert(whole.generator_map().domain().get() == &whole && !whole.has_presentation());
+    whole.compute_presentation();
+    assert(whole.generator_map().check_lifts());
+    auto zero = Sub::zero(parent);
+    assert(zero.generator_map().domain().get() == &zero && !zero.has_presentation());
+    zero.compute_presentation();
+    zero.generator_map().validate();
+    assert(zero.generator_map().check_lifts() && zero.number_of_generators() == 0);
 }
 
-void test_generator_map_lifetime_and_laziness() {
-    using Hom = Homomorphism<Mat>;
-    std::weak_ptr<const Mod> parent_lifetime, source_lifetime;
-    {
-        auto detached = [&] {
-            auto parent = std::make_shared<const Mod>(Mat(0, 1, {}, {}, {{0,0}}));
-            parent_lifetime = parent;
-            Sub local(parent, Mat(2, 1, {{0}, {0}}, {{1,1}, {1,1}}, {{0,0}}));
-            return local.generator_map();
-        }();
-        assert(!parent_lifetime.expired());
-        detached.validate(); // Source is first materialized AFTER local is destroyed.
-        source_lifetime = detached.domain();
-        assert(detached.check_lifts() && detached.kernel(false).is_zero());
-        assert(detached.domain()->dimension_at({1,1}) == 1);
-    }
-    assert(parent_lifetime.expired() && source_lifetime.expired());
+void test_self_domain_copy_move_and_explicit_computation() {
+    auto parent = std::make_shared<const Mod>(Mat(0, 1, {}, {}, {{0,0}}));
+    Sub original(parent, Mat(2, 1, {{0}, {0}}, {{1,1}, {1,1}}, {{0,0}}));
+    auto check_self = [](const Sub& S) {
+        assert(S.generator_map().domain().get() == static_cast<const Mod*>(&S));
+    };
+    check_self(original);
+    Sub copied = original;
+    check_self(copied);
+    assert(!copied.has_presentation());
+    Sub moved = std::move(copied);
+    check_self(moved);
+    copied = original;
+    check_self(copied);
+    copied = std::move(moved);
+    check_self(copied);
+    copied.compute_presentation();
+    assert(!original.has_presentation());
+    Sub assigned = Sub::zero(parent);
+    assigned = copied;
+    check_self(assigned);
+    assert(assigned.generator_map().check_lifts());
+    assigned = std::move(copied);
+    check_self(assigned);
+    assert(assigned.generator_map().check_lifts());
+    std::vector<Sub> relocated;
+    relocated.push_back(original);
+    relocated.push_back(original);
+    for (const auto& S : relocated) check_self(S);
 
-    // Accessing coefficients and composing into an identity must not ask for
-    // a source presentation: R4 has no graded kernel implementation.
+    // An owning categorical result keeps its actual Submodule alive; there
+    // is no domain cache or implicit work on endpoint access.
+    auto object = as_subobject(Sub(parent, Mat(1, 1, {{0}}, {{1,1}}, {{0,0}})));
+    assert(dynamic_cast<const Sub*>(object.module.get()));
+    assert(object.inclusion.domain() == object.module && object.inclusion.check_lifts());
+
+    // R4 has no kernel implementation, so even this accessor must still work.
     using Four = R4GradedSparseMatrix<int>;
     using FourHom = Homomorphism<Four>;
-    auto parent = std::make_shared<const Module<Four>>(Four(0, 1, {}, {}, {r4degree(0,0,0,0)}));
-    Submodule<Four> S(parent, Four(1, 1, {{0}}, {r4degree(1,1,1,1)},
-                                   parent->presentation().row_degrees));
-    auto inclusion = S.generator_map();
-    auto copied = inclusion;
-    auto composed = inclusion.compose(FourHom::identity(parent));
-    assert(composed.generator_lift().data == inclusion.generator_lift().data);
+    auto four_parent = std::make_shared<const Module<Four>>(Four(0, 1, {}, {}, {r4degree(0,0,0,0)}));
+    Submodule<Four> S(four_parent, Four(1, 1, {{0}}, {r4degree(1,1,1,1)},
+                                        four_parent->presentation().row_degrees));
+    const auto& inclusion = S.generator_map();
+    assert(inclusion.domain().get() == &S && !inclusion.domain()->has_presentation());
+    auto composed = inclusion.compose(FourHom::identity(four_parent));
+    assert(composed.domain().get() == &S);
     assert(composed.image(false).equals(S));
-    rejects([&] { (void)inclusion.domain(); });
-    rejects([&] { (void)copied.domain(); }); // Failed factories remain retryable.
+    rejects([&] { S.compute_presentation(); });
     assert(!S.has_presentation());
 }
 
+void test_sorting_transports_the_inclusion() {
+    auto parent = std::make_shared<const Mod>(Mat(0, 2, {}, {}, {{0,0}, {0,0}}));
+    Sub S(parent, Mat(2, 2, {{0}, {1}}, {{1,0}, {0,1}}, parent->presentation().row_degrees));
+    S.compute_presentation();
+    Mod& base = S;
+    base.sort_compatibly();
+    assert(S.presentation().row_degrees == S.generator_map().generator_lift().col_degrees);
+    assert(S.generator_map().generator_lift().data == array<int>({{1}, {0}}));
+    assert(S.generator_map().check_lifts());
+    S.sort_compatibly(Degree_traits<r2degree>::colex_lambda());
+    assert(S.generator_map().generator_lift().data == array<int>({{0}, {1}}));
+    assert(S.generator_map().check_lifts());
+}
+
 int main() {
+    test_sorting_transports_the_inclusion();
     test_generator_map_homomorphism();
-    test_generator_map_lifetime_and_laziness();
+    test_self_domain_copy_move_and_explicit_computation();
     test_canonical_submodule_members();
     test_in_place_module_storage();
-    test_basis_distinction_and_compatibility();
+    test_shared_generator_basis();
     test_invalidation_and_automatic_resolution();
     test_zero_without_kernel_and_polymorphic_destruction();
 }
