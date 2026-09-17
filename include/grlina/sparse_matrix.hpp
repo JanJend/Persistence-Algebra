@@ -14,6 +14,7 @@
  */
 
 #pragma once
+#include <grlina/checks.hpp>
 
 
 #include "grlina/column_types.hpp"
@@ -81,7 +82,7 @@ namespace graded_linalg {
                 itS++;
             }
         }
-        assert(itS == subset.end() && "Not all elements of the subset were found in the target");
+        GRLINA_ASSERT(itS == subset.end() && "Not all elements of the subset were found in the target");
         return result;
     }
 
@@ -96,7 +97,7 @@ namespace graded_linalg {
     template<typename T, typename index>
     void vec_deletion(std::vector<T>& v, const std::vector<index>& indices) {
 
-        assert(std::is_sorted(indices.begin(), indices.end()));
+        GRLINA_ASSERT(std::is_sorted(indices.begin(), indices.end()));
 
         index read = 0;
         index write = 0;
@@ -197,7 +198,7 @@ namespace graded_linalg {
     vec<index> vectorXORMulti(const vec<vec<index>>& matrix, const bitset& mask) {
         vec<index> result;
 
-        assert(mask.size() == matrix.size());
+        GRLINA_ASSERT(mask.size() == matrix.size());
 
         // Initialize iterators for all vectors
         std::vector<typename vec<index>::const_iterator> iterators;
@@ -290,8 +291,8 @@ void erase_from_sorted_vector(vec<index>& v, index i){
  */
 template <typename index>
 void remove_intersection(vec<index>& v, const vec<index>& w) {
-    assert(std::is_sorted(v.begin(), v.end()));
-    assert(std::is_sorted(w.begin(), w.end()));
+    GRLINA_ASSERT(std::is_sorted(v.begin(), v.end()));
+    GRLINA_ASSERT(std::is_sorted(w.begin(), w.end()));
     index i = 0; // Pointer for v
     index j = 0; // Pointer for w
     index k = 0; // Position to write in v
@@ -404,8 +405,8 @@ void apply_transformation(vec<index>& target, const vec<index>& index_vector) {
  */
 template<typename index>
 void re_index_non_ocurrences(std::vector<index>& v, const std::vector<index>& w) {
-    assert(std::is_sorted(v.begin(), v.end()));
-    assert(std::is_sorted(w.begin(), w.end()));
+    GRLINA_ASSERT(std::is_sorted(v.begin(), v.end()));
+    GRLINA_ASSERT(std::is_sorted(w.begin(), w.end()));
     index j = 0;
     index m = w.size();
     for (index& a : v) {
@@ -603,7 +604,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * 
      */
     void sort_data(){
-        assert(this->num_cols == this->data.size());
+        GRLINA_ASSERT(this->num_cols == this->data.size());
         for(index i = 0; i < this->num_cols; i++){
             sort_column(i);
         }
@@ -639,7 +640,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * 
      */
     void compute_rows_forward(){
-        assert(this->num_rows > 0);
+        GRLINA_ASSERT(this->num_rows > 0);
         _rows.clear();
         _rows = vec<vec<index>>(this->num_rows, vec<index>());
         for(index i = 0; i < this->num_cols ; i++) {
@@ -784,7 +785,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param row_indices 
      */
     void delete_rows(const vec<index>& row_indices_to_remove) {
-        assert(std::is_sorted(row_indices_to_remove.begin(), row_indices_to_remove.end()));
+        GRLINA_ASSERT(std::is_sorted(row_indices_to_remove.begin(), row_indices_to_remove.end()));
         if(row_indices_to_remove.empty()){
             return;
         }
@@ -810,7 +811,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param col_indices_to_remove 
      */
     void delete_columns(const vec<index>& col_indices_to_remove) {
-        assert(std::is_sorted(col_indices_to_remove.begin(), col_indices_to_remove.end()));
+        GRLINA_ASSERT(std::is_sorted(col_indices_to_remove.begin(), col_indices_to_remove.end()));
         if(col_indices_to_remove.empty()){
             return;
         }
@@ -820,7 +821,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 
 
     void compute_normalisation_with_pivots(const vec<index>& row_indices) {
-        assert(row_indices.size() == this->num_rows);
+        GRLINA_ASSERT(row_indices.size() == this->num_rows);
         auto row_map = shiftIndicesMap(row_indices);
         transform_matrix(this->data, row_map, true);
         // Create a new map with updated keys
@@ -901,7 +902,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     // Adds the i-th row to the j-th when rows are stored in reverse order.
     // also updates the columns, but without sorting or removing duplicates.
     void fast_rev_row_op(index i, index j){
-        assert(i != j);
+        GRLINA_ASSERT(i != j);
         for(index k : this->_rows[i]){
             this->data[k].push_back(j);
         }
@@ -963,7 +964,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     */
     SparseMatrix restricted_domain_copy(vec<index>& colIndices) const {
         for(index i : colIndices){
-            assert(i < this->num_cols);
+            GRLINA_ASSERT(i < this->num_cols);
         }
         SparseMatrix result(colIndices.size(), this->num_rows);
         for(index i = 0; i < colIndices.size(); i++){
@@ -1007,7 +1008,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
                     this->col_op(i, j);
                     performed_ops.col_op(i, j);
                     auto new_p = this->col_last(j);
-                    assert( new_p < p);
+                    GRLINA_ASSERT( new_p < p);
                     p = new_p;
                 } else {
                     this->pivots[p]=j;
@@ -1080,7 +1081,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 				result.data[i] = trunc.data[colForPivot];
 			}
 		}
-		assert(j == quotientBasis.size() && "Not all quotient basis elements were used");
+		GRLINA_ASSERT(j == quotientBasis.size() && "Not all quotient basis elements were used");
 		if(basisLift){
 			*basisLift = quotientBasis;
 		}
@@ -1122,7 +1123,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
                 result.data[i] = trunc.data[this->pivots[i]];
             }
         }
-        assert(j == quotientBasis.size() && "Not all quotient basis elements were used");
+        GRLINA_ASSERT(j == quotientBasis.size() && "Not all quotient basis elements were used");
         return std::move(result);
     }       
 
@@ -1186,7 +1187,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     SparseMatrix<index> transformed_restricted_copy(const DenseMatrix& B, vec<index>& col_indices){
         index m = B.num_cols;
         index n = B.num_rows;
-        assert(n == col_indices.size());
+        GRLINA_ASSERT(n == col_indices.size());
         SparseMatrix<index> result(m, this->num_rows);
         for(const bitset& v : B.data){
             vec<index> w;
@@ -1206,7 +1207,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param D 
      */
     void multiply_dense(DenseMatrix& D){
-        assert(this->num_cols == D.get_num_rows());
+        GRLINA_ASSERT(this->num_cols == D.get_num_rows());
         auto copy = this->data;
         for(index i = 0; i < D.get_num_cols(); i++){
             this->data[i] = vectorXORMulti(copy, D.data[i]);
@@ -1222,7 +1223,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param D 
      */
     void multiply_id_triangular(DenseMatrix& D){
-        assert(this->num_cols == D.get_num_rows());
+        GRLINA_ASSERT(this->num_cols == D.get_num_rows());
         for(index i = 0; i < D.get_num_cols(); i++){
             if(D.data[i].any()){
                 this->add_to_col(i, vectorXORMulti(this->data, D.data[i]));
@@ -1236,8 +1237,8 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param D 
      */
     void multiply_dense_with_e_check(DenseMatrix& D, vec<bitset>& e){
-        assert(this->num_cols == D.num_rows);
-        assert(D.num_cols == e.size());
+        GRLINA_ASSERT(this->num_cols == D.num_rows);
+        GRLINA_ASSERT(D.num_cols == e.size());
         array<index> copy = this->data;
         for(index i = 0; i < D.num_cols; i++){
             if(D.data[i] != e[i]){
@@ -1253,7 +1254,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param D 
      */
     void multiply_dense_with_e_check(DenseMatrix& D, vec<bitset>& e_vec, const bitset& col_indices){
-        assert(col_indices.count() == D.get_num_rows());
+        GRLINA_ASSERT(col_indices.count() == D.get_num_rows());
         // D.print();
         // this->print();
         array<index> copy;
@@ -1324,13 +1325,13 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
                     index i = this->pivots[p];
                      Column_traits<vec<index>, index>::add_to(this->data[i], N.data[j]);
                     auto new_p = N.col_last(j);
-                    assert( new_p < p);
+                    GRLINA_ASSERT( new_p < p);
                     p = new_p;
                 } else if ( N.pivots.count(p)){
                     index i = N.pivots[p];
                     Column_traits<vec<index>, index>::add_to(N.data[i], N.data[j]);
                     auto new_p = N.col_last(j);
-                    assert( new_p < p);
+                    GRLINA_ASSERT( new_p < p);
                     p = new_p;
                 } else {
                     N.pivots[p]=j;
@@ -1372,8 +1373,8 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 
 template< typename index>
 void add_to (const SparseMatrix<index>& A, SparseMatrix<index>& B){
-    assert(A.get_num_cols() == B.get_num_cols());
-    assert(A.get_num_rows() == B.get_num_rows());
+    GRLINA_ASSERT(A.get_num_cols() == B.get_num_cols());
+    GRLINA_ASSERT(A.get_num_rows() == B.get_num_rows());
     for(index i = 0; i< A.get_num_cols(); i++){
         Column_traits<vec<index>, index>::add_to(A.data[i],B.data[i]);
     }
@@ -1387,7 +1388,7 @@ template <typename index>
 SparseMatrix<index> multiply_transpose(const SparseMatrix<index>& M, const SparseMatrix<index>& N){
   SparseMatrix<index> result(N.get_num_cols(), M.get_num_cols());
   result.data.resize(result.get_num_cols());
-  // assert(M.get_num_rows() == N.get_num_rows()); Sometimes we dont know.
+  // GRLINA_ASSERT(M.get_num_rows() == N.get_num_rows()); Sometimes we dont know.
   for(index i = 0; i < N.get_num_cols(); i++){
     for(index j = 0; j < M.get_num_cols(); j++){
       if(Column_traits<vec<index>, index>::scalar_product(M.data[j], N.data[i])){ 
@@ -1404,7 +1405,7 @@ SparseMatrix<index> multiply_transpose(const SparseMatrix<index>& M, const Spars
  */
 template <typename index>
 SparseMatrix<index> multiply(const SparseMatrix<index>& M, const SparseMatrix<index>& N){
-    assert(M.get_num_cols() == N.get_num_rows());
+    GRLINA_ASSERT(M.get_num_cols() == N.get_num_rows());
     SparseMatrix<index> transpose = M.transposed_copy();
     return multiply_transpose(transpose, N);
 }

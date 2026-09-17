@@ -3,7 +3,7 @@
  * canonical maps. Call Module::minimize() on a COPY if only the object is needed.
  */
 #pragma once
-#include <grlina/homomorphism.hpp>
+#include <grlina/hom_operations.hpp>
 
 namespace graded_linalg {
 
@@ -67,8 +67,8 @@ struct Subobject {
 
 template <typename Matrix>
 Subobject<Matrix> as_subobject(const Submodule<Matrix>& submodule) {
-    auto module = std::make_shared<const Module<Matrix>>(submodule.presented_module(false));
-    return {module, Homomorphism<Matrix>(module, submodule.parent(), submodule.generators())};
+    const auto& inclusion = submodule.generator_map();
+    return {inclusion.domain(), inclusion};
 }
 
 template <typename Matrix>
@@ -84,11 +84,8 @@ struct QuotientObject {
 
 template <typename Matrix>
 QuotientObject<Matrix> as_quotient(const Submodule<Matrix>& submodule) {
-    auto quotient = std::make_shared<const Module<Matrix>>(submodule.quotient_module(false));
-    Matrix identity(submodule.parent()->number_of_generators(), quotient->number_of_generators(), "Identity");
-    identity.col_degrees = submodule.parent()->presentation().row_degrees;
-    identity.row_degrees = quotient->presentation().row_degrees;
-    return {quotient, Homomorphism<Matrix>(submodule.parent(), quotient, std::move(identity))};
+    auto projection = Homomorphism<Matrix>::quotient_projection(submodule);
+    return {projection.target(), std::move(projection)};
 }
 
 template <typename Matrix>
@@ -117,9 +114,9 @@ Pullback<Matrix> pullback(const Homomorphism<Matrix>& f, const Homomorphism<Matr
     if (f.target().get() != g.target().get())
         throw std::invalid_argument("Pullback requires a common target");
     auto sum = direct_sum<Matrix>(f.domain(), g.domain());
-    auto difference = sum.projection_left.then(f) + sum.projection_right.then(g);
+    auto difference = sum.projection_left.compose(f) + sum.projection_right.compose(g);
     auto K = kernel(difference);
-    return {K.module, K.inclusion.then(sum.projection_left), K.inclusion.then(sum.projection_right)};
+    return {K.module, K.inclusion.compose(sum.projection_left), K.inclusion.compose(sum.projection_right)};
 }
 
 template <typename Matrix>
@@ -134,9 +131,9 @@ Pushout<Matrix> pushout(const Homomorphism<Matrix>& f, const Homomorphism<Matrix
     if (f.domain().get() != g.domain().get())
         throw std::invalid_argument("Pushout requires a common domain");
     auto sum = direct_sum<Matrix>(f.target(), g.target());
-    auto difference = f.then(sum.inclusion_left) + g.then(sum.inclusion_right);
+    auto difference = f.compose(sum.inclusion_left) + g.compose(sum.inclusion_right);
     auto Q = cokernel(difference);
-    return {Q.module, sum.inclusion_left.then(Q.projection), sum.inclusion_right.then(Q.projection)};
+    return {Q.module, sum.inclusion_left.compose(Q.projection), sum.inclusion_right.compose(Q.projection)};
 }
 
 } // namespace graded_linalg

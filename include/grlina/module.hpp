@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -19,7 +20,10 @@ enum class ResolutionKind { projective, injective };
 enum class ResolutionCompleteness { truncated, complete };
 
 template <typename Matrix>
-class Module {
+class Submodule;
+
+template <typename Matrix>
+class Module : public std::enable_shared_from_this<Module<Matrix>> {
 public:
     static_assert(is_graded_sparse_matrix_v<Matrix>,
                   "Module<Matrix> requires Matrix to inherit "
@@ -41,6 +45,13 @@ private:
     chain_complex_type projective_resolution_;
     chain_complex_type injective_resolution_;
     bool projective_resolution_complete_ = false;
+
+    static void normalize_indices(vec<index_type>& indices, index_type size) {
+        std::sort(indices.begin(), indices.end());
+        indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+        if (!indices.empty() && (indices.front() < 0 || indices.back() >= size))
+            throw std::out_of_range("Presentation index out of range");
+    }
 
     void require_presentation() const {
         if (projective_resolution_.empty())
@@ -73,7 +84,7 @@ public:
     explicit Module(chain_complex_type resolution,
                     ResolutionKind kind = ResolutionKind::projective,
                     ResolutionCompleteness completeness = ResolutionCompleteness::truncated) {
-        resolution.validate_structure();
+        GRLINA_DEBUG_CHECK(resolution.validate_structure());
         if (kind == ResolutionKind::projective) {
             projective_resolution_ = std::move(resolution);
             projective_resolution_complete_ = completeness == ResolutionCompleteness::complete;
@@ -82,8 +93,8 @@ public:
     }
     Module(chain_complex_type projective, chain_complex_type injective)
         : projective_resolution_(std::move(projective)), injective_resolution_(std::move(injective)) {
-        projective_resolution_.validate_structure();
-        injective_resolution_.validate_structure();
+        GRLINA_DEBUG_CHECK(projective_resolution_.validate_structure());
+        GRLINA_DEBUG_CHECK(injective_resolution_.validate_structure());
     }
     explicit Module(const std::string& path, bool sort_if_needed = false)
         : projective_resolution_(chain_complex_type::from_file(path, sort_if_needed)) {}
@@ -123,12 +134,12 @@ public:
 
     void set_projective_resolution(chain_complex_type resolution,
         ResolutionCompleteness completeness = ResolutionCompleteness::truncated) {
-        resolution.validate_structure();
+        GRLINA_DEBUG_CHECK(resolution.validate_structure());
         projective_resolution_ = std::move(resolution);
         projective_resolution_complete_ = completeness == ResolutionCompleteness::complete;
     }
     void set_injective_resolution(chain_complex_type resolution) {
-        resolution.validate_structure();
+        GRLINA_DEBUG_CHECK(resolution.validate_structure());
         injective_resolution_ = std::move(resolution);
     }
     void clear_projective_resolution() noexcept {
@@ -138,6 +149,13 @@ public:
     void clear_injective_resolution() noexcept { injective_resolution_.clear(); }
 
     const Matrix& presentation() const { require_presentation(); return projective_resolution_[0]; }
+
+    /** Canonical submodules retaining this exact parent. Requires shared_ptr
+     * ownership (otherwise throws std::bad_weak_ptr) and a presentation.
+     * Include submodule.hpp or modules.hpp for the definitions.
+     */
+    Submodule<Matrix> whole_submodule() const;
+    Submodule<Matrix> zero_submodule() const;
 
     /** Obtain an explicit presentation in this object. Plain modules already
      * require a supplied presentation; derived representations (e.g. Submodule)
@@ -164,7 +182,7 @@ public:
     void edit_presentation(Editor&& editor) {
         Matrix& d1 = mutable_presentation();
         std::forward<Editor>(editor)(d1);
-        projective_resolution_.validate_structure();
+        GRLINA_DEBUG_CHECK(projective_resolution_.validate_structure());
     }
 
     index_type number_of_generators() const { return presentation().get_num_rows(); }
@@ -173,6 +191,92 @@ public:
         std::size_t result = 0;
         for (const auto& column : presentation().data) result += column.size();
         return result;
+    }
+
+    /** Fibre presentation and the original generator indices of its rows.
+     * Its cokernel is the module fibre; row coordinates are normalized locally.
+     */
+    auto local_presentation_at(const degree_type& degree) const {
+        return presentation().map_at_degree_pair(degree);
+    }
+
+    /** Relations available at degree, retaining ALL original generator rows.
+     * relation_indices is replaced with their original column indices.
+     */
+    SparseMatrix<index_type> relations_at(const degree_type& degree,
+                                         vec<index_type>& relation_indices) const {
+        relation_indices.clear();
+        return presentation().map_at_degree(degree, relation_indices);
+    }
+
+    void print_presentation(bool suppress_description = false) const {
+        presentation().print_graded(suppress_description);
+    }
+    void print_degrees() const { presentation().print_degrees(); }
+
+    /** Remove chosen relations from this presentation; may enlarge the module. */
+    void remove_relations(vec<index_type> indices) {
+        normalize_indices(indices, number_of_relations());
+        edit_presentation([&](Matrix& matrix) { matrix.delete_columns(indices); });
+    }
+
+    /** Kill the chosen presentation generators (take the corresponding quotient). */
+    void quotient_by_generators(vec<index_type> indices) {
+        normalize_indices(indices, number_of_generators());
+        edit_presentation([&](Matrix& matrix) { matrix.delete_rows(indices); });
+    }
+
+    /** Keep the first count generators and kill the remaining ones.
+     * Equivalent to the matrix cull_columns(count, false), which truncates rows.
+     */
+    void quotient_by_tail_generators(index_type count) {
+        if (count < 0 || count > number_of_generators())
+            throw std::out_of_range("Number of retained generators out of range");
+        edit_presentation([&](Matrix& matrix) { matrix.cull_columns(count, false); });
+    }
+
+    /** Add a homogeneous relation in the current generator coordinates. */
+    void add_relation(const vec<index_type>& coefficients, const degree_type& degree) {
+        GRLINA_DEBUG_CHECK(
+            Matrix relation(1, number_of_generators(), {coefficients}, {degree},
+                            presentation().row_degrees);
+            relation.validate());
+        edit_presentation([&](Matrix& matrix) { matrix.append_column(coefficients, degree); });
+    }
+
+    /** Cancel local generator/relation pairs without requiring a graded kernel. */
+    void semi_minimize_presentation() {
+        Matrix matrix = presentation();
+        matrix.sort_compatibly();
+        matrix.semi_minimize();
+        projective_resolution_ = chain_complex_type(std::vector<Matrix>{std::move(matrix)});
+        projective_resolution_complete_ = false;
+    }
+
+    bool is_presentation_minimal() const {
+        Matrix matrix = presentation();
+        matrix.sort_compatibly();
+        return matrix.is_minimal();
+    }
+
+    /** Bounds of presentation degrees, NOT bounds of the module's support. */
+    auto presentation_degree_bounds() const {
+        if (number_of_generators() == 0 && number_of_relations() == 0)
+            throw std::invalid_argument("Empty presentation has no degree bounds");
+        return presentation().bounding_box();
+    }
+
+    /** An n-by-n sampling grid over the R2 presentation degree bounds. */
+    vec<degree_type> equidistant_presentation_grid(int n) const {
+        if (n < 0) throw std::invalid_argument("Grid size must be nonnegative");
+        if (n == 0 || (number_of_generators() == 0 && number_of_relations() == 0)) return {};
+        return presentation().get_equidistant_grid(n);
+    }
+
+    /** Restrict to a finite degree poset; by default use presentation degrees. */
+    auto to_quiver(vec<degree_type> vertices = {}, array<index_type> edges = {}) const {
+        Matrix matrix = presentation();
+        return matrix.induced_quiver_rep(std::move(vertices), std::move(edges));
     }
 
     void sort_compatibly() {
@@ -210,19 +314,45 @@ public:
         working.minimize(sort_if_needed);
         auto& terminal = working[working.size() - 1];
         if (terminal.get_num_cols() != 0) terminal.remove_redundant_relations();
-        if (!working.squares_to_zero())
-            throw std::logic_error("Resolution minimization broke d*d=0");
+        GRLINA_DEBUG_CHECK(if (!working.squares_to_zero())
+            throw std::logic_error("Resolution minimization broke d*d=0"));
         projective_resolution_ = std::move(working);
     }
 
-    /** Explicit presentation-only operation; discard higher projective maps. */
+    /** Remove redundant relations via the graded kernel, without changing
+     * ambient generator coordinates. Higher projective maps are discarded;
+     * the independent injective resolution remains valid and is preserved.
+     * Sorting is temporary on rows, so existing submodule embeddings remain
+     * valid. This does not cancel generator/relation pairs.
+     */
+    void remove_extra_rels(bool sort_if_needed = true) {
+        Matrix reduced = presentation();
+        vec<index_type> restore_rows;
+        if (sort_if_needed) {
+            restore_rows = reduced.sort_rows_with_permutation().new_to_old;
+            reduced.sort_columns_lexicographically();
+        }
+        reduced.remove_redundant_relations();
+        if (sort_if_needed) {
+            reduced.permute_rows_graded(restore_rows);
+            reduced.refresh_compatible_sorted();
+        }
+        projective_resolution_ = chain_complex_type(std::vector<Matrix>{std::move(reduced)});
+        projective_resolution_complete_ = false;
+    }
+
+    /** Presentation-only minimization: discard higher projective maps while
+     * preserving the independently stored injective resolution.
+     */
     void minimize_presentation(bool sort_if_needed = true) {
         const bool was_complete_presentation = projective_resolution_.size() == 1 &&
             has_complete_projective_resolution();
         Matrix minimized = presentation();
         if (sort_if_needed) minimized.sort_compatibly();
-        minimized.minimize();
-        projective_resolution_ = chain_complex_type(std::vector<Matrix>{std::move(minimized)});
+        minimized.cancel_local_pairs();
+        Module working(std::move(minimized));
+        working.remove_extra_rels(false);
+        projective_resolution_ = std::move(working.projective_resolution_);
         projective_resolution_complete_ = was_complete_presentation;
     }
 
@@ -242,7 +372,7 @@ public:
         if (has_complete_projective_resolution()) return;
         if constexpr (has_matrix_graded_kernel<Matrix>::value) {
             chain_complex_type working = projective_resolution_;
-            if (!working.squares_to_zero()) throw std::invalid_argument("Resolution does not square to zero");
+            GRLINA_DEBUG_CHECK(if (!working.squares_to_zero()) throw std::invalid_argument("Resolution does not square to zero"));
             while (true) {
                 Matrix source = working[working.size() - 1]; // kernel computation is destructive
                 Matrix kernel = source.graded_kernel();
@@ -318,7 +448,7 @@ public:
 
     /** Query sorted, unique Cartesian axes, which need not contain all births. */
     R2HilbertGrid hilbert_function_on_grid(const vec<double>& xs, const vec<double>& ys) {
-        validate_hilbert_axes(xs, ys);
+        GRLINA_DEBUG_CHECK(validate_hilbert_axes(xs, ys));
         ensure_resolution_for_hilbert_grid();
         return std::as_const(*this).hilbert_function_on_grid(xs, ys);
     }
@@ -326,7 +456,7 @@ public:
     R2HilbertGrid hilbert_function_on_grid(const vec<double>& xs, const vec<double>& ys) const {
         static_assert(std::is_same_v<degree_type, r2degree>, "This grid helper is only available for R2 modules");
         require_presentation();
-        validate_hilbert_axes(xs, ys);
+        GRLINA_DEBUG_CHECK(validate_hilbert_axes(xs, ys));
         if constexpr (has_matrix_graded_kernel<Matrix>::value) {
             if (!has_complete_projective_resolution()) {
                 Module working = *this;
@@ -360,8 +490,8 @@ public:
             differential.shift(amount);
         for (auto& differential : injective_resolution_.differentials())
             differential.shift(amount);
-        projective_resolution_.validate_structure();
-        injective_resolution_.validate_structure();
+        GRLINA_DEBUG_CHECK(projective_resolution_.validate_structure());
+        GRLINA_DEBUG_CHECK(injective_resolution_.validate_structure());
     }
     template <typename... Args> void snap_to_grid(Args&&... args) {
         edit_presentation([&](Matrix& matrix) { matrix.snap_to_grid(std::forward<Args>(args)...); });
@@ -411,9 +541,8 @@ Module<Matrix> homology_module(const ChainComplex<Matrix>& complex,
     if constexpr (!has_matrix_graded_kernel<Matrix>::value) {
         throw std::logic_error("This graded matrix type does not implement a graded kernel");
     } else {
-        complex.validate_structure();
-        if (!complex.squares_to_zero())
-            throw std::invalid_argument("homology_module requires d_k d_(k+1) = 0");
+        GRLINA_DEBUG_CHECK(if (!complex.squares_to_zero())
+            throw std::invalid_argument("homology_module requires d_k d_(k+1) = 0"));
         if (homological_degree == 0 || homological_degree > complex.size())
             throw std::out_of_range("No outgoing differential at the requested homological degree");
 

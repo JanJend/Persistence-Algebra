@@ -6,17 +6,18 @@
 namespace graded_linalg {
 
 /** Solve A X = B with degree-admissible coordinates, preserving A's basis.
- * No solution is reported as nullopt; malformed inputs throw.
+ * No solution is reported as nullopt. Input compatibility is a caller
+ * precondition, checked automatically in diagnostic builds.
  */
 template <typename Matrix>
 std::optional<Matrix> solve_graded_linear_system(const Matrix& A, const Matrix& B) {
     static_assert(is_graded_sparse_matrix_v<Matrix>, "Expected graded CRTP matrices");
     using index = typename Matrix::index_type;
     using D = typename Matrix::degree_type;
-    A.validate();
-    B.validate();
-    if (A.row_degrees != B.row_degrees)
-        throw std::invalid_argument("Graded linear system has different target bases");
+    GRLINA_DEBUG_CHECK(A.validate());
+    GRLINA_DEBUG_CHECK(B.validate());
+    GRLINA_DEBUG_CHECK(if (A.row_degrees != B.row_degrees)
+        throw std::invalid_argument("Graded linear system has different target bases"));
     Matrix X(B.get_num_cols(), A.get_num_cols());
     X.data.resize(B.get_num_cols());
     X.col_degrees = B.col_degrees;

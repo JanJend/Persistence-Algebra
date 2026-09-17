@@ -9,23 +9,24 @@ and cross the matrix boundary only when calling a legacy algorithm.
 
 All types live in `graded_linalg`.
 
-- `ChainComplex<Matrix>` stores `d1, d2, ...` in that order. It validates matrix
-  dimensions, degrees, gradedness, adjacent chain groups, and can check
-  `d_i d_{i+1} = 0` with `is_chain_complex()`.
+- `ChainComplex<Matrix>` stores `d1, d2, ...` in that order. Structural checks
+  run automatically in diagnostic builds and explicitly via `validate_structure()`
+  in every build. `is_chain_complex()` checks `d_i d_{i+1} = 0`.
 - `Module<Matrix>` (`PersistenceModule` is a compatibility alias) owns optional projective
   and injective chain complexes. `R2Module<index>` is the standard alias.
   The aggregate header also provides `R3Module`, `Z2Module`, `Z3Module`,
   `R4Module`, and `Z4Module` aliases.
-- `Submodule<Matrix>` publicly inherits `Module<Matrix>` and owns a non-null `shared_ptr` to its parent module and a
-  generator-coordinate matrix. Its row degrees must exactly equal the row
-  degrees of the parent's presentation.
+- `Submodule<Matrix>` publicly inherits `Module<Matrix>` and stores its embedding
+  as a `Homomorphism<Matrix>` named `generator_map_`. `generator_map()` exposes
+  the inclusion and `parent()` returns its target. The generator lift's row
+  degrees must exactly equal the parent's presentation row degrees.
 - `Homomorphism<Matrix>` (`ModuleMorphism` and `ModuleFunction` are compatibility aliases) owns pointers to its
   domain and target and stores the lifts to their projective resolutions.
 - `module_hom_space_basis` and `module_endomorphism_basis` adapt the established
   Hom algorithms and return typed module homomorphisms.
 
 The implementation is split across `chain_complex.hpp`, `module.hpp`,
-`submodule.hpp`, `homomorphism.hpp`, and `module_homomorphisms.hpp`.
+`submodule.hpp`, `hom_operations.hpp`, and `hom_interface.hpp`.
 Including `grlina/modules.hpp` loads the whole public layer.
 See [the correction/review guide](module-framework-review.md) for the latest
 algorithm contracts, categorical operations and a suggested walkthrough.
@@ -44,7 +45,7 @@ degrees are module generators. Higher differentials follow the same convention.
 
 A module created from a presentation has a one-differential projective
 resolution. A module created from a chain complex trusts the caller's exactness,
-as requested, but still validates structural compatibility. Calling
+with structural compatibility checked automatically only in diagnostic builds. Calling
 `mutable_presentation()` discards higher projective differentials first, because
 an arbitrary edit would make them stale. `minimize_presentation()` also discards
 higher projective maps; standard `minimize()` instead minimizes the stored
@@ -59,14 +60,25 @@ preserves the resolutions.
 certified. Calling `sort_compatibly()` sorts rows and columns with the mandatory
 linear extension from `Degree_traits`; the comparator overload supports any
 other compatible linear extension. The matrix retains the certifying
-comparator, so sorted-input algorithms re-check the actual degree vectors and
-detect a stale flag caused by legacy direct writes. Explicit-degree
-constructors and SCC readers check their input; chain-complex readers accept a
-`sort_if_needed` argument. Appending, arbitrary permutation, and degree edits
-invalidate the certificate. `minimize`, `minimize_variant`, `semi_minimize`,
-and graded column reduction throw `std::invalid_argument` when their required
-certificate is absent or stale. A module's `minimize()` sorts by default;
-`minimize(false)` selects strict rejection instead.
+comparator. Diagnostic builds re-check actual degree vectors and detect stale
+flags caused by legacy direct writes. Optimized builds read cached flags in
+constant time: callers that directly edit public degree vectors must call
+`invalidate_compatible_sorting()` (or explicitly refresh/sort). Uniform shifts
+assume a translation-invariant degree order, as supplied by the coordinate
+lex/colex orders. Explicit-degree constructors and SCC readers establish initial
+sorting metadata. Appending and arbitrary permutation invalidate it.
+Sorted-input algorithms diagnose missing/stale certificates in diagnostic builds;
+in optimized builds, sorted input is a caller precondition. A module's
+`minimize()` still sorts by default; `minimize(false)` trusts the supplied order
+in optimized builds.
+
+`checks.hpp` selects diagnostic checks automatically: enabled without optimization,
+disabled when GCC/Clang define `__OPTIMIZE__` (including `-Og`) or when `NDEBUG`
+is defined. `-DGRLINA_ENABLE_CHECKS=1` or `=0` overrides this. Keep the setting
+consistent across translation units. On compilers without `__OPTIMIZE__`, use
+`NDEBUG` or the explicit setting. Explicit validators and file-input checks
+remain active in every mode. See [the validation audit](validation-audit.md)
+for the decisions by subsystem and the retained sorting scans.
 
 Minimization first cancels equal-degree generator/relation pairs, clearing the
 entire pivot row by column operations before deletion. It then uses the concrete
@@ -187,6 +199,13 @@ auto kernel = f.kernel();
 Module image_as_module = image.presented_module();
 ```
 
+`module->whole_submodule()` and `module->zero_submodule()` return the canonical
+submodules with that exact module as their shared parent. Both methods are const,
+require a stored presentation, and require the module to be owned by a
+`std::shared_ptr`; calling them on a stack-allocated module throws
+`std::bad_weak_ptr`. Include `grlina/submodule.hpp` or `grlina/modules.hpp` to use
+them. The returned submodules keep their parent alive.
+
 No separate module object is needed for a submodule's own presentation/resolution:
 
 ```cpp
@@ -203,18 +222,17 @@ construction hook; `Module` has a virtual destructor and defaulted copy/move
 operations. Existing binaries using these header types should be rebuilt.
 
 By default, `Submodule::compute_presentation(false)` keeps its generator basis:
-the stored presentation's rows correspond exactly to `generators()`' columns.
+the stored presentation's rows correspond exactly to `generator_map().generator_lift()`'s columns.
 `compute_presentation(true)` minimizes the stored module, without replacing the
 defining family in parent coordinates. Consequently that family is not necessarily
 the generator lift from a subsequently minimized/sorted presentation. Use
 `number_of_embedding_generators()` for its size; after a presentation is stored,
 `number_of_generators()` reports that presentation's size, consistently with Module.
-The categorical adapter reconstructs the defining basis before building its inclusion.
+The categorical adapter reuses `generator_map()` and its exact source endpoint.
 
-Generator reductions invalidate the submodule's own projective/injective storage;
+Generator reductions invalidate the submodule's own projective storage, preserving its injective resolution;
 they do not invalidate or modify the parent's storage. A later computation rebuilds
-the submodule presentation. Explicit `compute_presentation` recomputes from the
-defining family and replaces older stored resolutions. The compatibility method
+the submodule presentation. Explicit `compute_presentation` copies the generator map's unminimized source presentation (materializing it once if needed) and replaces older stored resolutions. The compatibility method
 `presented_module()` now stores the result on a mutable submodule and still returns
 a standalone copy; its const overload computes on a temporary without modifying it.
 
@@ -228,7 +246,7 @@ same module's representations, not automatic transport of embeddings under such 
 
 Stable-Decomposition's reusable helpers are exposed in
 `grlina/presentation_operations.hpp` (included by `modules.hpp`) and
-`grlina/matrix_family.hpp`. In particular:
+`grlina/hom_interface.hpp` and `grlina/matrix_family.hpp`. In particular:
 
 - `S.contains(T)`, `S.is_contained_in(T)`, and `S.equals(T)` test exact submodule
   membership modulo their common parent's relations, without requiring a kernel.
@@ -239,7 +257,7 @@ Stable-Decomposition's reusable helpers are exposed in
 - Matrix-level adapters cover zero/whole/sum/reduction, canonical shift lifts,
   free-target image inclusion and equality in a presented parent. They preserve
   ambient row coordinates and validate grading; containment needs no sorting.
-- `homomorphism_lift_basis` and `shifted_endomorphism_lift_complement` intentionally
+- `homomorphism_lift_basis` and `End_2d_0` intentionally
   operate on spaces of generator lifts. Use `module_hom_space_basis` when maps
   differing by target relations should be identified. `reduce_matrix_family_modulo`
   is coefficient-vector linear algebra, not a categorical Hom quotient.
@@ -267,9 +285,11 @@ in `grlina/progress.hpp`; `general.hpp` retains its historical global name.
   unverified higher-dimensional kernel algorithm was added.
 - Injective resolutions can be stored, read, written, sorted, and replaced, but
   no injective-resolution algorithm existed to wrap.
-- Exactness of supplied resolutions and the homomorphism equations for manual
-  lifts are trusted. Structural dimensions, degrees and gradedness are checked.
-  Optional `lift_to_relations` and `Homomorphism::check_lifts` validate equations.
+- Exactness of supplied resolutions is trusted. Homomorphism constructors trust
+  endpoints, lift dimensions, degrees, gradedness and equations without scanning
+  or refreshing sorting flags. For untrusted input, explicitly call
+  `Homomorphism::validate()` to check structure, then `check_lifts()` to check
+  equations. `lift_to_relations` can also check a supplied generator lift.
 - Hom adapters provide generator lifts; `lift_to_resolution()` can extend them
   through the common available projective resolution using graded linear systems.
 
@@ -291,3 +311,186 @@ three-parameter header but two-coordinate degrees is now explicitly rejected;
 its round-trip test corrects only an in-memory copy. The additional
 `module_operations_test` covers categorical maps, exact syzygy minimization,
 resolution cancellation, sorting and optional homomorphism validation.
+
+## Presentation operations on modules
+
+The following adapters reuse the graded-matrix algorithms. Edits that change the
+module discard higher projective maps and the injective model. Presentation
+minimization retains the injective model because the module is unchanged.
+Queries leave the module unchanged.
+
+| Matrix operation | Module API |
+|---|---|
+| `cull_columns(count, false)` | `quotient_by_tail_generators(count)` — retain the first `count` generators, kill the rest |
+| `map_at_degree_pair` | `local_presentation_at(degree)` — local matrix and original row indices |
+| `map_at_degree` | `relations_at(degree, relation_indices)` — available relations, with all original rows |
+| `print_graded` | `print_presentation()` |
+| `delete_columns` | `remove_relations(indices)` |
+| `delete_rows` | `quotient_by_generators(indices)` |
+| `print_degrees` | `print_degrees()` |
+| `semi_minimize` | `semi_minimize_presentation()` |
+| `is_minimal` | `is_presentation_minimal()` |
+| `append_column` | `add_relation(coefficients, degree)` |
+| `submodule_generated_at` | `submodule_generated_at(shared_parent, degree)` — free function returning an embedded `Submodule` |
+| `induced_quiver_rep` | `to_quiver(vertices = {}, edges = {})` |
+| `bounding_box` | `presentation_degree_bounds()` |
+| `get_equidistant_grid` | `equidistant_presentation_grid(n)` |
+
+The local matrix presents the fibre; the fibre itself is its cokernel.
+Generator and relation indices refer to the current presentation. Removing
+relations can enlarge the module; deleting generators takes a quotient.
+The generated-at free function accepts `shared_ptr<const Module<Matrix>>`,
+so the returned submodule retains the exact parent and its generator coordinates.
+
+Quiver conversion defaults to the unique presentation degrees and their Hasse
+edges. Explicit vertices with omitted edges must be lexicographically sorted;
+explicit adjacency lists must follow the degree order. Supply one empty
+adjacency list per vertex to request no edges.
+
+Bounds and sampling grids currently use the R2 matrix implementation. They
+describe presentation degrees, not the potentially unbounded module support.
+Empty presentations have no bounds (an exception is thrown) and yield an empty
+sampling grid; `n = 0` also yields an empty grid, and negative `n` is rejected.
+Minimality uses the graded-kernel minimizer; partial minimization only cancels
+local pairs and therefore also works without a graded kernel.
+
+### Typed additional shifted lifts
+
+Include `grlina/hom_interface.hpp` and call `End_2d_0(module, amount)` with a
+`std::shared_ptr<Module<Matrix>>` or `std::shared_ptr<const Module<Matrix>>`.
+It returns `std::vector<Homomorphism<Matrix>>`, retaining the original domain
+and sharing one presentation-only target `M(amount)` across the results.
+The computation preserves the matrix overload’s quotient of lift spaces; it
+does not identify lifts modulo target relations. Result matrices are moved
+into homomorphisms, and both Hom computations reuse one source row cache.
+Both the matrix and module overloads are defined side by side in
+`hom_interface.hpp`. Their algorithms are unchanged.
+
+`hom_interface.hpp` provides `module_hom_space_basis` and
+`module_endomorphism_basis`. The former header names `homomorphism.hpp` and
+`module_homomorphisms.hpp` remain as compatibility includes.
+
+
+### Identity lifts and composition
+
+`Homomorphism::id_matrix()` reports a known identity coefficient matrix on
+module generators; the endpoints and their degrees can still differ. Ordinary
+constructors always leave it `false`; there is no public flag override.
+`identity`, `canonical_shift`, the whole-submodule embedding and
+`quotient_projection` (used by `as_quotient`) set it by construction.
+No coefficient scan checks or discovers identity, including in `validate()`.
+Shifting preserves the flag; addition conservatively clears it.
+
+`f.compose(g)` means **apply f, then g**, so its matrix is normally `g * f`.
+The former `then` spelling is retained as a compatibility wrapper. Composition
+and `f.image(I, false)` copy coefficients and adjust degrees whenever an identity
+lift makes multiplication unnecessary. Copies still cost time proportional to
+the matrix storage; the shortcut avoids the general multiplication. Higher lifts
+are tracked separately: extending a quotient map to relations does not mark
+those newly computed lifts as identities.
+
+### Quotients and parent minimization
+
+For submodules `I` and `K` with the same parent `X`:
+
+```cpp
+auto image_in_quotient = I.submodule_quotient(K);              // no minimization
+auto lazy = I.submodule_quotient(K, true);                    // no graded kernel
+auto full = I.submodule_quotient(K, false, true);              // includes graded kernel
+```
+
+The result is a submodule of a newly constructed `X/K`, representing
+`I/(I intersect K)` (in particular `I/K` if `K` is contained in `I`). There is
+no containment check or presentation computation. By default, the parent
+presentation is formed by appending K's generators to X's relations, and I's
+generator matrix is copied directly: this is the identity projection shortcut
+without constructing a projection object. Neither input nor its parent changes.
+The flags are `(lazy_minimize = false, minimize = false)`; full minimization
+wins if both are true.
+
+`S.lazy_minimize_parent()` changes S in place: it builds a new parent, applies
+one shared ambient row permutation, cancels equal-degree generator/relation
+pairs while substituting into S's generator columns, and performs graded column
+reduction with deletion on the remaining relations. It does not use a graded
+kernel. `S.minimize_parent()` additionally removes redundant relations via the
+graded kernel. Both preserve the defining generator column degrees and order,
+including zero or redundant columns; neither computes S's own presentation.
+Both clear S's cached projective representation, preserve its injective resolution,
+and leave other objects sharing the old parent unchanged. Failed minimization leaves S unchanged.
+
+`Module::remove_extra_rels()` performs only the graded-kernel relation-removal
+step. It preserves ambient generator coordinates, including their original
+order, so existing submodule generator matrices remain valid. Higher projective
+maps are discarded; the independent injective resolution is preserved. `minimize_presentation()` reuses this
+step after local cancellation. To obtain the final module in pruning:
+
+```cpp
+auto quotient_submodule = I.submodule_quotient(K, true);
+auto result = quotient_submodule.presented_module(true);
+result.shift({-epsilon, -epsilon});
+```
+
+
+### Submodule generator maps
+
+The defining embedding is a homomorphism, accessible through:
+
+```cpp
+const auto& inclusion = I.generator_map();       // Homomorphism<Matrix>
+const auto& matrix = inclusion.generator_lift();  // underlying graded matrix
+const auto& parent = inclusion.target();         // exactly I.parent()
+auto source = inclusion.domain();                // I in its defining generator basis
+auto shifted_inclusion = inclusion.compose(eta); // I -> X -> X(amount)
+```
+
+This replaces the old matrix-valued `generators()` accessor. No generator matrix
+is stored separately. Matrix adapters use `generator_map().generator_lift()`;
+`as_subobject(I)` returns the existing map and its source instead of rebuilding
+an unrelated source object.
+
+The source is the actual image module, with all relations among the defining
+generators, not a free module on those generators. Obtaining `domain()` for the
+first time computes its unminimized presentation using the graded kernel
+(except for the empty generator family). The whole submodule reuses its parent
+as the source directly, without a kernel computation. `validate()`, `check_lifts()` and
+operations that need source relations can therefore also trigger this work.
+Reading `generator_map()`, its target, or its generator lift does not. Composing
+an inclusion into an already defined map does not materialize its source.
+Degree types without a graded kernel can still use these lazy operations.
+
+The source is a shared, stable module object representing I in the embedding's
+basis, not a pointer back to the mutable Submodule wrapper. This distinction
+allows value semantics and avoids ownership cycles. Copies made before source
+materialization share the same eventual source object. The map and its copies
+own shared immutable lift storage; extending a copied map to a resolution does
+not mutate the original map's lifts. Source materialization is synchronized and
+retries safely if construction throws.
+
+Generator reductions, shifts, quotients and parent minimization publish a new
+generator map with a fresh source. Previously copied maps retain their original
+source, target and coefficients, even after the Submodule is destroyed.
+Minimizing the optional presentation in the Submodule's Module base still affects
+only that alternative representation; it does not change the defining inclusion.
+Use `generator_map().domain()` whenever a homomorphism must use the inclusion's
+exact source coordinates and identity. Calling `generator_map().image(false)`
+recovers the represented submodule, and its kernel is zero.
+
+`homomorphism_core.hpp` defines the homomorphism type without requiring a complete
+Submodule type; `hom_operations.hpp` remains the public include providing both.
+This lets `submodule.hpp` store a Homomorphism directly without a circular type
+definition.
+
+
+Identity image/composition shortcuts retain the copied sorting metadata: their
+factory-created identity lifts only preserve or uniformly translate degrees.
+Trusted submodule construction does not refresh sorting metadata. Parent-row
+permutations conservatively leave embedding sorting unknown unless established
+by an explicit sorting operation; no automatic scan attempts to recertify it.
+
+
+Presentation minimization, local cancellation and removal of redundant relations
+preserve the module, so they retain its independently stored injective resolution.
+Submodule parent minimization copies that resolution to the new parent as well.
+Recomputing a submodule's presentation preserves its own injective model.
+Arbitrary presentation edits and operations that change the module still invalidate
+it; a quotient does not inherit the original module's injective resolution.

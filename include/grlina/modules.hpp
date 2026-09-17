@@ -11,9 +11,10 @@
 #include <grlina/chain_complex.hpp>
 #include <grlina/module.hpp>
 #include <grlina/submodule.hpp>
-#include <grlina/homomorphism.hpp>
-#include <grlina/module_homomorphisms.hpp>
+#include <grlina/hom_operations.hpp>
+#include <grlina/hom_interface.hpp>
 #include <grlina/module_operations.hpp>
+#include <grlina/epsilon_functors.hpp>
 #include <grlina/presentation_operations.hpp>
 #include <grlina/r3graded_matrix.hpp>
 #include <grlina/z2graded_matrix.hpp>

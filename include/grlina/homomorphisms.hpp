@@ -14,6 +14,7 @@
  */
 
 #pragma once
+#include <grlina/checks.hpp>
 
 
 #ifndef HOMOMORPHISMS_HPP
@@ -163,7 +164,7 @@ vec<DERIVED> hom_space_basis_new(
     }
 
     index row_op_threshold = S_index;
-    assert( variable_positions.size() == S_index );
+    GRLINA_ASSERT( variable_positions.size() == S_index );
 
     if(row_op_threshold == 0){
         // If there are no row-operations, then the hom-space is zero.
@@ -217,8 +218,8 @@ vec<DERIVED> hom_space_basis_new(
             auto& index_pairs = variable_positions[j];
             Q.data[index_pairs.first].push_back(index_pairs.second);
         }
-        assert(Q.is_sorted_sparse());
-        result.push_back(Q);
+        GRLINA_ASSERT(Q.is_sorted_sparse());
+        result.push_back(std::move(Q));
     } 
 
     //  If the bool is true, next use Hom( -, coker B) on the presentation A to get Hom(coker A, coker B)_0 as the kernel of 
@@ -256,8 +257,8 @@ vec<DERIVED> hom_space_basis_new(
         for(size_t i = 0; i < A.get_num_rows(); i++){
             S_row_counter = 0;
             std::pair< vec<index>, vec<index> >& sourceBasis = B_local_basislifts[i];
-            assert(B_local_spaces[i].get_num_cols() == sourceBasis.first.size());
-            assert(B_local_spaces[i].get_num_rows() == sourceBasis.second.size());
+            GRLINA_ASSERT(B_local_spaces[i].get_num_cols() == sourceBasis.first.size());
+            GRLINA_ASSERT(B_local_spaces[i].get_num_rows() == sourceBasis.second.size());
             auto itA = A._rows[i].begin();
             // The following will store the global indices corresponding to a basis of Y_(deg g_i)
             S_column_partition.push_back(vec_restriction(sourceBasis.first, sourceBasis.second));
@@ -270,18 +271,18 @@ vec<DERIVED> hom_space_basis_new(
                     S_row_counter += targetBasis.second.size();
                     continue;
                 } else {
-                assert(*itA == j);    
+                GRLINA_ASSERT(*itA == j);
                 itA++;
                 index j_shift = A.get_num_rows()+j;
 				auto& targetBasis = B_local_basislifts[j_shift];
                 auto& targetSpace = B_local_spaces[j_shift];
-				assert(targetSpace.get_num_cols() == targetBasis.first.size());
-                assert(targetSpace.get_num_rows() == targetBasis.second.size());
+				GRLINA_ASSERT(targetSpace.get_num_cols() == targetBasis.first.size());
+                GRLINA_ASSERT(targetSpace.get_num_rows() == targetBasis.second.size());
 				vec<index> image_of_basis_indices = get_index_vector<index, index>(targetBasis.first, S_column_partition[i]);
                 // ^ First computes the actual indices of the genertors which form a basis of the source vector space.
                 // Then computes which subset of the generators of the target this corresponds to.
                 
-                assert(image_of_basis_indices.size() == sourceBasis.second.size());
+                GRLINA_ASSERT(image_of_basis_indices.size() == sourceBasis.second.size());
 				// auto local_map = targetSpace.restricted_domain_copy(image_of_basis_indices);
                 // The map (coker B)_{gen[i]->rel[j]} is now given by targetSpace restricted to image_of_basis_indices
                 // Since we need to translate this in S, add column and row counter
@@ -416,8 +417,8 @@ SparseMatrix<index> Alg_B_test(
         for(size_t i = 0; i < A.get_num_rows(); i++){
             S_row_counter = 0;
             std::pair< vec<index>, vec<index> >& sourceBasis = B_local_basislifts[i];
-            assert(B_local_spaces[i].get_num_cols() == sourceBasis.first.size());
-            assert(B_local_spaces[i].get_num_rows() == sourceBasis.second.size());
+            GRLINA_ASSERT(B_local_spaces[i].get_num_cols() == sourceBasis.first.size());
+            GRLINA_ASSERT(B_local_spaces[i].get_num_rows() == sourceBasis.second.size());
             auto itA = A._rows[i].begin();
             // The following will store the global indices corresponding to a basis of Y_(deg g_i)
             S_column_partition.push_back(vec_restriction(sourceBasis.first, sourceBasis.second));
@@ -430,18 +431,18 @@ SparseMatrix<index> Alg_B_test(
                     S_row_counter += targetBasis.second.size();
                     continue;
                 } else {
-                assert(*itA == j);    
+                GRLINA_ASSERT(*itA == j);
                 itA++;
                 index j_shift = A.get_num_rows()+j;
 				auto& targetBasis = B_local_basislifts[j_shift];
                 auto& targetSpace = B_local_spaces[j_shift];
-				assert(targetSpace.get_num_cols() == targetBasis.first.size());
-                assert(targetSpace.get_num_rows() == targetBasis.second.size());
+				GRLINA_ASSERT(targetSpace.get_num_cols() == targetBasis.first.size());
+                GRLINA_ASSERT(targetSpace.get_num_rows() == targetBasis.second.size());
 				vec<index> image_of_basis_indices = get_index_vector<index, index>(targetBasis.first, S_column_partition[i]);
                 // ^ First computes the actual indices of the genertors which form a basis of the source vector space.
                 // Then computes which subset of the generators of the target this corresponds to.
                 
-                assert(image_of_basis_indices.size() == sourceBasis.second.size());
+                GRLINA_ASSERT(image_of_basis_indices.size() == sourceBasis.second.size());
 				// auto local_map = targetSpace.restricted_domain_copy(image_of_basis_indices);
                 // The map (coker B)_{gen[i]->rel[j]} is now given by targetSpace restricted to image_of_basis_indices
                 // Since we need to translate this in S, add column and row counter
@@ -488,7 +489,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimise
     const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>(),
     const bool info = false)  {
     
-    assert(A.rows_computed);
+    GRLINA_ASSERT(A.rows_computed);
     boost::timer::cpu_timer timer;
     if(info)
         timer.start();
@@ -523,7 +524,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimise
     }
     
     index row_op_threshold = S_index;
-    assert( variable_positions.size() == S_index );
+    GRLINA_ASSERT( variable_positions.size() == S_index );
 
     if(row_op_threshold == 0){
         // If there are no row-operations, then the hom-space is zero.
@@ -603,7 +604,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
     const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>(),
     const bool info = false)  {
     
-    assert(A.rows_computed);
+    GRLINA_ASSERT(A.rows_computed);
     boost::timer::cpu_timer timer;
     if(info)
         timer.start();
@@ -638,7 +639,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
     }
     
     index row_op_threshold = S_index;
-    assert( variable_positions.size() == S_index );
+    GRLINA_ASSERT( variable_positions.size() == S_index );
 
     if(row_op_threshold == 0){
         // If there are no row-operations, then the hom-space is zero.
@@ -703,7 +704,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
 
 template <typename D, typename index, typename DERIVED>
 vec<index> no_opt_system_info(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B){
-    assert(A.rows_computed);
+    GRLINA_ASSERT(A.rows_computed);
     boost::timer::cpu_timer timer;
     
     timer.start();
@@ -729,7 +730,7 @@ vec<index> no_opt_system_info(const GradedSparseMatrix<D, index, DERIVED>& A, co
     }
     
     index row_op_threshold = S_index;
-    assert( variable_positions.size() == S_index );
+    GRLINA_ASSERT( variable_positions.size() == S_index );
 
 
     // Then all column-operations from B to A
@@ -781,7 +782,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(
     const vec<index>& row_indices_B = vec<index>(), 
     const bool info = false)  {
     
-    assert(A.rows_computed);
+    GRLINA_ASSERT(A.rows_computed);
     boost::timer::cpu_timer timer;
     if(info)
         timer.start();
@@ -811,7 +812,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(
     }
     
     index row_op_threshold = S_index;
-    assert( variable_positions.size() == S_index );
+    GRLINA_ASSERT( variable_positions.size() == S_index );
 
     if(row_op_threshold == 0){
         // If there are no row-operations, then the hom-space is zero.
@@ -917,7 +918,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index, index> > > block_hom_space_
     }
 
     index row_op_threshold = S_index;
-    assert( row_ops.size() == S_index );
+    GRLINA_ASSERT( row_ops.size() == S_index );
 
     if(row_op_threshold == 0){
         // If there are no row-operations, then the hom-space is zero.

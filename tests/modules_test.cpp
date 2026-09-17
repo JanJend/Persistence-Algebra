@@ -406,7 +406,7 @@ static void test_submodules_and_morphisms() {
     ModuleMorphism<Matrix> map(module, module, identity);
     assert(map.image().number_of_generators() == 1);
     assert(map.kernel().is_zero());
-    auto composite = map.then(map);
+    auto composite = map.compose(map);
     assert(composite.generator_lift().data == identity.data);
 
     auto other_parent = std::make_shared<TestModule>(interval_presentation());

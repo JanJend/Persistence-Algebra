@@ -14,6 +14,7 @@
  */
 
 #pragma once
+#include <grlina/checks.hpp>
 
 #ifndef DENSE_MATRIX_HPP
 #define DENSE_MATRIX_HPP
@@ -195,7 +196,7 @@ struct DenseMatrix : public MatrixUtil<bitset, int, DenseMatrix>{
      */
     void serialize(std::ofstream& file) const {
         // Write the size of the vector
-        assert(data.size() == num_cols);
+        GRLINA_ASSERT(data.size() == num_cols);
         file.write(reinterpret_cast<const char*>(&num_cols), sizeof(int));
         file.write(reinterpret_cast<const char*>(&num_rows), sizeof(int));
         // Serialize each dynamic_bitset in the vector
@@ -212,7 +213,7 @@ struct DenseMatrix : public MatrixUtil<bitset, int, DenseMatrix>{
      * @param other 
      */
     DenseMatrix multiply_right(const DenseMatrix& other) const  {
-        assert(this->get_num_cols() == other.get_num_rows());
+        GRLINA_ASSERT(this->get_num_cols() == other.get_num_rows());
         DenseMatrix result(other.get_num_cols(), this->get_num_rows());
 
         for (int i = 0; i < other.get_num_cols(); ++i) {

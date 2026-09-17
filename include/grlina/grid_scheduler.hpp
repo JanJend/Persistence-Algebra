@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include <grlina/checks.hpp>
 
 #ifndef GRID_SCHEDULER_HPP
 #define GRID_SCHEDULER_HPP
@@ -104,8 +105,8 @@ namespace graded_linalg {
                   index curr_x = M.z2_col_degrees[i].first;
                   index curr_y = M.z2_col_degrees[i].second;
       
-                  assert(curr_x < static_cast<index>(M.x_grid.size()));
-                  assert(curr_y < static_cast<index>(M.y_grid.size()));
+                  GRLINA_ASSERT(curr_x < static_cast<index>(M.x_grid.size()));
+                  GRLINA_ASSERT(curr_y < static_cast<index>(M.y_grid.size()));
       
                   if (curr_x != last_pair.first || curr_y != last_pair.second) {
                       // New grade encountered

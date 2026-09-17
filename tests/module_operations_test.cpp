@@ -28,18 +28,24 @@ void test_homomorphisms() {
     Ptr free = std::make_shared<Mod>(Mat(0, 1, {}, {}, {{0, 0}}));
     Ptr interval = std::make_shared<Mod>(Mat(1, 1, {{0}}, {{1, 1}}, {{0, 0}}));
     Hom quotient(free, interval, identity_lift(*free, *interval));
+    quotient.validate();
     assert(quotient.check_lifts());
-    assert(quotient.generator_lift().compatibly_sorted);
+    assert(!quotient.generator_lift().compatibly_sorted); // no implicit sorting certification
     Submodule<Mat> zero_from_relations(interval, interval->presentation());
     assert(zero_from_relations.number_of_generators() == 1 && zero_from_relations.is_zero());
-    assert(zero_from_relations.generators().compatibly_sorted);
+    assert(zero_from_relations.generator_map().generator_lift().compatibly_sorted);
     assert(!Submodule<Mat>::whole(interval).is_zero());
     auto relation_lift = lift_to_relations(free->presentation(), interval->presentation(), quotient.generator_lift());
     assert(relation_lift && relation_lift->get_num_cols() == 0);
     Hom manual(interval, free, identity_lift(*interval, *free)); // intentionally trusted, invalid input
+    manual.validate(); // structure is valid, but the homomorphism equation is not
     assert(!manual.check_lifts());
     assert(!lift_to_relations(interval->presentation(), free->presentation(), manual.generator_lift()));
     rejects([&] { manual.lift_to_resolution(); });
+    const Hom incompatible(free, interval, Mat(0, 0, {}, {}, {}));
+    rejects([&] { incompatible.validate(); });
+    const Hom missing_lifts(free, interval, std::vector<Mat>{});
+    rejects([&] { missing_lifts.validate(); });
     rejects([&] { module_hom_space_basis<Mat>(nullptr, interval); });
     rejects([&] { module_endomorphism_basis<Mat>(nullptr); });
 
@@ -58,7 +64,7 @@ void test_homomorphisms() {
     Hom J(resolved, resolved, I.generator_lift());
     J.lift_to_resolution();
     assert(J.lifts().size() == 3 && J.check_lifts());
-    auto composed = I.then(J);
+    auto composed = I.compose(J);
     assert(composed.lifts().size() == 3 && composed.check_lifts());
     auto zero = I + J;
     assert(zero.check_lifts() && zero.generator_lift().data == array<int>({{}}));
@@ -67,7 +73,7 @@ void test_homomorphisms() {
     assert(K.inclusion.check_lifts());
     assert(K.module->dimension_at({0, 0}) == 0);
     assert(K.module->dimension_at({1, 1}) == 1);
-    assert(K.inclusion.then(quotient).check_lifts());
+    assert(K.inclusion.compose(quotient).check_lifts());
     auto Im = image(quotient);
     assert(Im.inclusion.check_lifts() && Im.module->dimension_at({0, 0}) == 1);
     auto Co = cokernel(quotient);
@@ -82,9 +88,9 @@ void test_homomorphisms() {
     assert(D.module->dimension_at({0, 0}) == 2 && D.module->dimension_at({1, 1}) == 1);
     for (const auto* map : {&D.inclusion_left, &D.inclusion_right, &D.projection_left, &D.projection_right})
         assert(map->check_lifts());
-    assert(D.inclusion_left.then(D.projection_left).generator_lift().data == array<int>({{0}}));
-    assert(D.inclusion_left.then(D.projection_right).generator_lift().data == array<int>({{}}));
-    auto reconstructed = D.projection_left.then(D.inclusion_left) + D.projection_right.then(D.inclusion_right);
+    assert(D.inclusion_left.compose(D.projection_left).generator_lift().data == array<int>({{0}}));
+    assert(D.inclusion_left.compose(D.projection_right).generator_lift().data == array<int>({{}}));
+    auto reconstructed = D.projection_left.compose(D.inclusion_left) + D.projection_right.compose(D.inclusion_right);
     assert(reconstructed.generator_lift().data == array<int>({{0}, {1}}));
     assert(product<Mat>(free, interval).module->dimension_at({0, 0}) == 2);
     assert(coproduct<Mat>(free, interval).module->dimension_at({1, 1}) == 1);
@@ -96,12 +102,12 @@ void test_homomorphisms() {
     auto PB = pullback(quotient, quotient);
     assert(PB.to_left.check_lifts() && PB.to_right.check_lifts());
     assert(PB.module->dimension_at({0, 0}) == 1 && PB.module->dimension_at({1, 1}) == 2);
-    auto difference = PB.to_left.then(quotient) + PB.to_right.then(quotient);
+    auto difference = PB.to_left.compose(quotient) + PB.to_right.compose(quotient);
     assert(difference.image().is_zero());
     auto PO = pushout(quotient, quotient);
     assert(PO.from_left.check_lifts() && PO.from_right.check_lifts());
     assert(PO.module->dimension_at({0, 0}) == 1 && PO.module->dimension_at({1, 1}) == 0);
-    assert((quotient.then(PO.from_left) + quotient.then(PO.from_right)).image().is_zero());
+    assert((quotient.compose(PO.from_left) + quotient.compose(PO.from_right)).image().is_zero());
     rejects([&] { pullback(quotient, Hom::identity(free)); });
     rejects([&] { pushout(quotient, Hom::identity(interval)); });
 }
@@ -287,7 +293,167 @@ void test_scc() {
         ChainComplex<R3GradedSparseMatrix<int>> wrong(s); });
 }
 
+void test_presentation_adapters() {
+    // Deliberately unsorted generators: the local row map must retain original indices.
+    Mod module(Mat(2, 3, {{1, 2}, {0}}, {{2, 2}, {4, 4}}, {{3, 0}, {0, 0}, {1, 1}}));
+    auto [local, rows] = module.local_presentation_at({2, 2});
+    assert(rows == vec<int>({1, 2}));
+    assert(local.get_num_rows() == 2 && local.data == array<int>({{0, 1}}));
+    vec<int> relations{99};
+    auto available = module.relations_at({2, 2}, relations);
+    assert(relations == vec<int>({0}));
+    assert(available.get_num_rows() == 3 && available.data == array<int>({{1, 2}}));
+    auto [before_birth, no_rows] = module.local_presentation_at({-1, -1});
+    assert(no_rows.empty() && before_birth.get_num_rows() == 0);
+
+    auto bounds = module.presentation_degree_bounds();
+    assert(bounds.first == r2degree(0, 0) && bounds.second == r2degree(4, 4));
+    assert(module.equidistant_presentation_grid(2) == vec<r2degree>({{0,0}, {0,4}, {4,0}, {4,4}}));
+    assert(module.equidistant_presentation_grid(1) == vec<r2degree>({{0,0}}));
+    assert(module.equidistant_presentation_grid(0).empty());
+    rejects([&] { module.equidistant_presentation_grid(-1); });
+    Mod empty(Mat(0, 0));
+    rejects([&] { empty.presentation_degree_bounds(); });
+    assert(empty.equidistant_presentation_grid(3).empty());
+
+    module.compute_projective_resolution();
+    module.set_injective_resolution(module.projective_resolution());
+    module.remove_relations({1, 0, 1});
+    assert(module.number_of_relations() == 0 && module.dimension_at({4,4}) == 3);
+    assert(module.projective_resolution().size() == 1);
+    assert(!module.has_injective_resolution()); // No relations now: a complete free presentation.
+    module.add_relation({1, 2}, {2, 2});
+    assert(!module.has_complete_projective_resolution());
+    assert(module.dimension_at({2,2}) == 1);
+    rejects([&] { module.add_relation({0}, {0,0}); }); // Before generator birth.
+    rejects([&] { module.add_relation({3}, {5,5}); });
+    rejects([&] { module.add_relation({2,1}, {5,5}); });
+    rejects([&] { module.remove_relations({-1}); });
+    rejects([&] { module.quotient_by_generators({3}); });
+    assert(module.number_of_relations() == 1);
+    module.quotient_by_generators({2, 0, 2});
+    assert(module.number_of_generators() == 1);
+    assert(module.presentation().row_degrees == vec<r2degree>({{0,0}}));
+    assert(module.dimension_at({1,1}) == 1 && module.dimension_at({2,2}) == 0);
+
+    Mod tail(Mat(1, 3, {{0, 2}}, {{3,3}}, {{0,0}, {1,1}, {2,2}}));
+    tail.quotient_by_tail_generators(2);
+    assert(tail.number_of_generators() == 2 && tail.presentation().data == array<int>({{0}}));
+    rejects([&] { tail.quotient_by_tail_generators(3); });
+    rejects([&] { tail.quotient_by_tail_generators(-1); });
+    tail.quotient_by_tail_generators(0);
+    assert(tail.dimension_at({5,5}) == 0);
+
+    Mod nonminimal(Mat(2, 2, {{0}, {1}}, {{2,2}, {0,0}}, {{2,2}, {0,0}}));
+    assert(!nonminimal.is_presentation_minimal());
+    assert(nonminimal.number_of_generators() == 2); // Query did not mutate.
+    nonminimal.semi_minimize_presentation();
+    assert(nonminimal.number_of_generators() == 0 && nonminimal.is_presentation_minimal());
+    // Partial cancellation is also available without a graded-kernel implementation.
+    Module<R3GradedSparseMatrix<int>> three(
+        R3GradedSparseMatrix<int>(1, 1, {{0}}, {{1,1,1}}, {{1,1,1}}));
+    three.semi_minimize_presentation();
+    assert(three.number_of_generators() == 0);
+
+    std::ostringstream output;
+    auto* previous = std::cout.rdbuf(output.rdbuf());
+    std::as_const(module).print_presentation();
+    std::as_const(module).print_degrees();
+    std::cout.rdbuf(previous);
+    assert(output.str().find("Generators at:") != std::string::npos);
+}
+
+void test_generated_fibre_and_quiver() {
+    Ptr parent = std::make_shared<Mod>(Mat(1, 2, {{0,1}}, {{2,2}}, {{1,1}, {0,0}}));
+    auto sub = submodule_generated_at(parent, r2degree{1,1});
+    assert(sub.parent() == parent);
+    assert(sub.generator_map().generator_lift().row_degrees == parent->presentation().row_degrees);
+    auto presented = sub.presented_module();
+    assert(presented.dimension_at({0,0}) == 0);
+    assert(presented.dimension_at({1,1}) == 2 && presented.dimension_at({2,2}) == 1);
+    assert(submodule_generated_at(parent, r2degree{-1,-1}).is_zero());
+    assert(submodule_generated_at(parent, r2degree{2,2}).number_of_embedding_generators() == 1);
+    rejects([] { submodule_generated_at<Mat>(nullptr, {0,0}); });
+
+    auto quiver = parent->to_quiver();
+    assert(quiver.degrees == vec<r2degree>({{0,0}, {1,1}, {2,2}}));
+    assert(quiver.dimensionVector == vec<int>({1,2,1}));
+    assert(quiver.edges.size() == 2 && quiver.matrices.size() == 2);
+    auto path = quiver.matrices[1] * quiver.matrices[0];
+    auto direct = parent->to_quiver({{0,0}, {2,2}}, {{1}, {}});
+    assert(path.equals(direct.matrices[0]));
+    assert(path.data == array<int>({{0}})); // The surviving generator maps nontrivially.
+    auto discrete = parent->to_quiver({{0,0}, {2,2}}, {{}, {}});
+    assert(discrete.edges.empty());
+    rejects([&] { parent->to_quiver({{0,0}}, {{1}}); });
+    rejects([&] { parent->to_quiver({{0,0}, {2,2}}, {{}, {0}}); });
+    rejects([&] { parent->to_quiver({{0,0}}, {{}, {}}); });
+    assert(Mod(Mat(0,0)).to_quiver().degrees.empty());
+    assert(parent->presentation().row_degrees == vec<r2degree>({{1,1}, {0,0}}));
+}
+
+void test_minimization_preserves_injective_storage() {
+    // Distinct storage fixture: exactness is trusted by the framework. This
+    // regression checks that projective basis changes never touch this model.
+    ChainComplex<Mat> injective({Mat(1, 2, {{0,1}}, {{4,4}}, {{3,3}, {3,3}}),
+                                Mat(0, 1, {}, {}, {{4,4}})});
+    auto unchanged = [&](const Mod& module) {
+        assert(module.has_injective_resolution());
+        const auto& actual = module.injective_resolution();
+        assert(actual.size() == injective.size());
+        for (std::size_t i = 0; i < actual.size(); ++i) {
+            assert(actual[i].data == injective[i].data);
+            assert(actual[i].row_degrees == injective[i].row_degrees);
+            assert(actual[i].col_degrees == injective[i].col_degrees);
+        }
+    };
+    Mat P(3, 2, {{0}, {1}, {1}}, {{0,0}, {2,2}, {3,3}}, {{0,0}, {0,0}});
+    for (int operation = 0; operation < 5; ++operation) {
+        Mod module(P);
+        if (operation == 4) module.compute_projective_resolution();
+        module.set_injective_resolution(injective);
+        const auto* storage = module.injective_resolution()[0].data.data();
+        if (operation == 0) module.minimize_presentation();
+        if (operation == 1) module.semi_minimize_presentation();
+        if (operation == 2) module.remove_extra_rels();
+        if (operation >= 3) module.minimize();
+        unchanged(module);
+        assert(module.injective_resolution()[0].data.data() == storage);
+        assert(operation == 2 ? module.number_of_relations() < 3 : module.number_of_generators() == 1);
+    }
+    auto parent = std::make_shared<Mod>(P);
+    parent->set_injective_resolution(injective);
+    for (bool full : {false, true}) {
+        auto S = Submodule<Mat>::whole(parent);
+        S.set_injective_resolution(injective);
+        if (full) S.minimize_parent(); else S.lazy_minimize_parent();
+        unchanged(*S.parent());
+        unchanged(S);
+        unchanged(*parent);
+        unchanged(std::as_const(S).presented_module(true));
+        S.compute_presentation(true);
+        unchanged(S);
+        S.minimize_generators();
+        unchanged(S);
+        S.shift_generators({1,1});
+        assert(!S.has_injective_resolution());
+    }
+    auto zero = Submodule<Mat>::zero(parent);
+    zero.set_injective_resolution(injective);
+    zero.compute_presentation(true);
+    unchanged(zero);
+    auto quotient = Submodule<Mat>::whole(parent).submodule_quotient(Submodule<Mat>::whole(parent));
+    assert(!quotient.parent()->has_injective_resolution());
+    Mod edited(P);
+    edited.set_injective_resolution(injective);
+    edited.add_relation({1}, {1,1});
+    assert(!edited.has_injective_resolution());
+}
+
 int main() {
+    test_minimization_preserves_injective_storage();
+    test_presentation_adapters();
+    test_generated_fibre_and_quiver();
     test_homomorphisms();
     test_kernel_minimization();
     test_resolution_minimization_and_sorting();

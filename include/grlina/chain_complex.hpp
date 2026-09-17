@@ -91,16 +91,18 @@ private:
 public:
     ChainComplex() = default;
 
-    explicit ChainComplex(std::vector<Matrix> differentials, bool validate = true)
+    explicit ChainComplex(std::vector<Matrix> differentials, bool validate = GRLINA_ENABLE_CHECKS)
         : differentials_(std::move(differentials)) {
-        refresh_sorting_certificates();
-        if (validate) validate_structure();
+        if (validate) {
+            refresh_sorting_certificates();
+            validate_structure();
+        }
     }
 
     ChainComplex(std::initializer_list<Matrix> differentials)
         : differentials_(differentials) {
-        refresh_sorting_certificates();
-        validate_structure();
+        GRLINA_DEBUG_CHECK(refresh_sorting_certificates());
+        GRLINA_DEBUG_CHECK(validate_structure());
     }
 
     explicit ChainComplex(std::istream& input, bool sort_if_needed = false) {
@@ -144,14 +146,6 @@ public:
         for (std::size_t i = 0; i < differentials_.size(); ++i) {
             const auto& matrix = differentials_[i];
             matrix.validate();
-            if (matrix.col_degrees.size() != static_cast<std::size_t>(matrix.get_num_cols()) ||
-                matrix.row_degrees.size() != static_cast<std::size_t>(matrix.get_num_rows()) ||
-                matrix.data.size() != static_cast<std::size_t>(matrix.get_num_cols())) {
-                throw std::invalid_argument("A chain differential has inconsistent dimensions");
-            }
-            if (!matrix.is_graded_matrix()) {
-                throw std::invalid_argument("A chain differential is not graded");
-            }
             if (i != 0) {
                 const auto& previous = differentials_[i - 1];
                 if (previous.get_num_cols() != matrix.get_num_rows() ||
@@ -182,15 +176,17 @@ public:
     void push_differential(Matrix differential) {
         if (!differentials_.empty()) {
             const auto& previous = differentials_.back();
-            if (previous.get_num_cols() != differential.get_num_rows() ||
-                previous.col_degrees != differential.row_degrees) {
+            if (previous.get_num_cols() != differential.get_num_rows()) {
                 throw std::invalid_argument("New differential has the wrong target chain group");
             }
         }
+        GRLINA_DEBUG_CHECK(differential.validate());
+        GRLINA_DEBUG_CHECK(if (!differentials_.empty() &&
+            differentials_.back().col_degrees != differential.row_degrees)
+            throw std::invalid_argument("New differential has the wrong target degrees"));
         differentials_.push_back(std::move(differential));
-        if (!differentials_.back().compatible_sorting_is_verified())
-            differentials_.back().refresh_compatible_sorted();
-        validate_structure();
+        GRLINA_DEBUG_CHECK(if (!differentials_.back().compatible_sorting_is_verified())
+            differentials_.back().refresh_compatible_sorted());
     }
 
     void clear() noexcept { differentials_.clear(); }
@@ -201,9 +197,9 @@ public:
 
     template <typename Compare>
     void sort_compatibly(Compare compare) {
-        validate_structure();
+        GRLINA_DEBUG_CHECK(validate_structure());
         if (empty()) return;
-        for (const auto& d : differentials_) d.require_linear_extension(compare);
+        GRLINA_DEBUG_CHECK(for (const auto& d : differentials_) d.require_linear_extension(compare));
         // Each group is sorted ONCE; its basis permutation is shared by both
         // adjacent maps. This includes stable handling of repeated degrees.
         for (std::size_t group = 0; group <= size(); ++group) {
@@ -224,8 +220,8 @@ public:
             }
             if (group < size()) differentials_[group].permute_rows_graded(old_to_new);
         }
-        for (auto& d : differentials_) d.refresh_compatible_sorted(compare);
-        validate_structure();
+        for (auto& d : differentials_) d.certify_compatible_sorted(compare);
+        GRLINA_DEBUG_CHECK(validate_structure());
     }
 
     /** Remove contractible equal-degree pairs, preserving chain-homotopy type.
@@ -237,8 +233,8 @@ public:
         if (empty()) return;
         ChainComplex working = *this;
         if (sort_if_needed) working.sort_compatibly();
-        for (auto& d : working.differentials_) d.require_compatibly_sorted("ChainComplex::minimize");
-        if (!working.squares_to_zero()) throw std::invalid_argument("Chain complex does not square to zero");
+        GRLINA_DEBUG_CHECK(for (auto& d : working.differentials_) d.require_compatibly_sorted("ChainComplex::minimize"));
+        GRLINA_DEBUG_CHECK(if (!working.squares_to_zero()) throw std::invalid_argument("Chain complex does not square to zero"));
         auto& maps = working.differentials_;
         for (std::size_t level = 0; level < maps.size(); ++level) {
             auto& d = maps[level];
@@ -271,7 +267,7 @@ public:
             }
         }
         for (auto& d : maps) d.invalidate_cached_rows();
-        if (!working.squares_to_zero()) throw std::logic_error("Chain cancellation broke d*d=0");
+        GRLINA_DEBUG_CHECK(if (!working.squares_to_zero()) throw std::logic_error("Chain cancellation broke d*d=0"));
         *this = std::move(working);
     }
 
@@ -373,7 +369,8 @@ public:
         }
 
         std::reverse(high_to_low.begin(), high_to_low.end());
-        ChainComplex result(std::move(high_to_low));
+        ChainComplex result(std::move(high_to_low), false);
+        result.validate_structure(); // file input is checked in every build
         if (sort_if_needed) result.sort_compatibly();
         return result;
     }

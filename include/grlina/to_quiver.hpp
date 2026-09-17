@@ -1,4 +1,5 @@
 #pragma once
+#include <grlina/checks.hpp>
 
 #include <grlina/orders_and_graphs.hpp>
 #include <grlina/sparse_matrix.hpp>
@@ -51,9 +52,9 @@ struct QuiverRepresentation {
         std::cout << std::endl;
         print_edge_list(edges);
         index size = degrees.size();
-        assert(size == dimensionVector.size());
+        GRLINA_ASSERT(size == dimensionVector.size());
         index length = matrices.size();
-        assert(length == edges.size());
+        GRLINA_ASSERT(length == edges.size());
         for(index i = 0; i < length; i++){
             std::cout << "Matrix at edge " << i << std::endl;
             matrices[i].print();

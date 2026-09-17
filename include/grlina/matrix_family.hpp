@@ -26,7 +26,7 @@ void reduce_matrix_family_modulo(std::vector<Matrix>& A, std::vector<Matrix>& B)
     const Matrix& model = A.empty() ? B.front() : A.front();
     for (const auto* family : {&A, &B})
         for (const auto& matrix : *family) {
-            matrix.validate();
+            GRLINA_DEBUG_CHECK(matrix.validate());
             if (matrix.get_num_cols() != model.get_num_cols() ||
                 matrix.get_num_rows() != model.get_num_rows())
                 throw std::invalid_argument("Matrix family shapes differ");

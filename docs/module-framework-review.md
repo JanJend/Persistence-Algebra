@@ -173,13 +173,13 @@ Default presentation construction keeps the defining generator basis. Requested
 module minimization can choose a different basis without changing the defining
 family. `number_of_embedding_generators()` always counts that family, whereas
 `number_of_generators()` counts stored presentation generators once available.
-Do not assume that `generators()` is the inclusion lift from a minimized stored
-presentation; the existing categorical adapter explicitly reconstructs the matching
-unminimized basis. Arbitrary inherited edits that change the module itself (such
+`generator_map()` is now the typed inclusion from a stable source in the defining
+basis. Its `generator_lift()` need not match a separately minimized presentation
+cached in the Module base; the categorical adapter reuses the map's own source. Arbitrary inherited edits that change the module itself (such
 as shifting only its presentation) do not update the embedding or parent and
 must not be used as parent-aware submodule edits.
 
-Lazy/exact generator reductions clear the submodule's stored representations,
+Lazy/exact generator reductions clear the submodule's stored projective representation,
 preventing stale bases; the parent's representations remain unchanged. Mutable
 `presented_module()` remains a copy-returning adapter but also populates the base
 storage. Const calls preserve their old non-mutating behavior. Zero submodules
