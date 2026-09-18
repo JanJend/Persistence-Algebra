@@ -1,5 +1,7 @@
 # Persistence-Algebra
 
+Current version: **2.0.0**
+
 The compatibility-preserving persistence-module API is documented in
 [`docs/module-framework.md`](docs/module-framework.md). Existing presentation
 matrix APIs remain available; new clients should start with
@@ -51,8 +53,8 @@ If you use this library in your research, please cite it via its DOI. The full c
 @software{Jendrysiak_Persistence_Algebra,
   author       = {Jendrysiak, Jan},
   title        = {Persistence-Algebra},
-  version      = {0.2},
-  year         = {2024},
+  version      = {2.0.0},
+  year         = {2026},
   license      = {LGPL-3.0-or-later},
   doi          = {10.4230/artifacts.23283},
   orcid        = {https://orcid.org/0000-0002-3761-3463}
@@ -164,6 +166,39 @@ To install the command-line tools system-wide:
 ```bash
 sudo make install
 ```
+
+### Isomorphism tests and runtime statistics
+
+From the repository root, use a Release build for timings:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+cmake --build build --target isomorphism_test isomorphism_benchmark -j 2
+ctest --test-dir build -R '^isomorphism_' --output-on-failure
+python3 tests/isomorphism_statistics.py --executable build/isomorphism_benchmark \
+    --output build/isomorphism-statistics
+```
+
+The regression tests compare both Hom implementations against an independent
+exhaustive oracle on tiny modules, cover all 67 spaces of 2×2 matrices over F₂,
+and include non-isomorphic modules with equal Betti degrees and Hilbert functions.
+Two real presentations are also tested after thousands of admissible row/column
+additions and basis permutations; reversing the additions checks the construction.
+
+The statistics script uses sparse random presentations of doubling size and
+exact generator-degree multiplicities `k=1,2,4,8`, with three seeds per case.
+It writes `report.md`, raw and aggregated CSVs, log-log regressions with bootstrap
+intervals, and machine/command metadata. Options include `--sizes`,
+`--multiplicities`, `--repeats`, `--seed`, `--timeout`, `--file-timeout`, and
+`--files` (paths to two-parameter SCC presentations). Python needs only its
+standard library. Each case runs in a separate process with a deadline;
+timeouts remain unknown decisions and are excluded from fits.
+
+The current exact algorithm enumerates a local matrix space for repeated degrees
+of multiplicity at least three. This can take exponential time in `k²`:
+multiplicity-eight positive cases and large real inputs can time out. The
+benchmark includes all-singular block spaces to expose this limit. Empirical
+size regressions for small `k` are not general complexity bounds.
 
 ### Using the library as a header-only dependency
 

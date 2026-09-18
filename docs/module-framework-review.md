@@ -20,12 +20,15 @@ of every older library routine. Arithmetic and categorical formulas are over F2.
   model, since an edit can change the represented module.
 - Homomorphism lifts are a vector of f_i, not a chain complex in themselves:
   their equations involve the source and target resolutions.
-- Manual construction validates sparse storage, dimensions and graded degrees,
-  but trusts the caller's homomorphism guarantee. Library constructions guarantee
+- Manual homomorphism construction trusts the supplied storage, dimensions,
+  degrees and equations; call `validate()` explicitly for structural checks.
+  Library constructions guarantee
   the equations algebraically; regression tests independently check their maps.
 
 `graded_linear_system.hpp` adds `solve_graded_linear_system(A, B)` for A X = B.
 Each right-hand column uses only A columns born at or below its degree.
+Containment uses `graded_linear_system_is_solvable(A, B)`, which groups columns
+by degree and reuses one reduction per group without computing coefficients.
 `homomorphisms.hpp` adds `lift_to_relations(sourceP, targetP, f0)`, returning
 an optional f1 with `targetP * f1 = f0 * sourceP`; no graded solution gives
 `nullopt`. `is_homomorphism` is its boolean form. These are optional checks for
@@ -40,15 +43,15 @@ preserve every common available lift level.
 
 `graded_matrix.hpp` keeps public degree vectors for compatibility. Consequently,
 `compatibly_sorted` is a boolean-compatible checked proxy rather than a literal
-bool: reads recheck the stored comparator and invalidate a stale certificate.
+bool: diagnostic-build reads recheck the stored comparator and invalidate a stale certificate.
 Ordinary boolean uses/assignments work; binding a bool reference does not.
-A flag read costs linear time. This avoids silently trusting direct legacy
-vector edits without replacing the public containers.
+Optimized builds trust the cached flag; direct degree edits must invalidate it.
 
 Custom comparators are checked for equality consistency, totality, transitivity
 and extension of the finite partial order before sorting. The finite check is
 quadratic; trusted built-in trait orders bypass it. Exact floating-point equality
-is unchanged. Sorted-input reducers/minimizers reject absent or stale certificates.
+is unchanged. Sorted-input reducers/minimizers diagnose absent or stale
+certificates in diagnostic builds.
 
 `chain_complex.hpp` sorts each chain group once and transports its permutation to
 both adjacent maps, with stable treatment of repeated grades. Workspace callers
@@ -117,7 +120,9 @@ no-op. A complete projective resolution is a special case of this operation.
 
 Standard `Module::minimize()` dispatches on the stored projective map count:
 one map means presentation minimization; multiple maps mean
-`Module::minimize_resolution()`. This module method first calls the chain-complex
+`Module::minimize_resolution()`. Presentation-only minimization first reduces
+relation columns before local cancellation and exact relation minimization.
+The resolution method first calls the chain-complex
 minimizer, then removes terminal redundant generators using their graded kernel.
 The additional step preserves the resolved module and exactness below truncation,
 but can change the terminal homology of a truncated resolution. Exactness is the

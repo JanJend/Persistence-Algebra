@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(Persistence-Algebra VERSION 1.0 LANGUAGES CXX)
+project(Persistence-Algebra VERSION 2.0.0 LANGUAGES CXX)
 
 # Set C++ standard (overridable on the command line for testing newer standards)
 if(NOT DEFINED CMAKE_CXX_STANDARD)
@@ -105,6 +105,17 @@ install(TARGETS shift_endo cut_module hom minimize pres_to_quiver resolution sna
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(isomorphism_test tests/isomorphism_test.cpp)
+    target_link_libraries(isomorphism_test ${Boost_LIBRARIES})
+    add_test(NAME isomorphism_test COMMAND isomorphism_test)
+    set_tests_properties(isomorphism_test PROPERTIES TIMEOUT 120)
+    add_executable(isomorphism_benchmark tests/isomorphism_benchmark.cpp)
+    target_link_libraries(isomorphism_benchmark ${Boost_LIBRARIES})
+    add_test(NAME isomorphism_points COMMAND isomorphism_benchmark file
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_presentations/points_wo_density_20_dim2_k_fold_10_min_pres.scc 1001)
+    add_test(NAME isomorphism_annulus COMMAND isomorphism_benchmark file
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_presentations/presentation/noisy_annulus_socg_bifilt.scc 1001)
+    set_tests_properties(isomorphism_points isomorphism_annulus PROPERTIES TIMEOUT 120)
     add_executable(epsilon_functors_test tests/epsilon_functors_test.cpp)
     target_link_libraries(epsilon_functors_test ${Boost_LIBRARIES})
     add_test(NAME epsilon_functors_test COMMAND epsilon_functors_test)

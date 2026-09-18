@@ -9,6 +9,10 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#ifdef GRLINA_HILBERT_CORETEXT
+#include <CoreText/CoreText.h>
+#include <memory>
+#endif
 
 namespace graded_linalg {
 namespace detail {
@@ -46,64 +50,141 @@ inline std::array<unsigned char,3> hilbert_colour(double t) {
 
 } // namespace detail
 
-/** Draw a Module::R2HilbertGrid as a labelled PNG. Positive dimensions use the
- * Python visualise_reso.py light-blue/blue/black logarithmic scale; zero is white.
- * Pass the same positive_min/positive_max to compare multiple grids fairly.
- * Define STB_IMAGE_WRITE_IMPLEMENTATION in exactly one consuming .cpp file.
+/** Draw a uniformly sampled Module::R2HilbertGrid as a labelled PNG.
+ * Positive dimensions use the Python light-blue/blue/black logarithmic scale;
+ * zero is white. Pass shared positive_min/positive_max for comparable images.
+ * Define STB_IMAGE_WRITE_IMPLEMENTATION in one consuming .cpp file. On macOS,
+ * GRLINA_HILBERT_CORETEXT enables system fonts (link CoreText, CoreGraphics and CoreFoundation);
+ * otherwise the built-in bitmap font keeps the renderer dependency-free.
  */
 template <typename Grid>
 void save_hilbert_png(const Grid& grid, const std::string& filename,
-                      int positive_min, int positive_max, const std::string& title = "HILBERT FUNCTION") {
-    const int w = static_cast<int>(grid.x_grid.size()), h = static_cast<int>(grid.y_grid.size());
-    if (w < 2 || h < 2) throw std::invalid_argument("Hilbert image needs at least two grid points on each axis");
-    const int left = 85, top = 65, width = w+205, height = h+140;
-    std::vector<unsigned char> pixels(static_cast<std::size_t>(width)*height*3, 255);
+                      int positive_min, int positive_max, const std::string& title = "Hilbert function") {
+    const int nx = static_cast<int>(grid.x_grid.size()), ny = static_cast<int>(grid.y_grid.size());
+    if (nx < 2 || ny < 2) throw std::invalid_argument("Hilbert image needs at least two grid points on each axis");
+    // Leave room for labels even when the sampling grid is small.
+    const double enlargement = std::max({1.0, 360.0/nx, 300.0/ny});
+    const int w = std::lround(nx*enlargement), h = std::lround(ny*enlargement);
+    const int left = 100, top = 85, width = left+w+165, height = top+h+100;
+    std::vector<unsigned char> pixels(static_cast<std::size_t>(width)*height*4, 255);
     auto pixel = [&](int x, int y, std::array<unsigned char,3> colour) {
         if (x < 0 || y < 0 || x >= width || y >= height) return;
-        const auto offset = (static_cast<std::size_t>(y)*width+x)*3;
+        const auto offset = (static_cast<std::size_t>(y)*width+x)*4;
         std::copy(colour.begin(), colour.end(), pixels.begin()+offset);
     };
-    auto text = [&](int x, int y, const std::string& label, int scale = 1) {
+#ifdef GRLINA_HILBERT_CORETEXT
+    auto space = CGColorSpaceCreateDeviceRGB();
+    std::unique_ptr<CGContext, decltype(&CGContextRelease)> context(CGBitmapContextCreate(pixels.data(), width, height,
+        8, width*4, space, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big), CGContextRelease);
+    CGColorSpaceRelease(space);
+    if (!context) throw std::runtime_error("Could not create Hilbert image context");
+    CGContextSetRGBFillColor(context.get(), 0.15, 0.17, 0.20, 1);
+#endif
+    // align = 0: left, 0.5: centred, 1: right; y is the top of the text.
+    auto text = [&](double x, double y, const std::string& label, int size = 14, double align = 0) {
+#ifdef GRLINA_HILBERT_CORETEXT
+        auto font = CTFontCreateWithName(CFSTR("Helvetica"), size, nullptr);
+        const void* keys[] = {kCTFontAttributeName, kCTForegroundColorFromContextAttributeName};
+        const void* values[] = {font, kCFBooleanTrue};
+        auto attributes = CFDictionaryCreate(nullptr, keys, values, 2,
+            &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+        auto string = CFStringCreateWithCString(nullptr, label.c_str(), kCFStringEncodingUTF8);
+        auto styled = CFAttributedStringCreate(nullptr, string, attributes);
+        auto line = CTLineCreateWithAttributedString(styled);
+        CGFloat ascent = 0;
+        const double advance = CTLineGetTypographicBounds(line, &ascent, nullptr, nullptr);
+        CGContextSetTextPosition(context.get(), x-align*advance, height-y-ascent);
+        CTLineDraw(line, context.get());
+        CFRelease(line); CFRelease(styled); CFRelease(string); CFRelease(attributes); CFRelease(font);
+#else
+        const int scale = std::max(1, size/7);
+        x -= align * (label.size()*6-1)*scale;
         for (char c : label) {
             const auto* glyph = detail::hilbert_glyph(c);
             for (int col=0; col<5; ++col) for (int row=0; row<7; ++row)
                 if (glyph[col] & (1<<row)) for (int dx=0; dx<scale; ++dx) for (int dy=0; dy<scale; ++dy)
-                    pixel(x+col*scale+dx,y+row*scale+dy,{30,30,30});
+                    pixel(std::lround(x)+col*scale+dx,std::lround(y)+row*scale+dy,{38,43,51});
             x += 6*scale;
         }
+#endif
     };
-    auto number = [](double value) { std::ostringstream out; out << std::setprecision(3) << value; return out.str(); };
+    auto number = [](double value) {
+        std::ostringstream out;
+        out << std::setprecision(4) << (value == 0 ? 0 : value);
+        return out.str();
+    };
     positive_min = std::max(1, positive_min);
-    const double upper = positive_max > positive_min ? positive_max : positive_min + 1.0;
-    const double log_min = std::log(positive_min), log_range = std::log(upper)-log_min;
+    const double log_min = std::log(positive_min);
+    const double log_range = positive_max > positive_min ? std::log(positive_max)-log_min : 0;
     int maximum = 0;
+    for (const auto& column : grid.values) for (int value : column) maximum = std::max(maximum, value);
     for (int x=0; x<w; ++x) for (int y=0; y<h; ++y) {
-        const int value = grid.values[x][y];
-        maximum = std::max(maximum, value);
-        if (value > 0) pixel(left+x,top+h-1-y,detail::hilbert_colour((std::log(value)-log_min)/log_range));
+        const int value = grid.values[x*nx/w][y*ny/h];
+        if (value > 0) pixel(left+x,top+h-1-y,
+            detail::hilbert_colour(log_range > 0 ? (std::log(value)-log_min)/log_range : 0));
     }
-    for (int x=left-1; x<=left+w; ++x) { pixel(x,top-1,{50,50,50}); pixel(x,top+h,{50,50,50}); }
-    for (int y=top-1; y<=top+h; ++y) { pixel(left-1,y,{50,50,50}); pixel(left+w,y,{50,50,50}); }
-    text(left,15,title,w >= 320 ? 2 : 1);
-    text(left,40,"MAX DIMENSION: "+std::to_string(maximum));
-    const int intervals = w < 240 ? 2 : 4;
-    for (int i=0; i<=intervals; ++i) {
-        const int x=i*(w-1)/intervals, y=i*(h-1)/intervals;
-        text(left+x-15,top+h+12,number(grid.x_grid[x]));
-        text(4,top+h-1-y,number(grid.y_grid[y]));
-    }
-    text(left+w/2,top+h+35,"X",2);
-    text(15,top-25,"Y",2);
-    text(left+w+18,top-20,"DIMENSION");
-    if (positive_max > 0) {
-        for (int y=0; y<h; ++y) for (int x=0; x<18; ++x)
-            pixel(left+w+20+x,top+y,detail::hilbert_colour(1.0-static_cast<double>(y)/(h-1)));
-        text(left+w+45,top,number(upper));
-        text(left+w+45,top+h-7,number(positive_min));
-        if (positive_max > positive_min) text(left+w+45,top+h/2,number(std::sqrt(upper*positive_min)));
-    } else text(left+w+18,top+10,"ALL ZERO");
-    text(left,top+h+60,"WHITE: ZERO    LOG COLOUR SCALE");
-    if (!stbi_write_png(filename.c_str(),width,height,3,pixels.data(),width*3))
+    const std::array<unsigned char,3> ink{90,96,105};
+    auto frame = [&](int x, int y, int dx, int dy) {
+        for (int i=x; i<=x+dx; ++i) { pixel(i,y,ink); pixel(i,y+dy,ink); }
+        for (int j=y; j<=y+dy; ++j) { pixel(x,j,ink); pixel(x+dx,j,ink); }
+    };
+    frame(left-1,top-1,w+1,h+1);
+    text(left+w/2.0,16,title,22,0.5);
+    text(left+w/2.0,49,"Max dimension: "+std::to_string(maximum),14,0.5);
+    // Rounded ticks, positioned in coordinate space rather than at grid indices.
+    auto ticks = [&](double low, double high, bool horizontal) {
+        const double raw = (high-low)/4;
+        if (!(raw > 0)) return;
+        const double magnitude = std::pow(10.0,std::floor(std::log10(raw)));
+        const double unit = raw/magnitude;
+        const double step = (unit < 1.5 ? 1 : unit < 2.25 ? 2 : unit < 3.75 ? 2.5 : unit < 7.5 ? 5 : 10)*magnitude;
+        const double first = std::ceil(low/step)*step;
+        for (int i=0; i<10; ++i) {
+            double value = first+i*step;
+            if (value > high+step*1e-8) break;
+            if (std::abs(value) < step*1e-8) value = 0;
+            const double t = (value-low)/(high-low);
+            const int x = left+std::lround(t*(w-1)), y = top+h-1-std::lround(t*(h-1));
+            for (int d=1; d<=5; ++d) pixel(horizontal ? x : left-d,horizontal ? top+h+d : y,ink);
+            if (horizontal) text(x,top+h+13,number(value),14,0.5);
+            else text(left-12,y-8,number(value),14,1);
+        }
+    };
+    ticks(grid.x_grid.front(),grid.x_grid.back(),true);
+    ticks(grid.y_grid.front(),grid.y_grid.back(),false);
+    text(left+w/2.0,top+h+43,"X",18,0.5);
+    text(16,top+h/2.0-10,"Y",18);
+    const int bar = left+w+35, bar_width = 20;
+    text(bar-4,top-29,"Dimension",14);
+    for (int y=0; y<h; ++y) for (int x=0; x<bar_width; ++x)
+        if (positive_max > 0) pixel(bar+x,top+y,
+            detail::hilbert_colour(log_range > 0 ? 1.0-static_cast<double>(y)/(h-1) : 0));
+    frame(bar-1,top-1,bar_width+1,h+1);
+    if (log_range > 0) {
+        std::vector<int> values{positive_min,positive_max};
+        for (double power=1; power<=positive_max; power*=10)
+            for (int factor : {1,2,3,5}) {
+                const double v = factor*power;
+                if (v > positive_min && v < positive_max) values.push_back(static_cast<int>(v));
+            }
+        std::sort(values.begin(),values.end());
+        int previous = h+30;
+        for (int value : values) {
+            const int y = std::lround((1-(std::log(value)-log_min)/log_range)*(h-1));
+            if (value != positive_max && (previous-y < 25 || y < 25)) continue;
+            for (int d=0; d<=5; ++d) pixel(bar+bar_width+d,top+y,ink);
+            text(bar+bar_width+11,top+y-8,std::to_string(value));
+            previous = y;
+        }
+    } else text(bar+bar_width+11,top+h/2.0-8,std::to_string(std::max(0,positive_max)));
+    // A separate white swatch makes zero explicit without including it in log space.
+    frame(left,top+h+77,12,12);
+    text(left+21,top+h+75,"White: 0",12);
+    text(left+w,top+h+75,"Log colour scale",12,1);
+#ifdef GRLINA_HILBERT_CORETEXT
+    CGContextFlush(context.get());
+#endif
+    if (!stbi_write_png(filename.c_str(),width,height,4,pixels.data(),width*4))
         throw std::runtime_error("Could not write Hilbert image: "+filename);
 }
 

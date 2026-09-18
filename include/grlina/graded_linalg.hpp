@@ -3,7 +3,7 @@
  * @author Jan Jendrysiak
  * @brief This library was created to provide a set of tools for working with (graded) matrices over F_2 for the
  *        AIDA algorithm which decomposes minimal presentations of persistence modules. 
- * @version 0.1
+ * @version 2.0.0
  * @date 2025-03-13
  * 
  * @copyright 2025 TU Graz

@@ -2,7 +2,7 @@
  * @file homomorphisms.hpp
  * @author Jan Jendrysiak
  * @brief different methods to compute homomorphisms of persistence modules.
- * @version 0.2
+ * @version 2.0.0
  * @date 2026-02-05
  * 
  * @copyright 2026 TU Graz
