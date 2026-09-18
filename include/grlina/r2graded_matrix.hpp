@@ -2,7 +2,7 @@
  * @file r2graded_matrix.hpp
  * @author Jan Jendrysiak
  * @brief The Kernel computation is adapted from MPfree (Michael Kerber)
- * @version 0.1
+ * @version 2.0.0
  * @date 2025-03-13
  * 
  * @copyright 2025 TU Graz

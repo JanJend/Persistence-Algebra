@@ -1,0 +1,46 @@
+Both implementations use quick=false.
+
+Pruning timing comparison (matrix first, module second)
+Total pruning: matrix=0.971341 s, module=1.048187 s
+Module / matrix total time: 1.079113
+I iterations: matrix=2, module=2
+  Phase time / average per iteration (s): matrix=0.259439 / 0.129720, module=0.832785 / 0.416392
+K iterations: matrix=4, module=4
+  Phase time / average per iteration (s): matrix=0.693597 / 0.173399, module=0.196277 / 0.049069
+Operation                   Old calls   Old total s    Old avg ms   New calls   New total s    New avg ms
+End_2eps/0                          1      0.017436     17.435706           1      0.011906     11.905550
+I preimage                        892      0.107625      0.120656         892      0.233497      0.261768
+I intersection                      0      0.000000      0.000000         892      0.493662      0.553432
+I image / composition            1784      0.013434      0.007531           2      0.001370      0.685134
+I generator reduction             894      0.121585      0.136001         892      0.038869      0.043575
+I convergence check                 2      0.000251      0.125567           3      0.054051     18.016879
+K preimage                       1784      0.270289      0.151507           4      0.001144      0.286069
+K image / composition            3568      0.030346      0.008505        1788      0.053485      0.029913
+K sum / append                   1784      0.004239      0.002376        1784      0.138153      0.077440
+K generator reduction            1788      0.367026      0.205272           0      0.000000      0.000000
+K convergence check                 4      0.000363      0.090756           5      0.001309      0.261836
+Quotient construction               1      0.000002      0.002154           1      0.000024      0.023835
+Presentation                        1      0.000121      0.121100           1      0.000370      0.370331
+Minimization                        1      0.000123      0.123225           1      0.005294      5.293638
+Times are wall time. Total excludes input preparation, file I/O, images and AIDA.
+Phase averages include convergence checks and setup; zero passes have average zero.
+Operation times include work inside that API call; nested library operations are not counted separately.
+Matrix I preimage uses f restricted to I; module I uses ambient preimage then intersection.
+Matrix K takes preimages per map; module K takes one after summing per iteration.
+Progress printing is disabled in both timed runs. Timings include instrumentation overhead.
+Minimized output generators: matrix=7, module=7; relations: matrix=14, module=14
+Generator degree multisets: match
+  matrix: [ (0.92937058694223273, -0.038408444712249246) (0.92937058694223273, -0.038408444712249246) (0.92937058694223273, -0.038408444712249246) (0.94404728327061405, -0.038857964787957389) (0.94404728327061405, -0.038857964787957389) (0.94404728327061405, -0.038857964787957389) (1.1182767919869818, -0.040849519652289751) ]
+  module: [ (0.92937058694223273, -0.038408444712249246) (0.92937058694223273, -0.038408444712249246) (0.92937058694223273, -0.038408444712249246) (0.94404728327061405, -0.038857964787957389) (0.94404728327061405, -0.038857964787957389) (0.94404728327061405, -0.038857964787957389) (1.1182767919869818, -0.040849519652289751) ]
+Relation degree multisets: match
+  matrix: [ (0.92937058694223273, -0.038395604911940578) (0.92937058694223273, -0.038395604911940578) (0.92937058694223273, -0.038395604911940578) (0.92947191289284614, -0.038398426141092373) (0.92947191289284614, -0.038398426141092373) (0.92947191289284614, -0.038398426141092373) (0.94404728327061405, -0.038408444712249246) (0.94404728327061405, -0.038408444712249246) (0.94404728327061405, -0.038408444712249246) (1.0264092322087306, -0.038857964787957389) (1.0264092322087306, -0.038857964787957389) (1.0264092322087306, -0.038857964787957389) (1.1182767919869818, -0.039632427728947095) (1.138219055975529, -0.040849519652289751) ]
+  module: [ (0.92937058694223273, -0.038395604911940578) (0.92937058694223273, -0.038395604911940578) (0.92937058694223273, -0.038395604911940578) (0.92947191289284614, -0.038398426141092373) (0.92947191289284614, -0.038398426141092373) (0.92947191289284614, -0.038398426141092373) (0.94404728327061405, -0.038408444712249246) (0.94404728327061405, -0.038408444712249246) (0.94404728327061405, -0.038408444712249246) (1.0264092322087306, -0.038857964787957389) (1.0264092322087306, -0.038857964787957389) (1.0264092322087306, -0.038857964787957389) (1.1182767919869818, -0.039632427728947095) (1.138219055975529, -0.040849519652289751) ]
+AIDA indecomposable counts: match (matrix=4, module=4)
+AIDA indecomposable types: match
+  cyclic: matrix=1, module=1
+  interval: matrix=3, module=3
+AIDA indecomposable degree signatures: match
+Saved decompositions: /Users/Jendrysiak/MP-Workspace/Persistence-Algebra/test_presentations/noisy_circle_firep_8_0_min_pres_pru0.1000_matrix_pruning_decomposition.sccsum
+                      /Users/Jendrysiak/MP-Workspace/Persistence-Algebra/test_presentations/noisy_circle_firep_8_0_min_pres_pru0.1000_module_pruning_decomposition.sccsum
+PASS: checked invariants agree; this does not prove isomorphism.
+The module result is used for subsequent outputs.
