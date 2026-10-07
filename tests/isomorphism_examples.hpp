@@ -46,7 +46,7 @@ inline Mat sparse_random(int n, int k, RNG& rng) {
         candidates.push_back(anchor);
         std::sort(candidates.begin(),candidates.end());
         data.push_back(std::move(candidates));
-        cols.push_back({rows[anchor].first+1+double(rng()%3), rows[anchor].second+1+double(rng()%3)});
+        cols.push_back({rows[anchor][0]+1+double(rng()%3), rows[anchor][1]+1+double(rng()%3)});
     }
     Mat a(2*n,n,data,cols,rows);
     minimize(a);

@@ -46,8 +46,8 @@ std::vector<std::vector<typename Matrix::index_type>> euler_grid_r2(
     using index = typename Matrix::index_type;
     std::vector<std::vector<index>> values(xs.size(), std::vector<index>(ys.size(), 0));
     visit_euler_degrees(resolution, [&](const auto& degree, index sign) {
-        const auto x = std::lower_bound(xs.begin(), xs.end(), degree.first) - xs.begin();
-        const auto y = std::lower_bound(ys.begin(), ys.end(), degree.second) - ys.begin();
+        const auto x = std::lower_bound(xs.begin(), xs.end(), degree[0]) - xs.begin();
+        const auto y = std::lower_bound(ys.begin(), ys.end(), degree[1]) - ys.begin();
         if (x < static_cast<std::ptrdiff_t>(xs.size()) && y < static_cast<std::ptrdiff_t>(ys.size()))
             values[x][y] += sign;
     });
@@ -75,24 +75,24 @@ std::vector<typename Matrix::index_type> euler_queries_r2(
     std::vector<std::pair<degree_type, index>> events;
     visit_euler_degrees(resolution, [&](const auto& degree, index sign) { events.emplace_back(degree, sign); });
     std::sort(events.begin(), events.end(), [](const auto& a, const auto& b) {
-        return a.first.first < b.first.first;
+        return a.first[0] < b.first[0];
     });
     std::vector<double> ys;
-    for (const auto& location : locations) ys.push_back(location.second);
+    for (const auto& location : locations) ys.push_back(location[1]);
     std::sort(ys.begin(), ys.end());
     ys.erase(std::unique(ys.begin(), ys.end()), ys.end());
     std::vector<std::size_t> order(locations.size());
     std::iota(order.begin(), order.end(), 0);
-    std::sort(order.begin(), order.end(), [&](auto a, auto b) { return locations[a].first < locations[b].first; });
+    std::sort(order.begin(), order.end(), [&](auto a, auto b) { return locations[a][0] < locations[b][0]; });
     std::vector<index> tree(ys.size() + 1, 0);
     std::size_t next = 0;
     for (auto q : order) {
-        while (next < events.size() && events[next].first.first <= locations[q].first) {
-            auto i = static_cast<std::size_t>(std::lower_bound(ys.begin(), ys.end(), events[next].first.second) - ys.begin()) + 1;
+        while (next < events.size() && events[next].first[0] <= locations[q][0]) {
+            auto i = static_cast<std::size_t>(std::lower_bound(ys.begin(), ys.end(), events[next].first[1]) - ys.begin()) + 1;
             for (; i < tree.size(); i += i & -i) tree[i] += events[next].second;
             ++next;
         }
-        auto i = static_cast<std::size_t>(std::lower_bound(ys.begin(), ys.end(), locations[q].second) - ys.begin()) + 1;
+        auto i = static_cast<std::size_t>(std::lower_bound(ys.begin(), ys.end(), locations[q][1]) - ys.begin()) + 1;
         for (; i; i -= i & -i) result[q] += tree[i];
     }
     return result;

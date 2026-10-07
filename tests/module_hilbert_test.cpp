@@ -160,12 +160,12 @@ void test_no_kernel_and_explicit_completeness() {
     Matrix::forbid_local = false;
 
     using R4 = R4GradedSparseMatrix<int>;
-    R4 injection(1, 1, {{0}}, {r4degree(1,0,0,0)}, {r4degree(0,0,0,0)});
+    R4 injection(1, 1, {{0}}, {r4degree{1,0,0,0}}, {r4degree{0,0,0,0}});
     auto higher = Module<R4>::from_projective_resolution(ChainComplex<R4>({injection}),
                                                         ResolutionCompleteness::complete);
-    assert(higher.dimension_at(r4degree(0,0,0,0)) == 1);
-    assert(higher.dimension_at(r4degree(1,0,0,0)) == 0);
-    assert(higher.hilbert_function({r4degree(0,0,0,0)})[0].dimension == 1);
+    assert(higher.dimension_at(r4degree{0,0,0,0}) == 1);
+    assert(higher.dimension_at(r4degree{1,0,0,0}) == 0);
+    assert(higher.hilbert_function({r4degree{0,0,0,0}})[0].dimension == 1);
 }
 
 void test_mixed_handcrafted_summands() {
@@ -175,9 +175,9 @@ void test_mixed_handcrafted_summands() {
     Module<Mat> M(Mat(3, 3, {{0}, {0}, {1}}, {{1,-2}, {-1,1}, {2,2}},
                      {{-1,-2}, {0,0}, {0.5,0.5}}));
     auto expected = [](r2degree p) {
-        return int(p.first >= -1 && p.first < 1 && p.second >= -2 && p.second < 1) +
-               int(p.first >= 0 && p.second >= 0 && !(p.first >= 2 && p.second >= 2)) +
-               int(p.first >= 0.5 && p.second >= 0.5);
+        return int(p[0] >= -1 && p[0] < 1 && p[1] >= -2 && p[1] < 1) +
+               int(p[0] >= 0 && p[1] >= 0 && !(p[0] >= 2 && p[1] >= 2)) +
+               int(p[0] >= 0.5 && p[1] >= 0.5);
     };
     const auto grid = M.hilbert_function_on_grid({-2,-1,-0.5,0,0.5,1,2,3}, {-3,-2,-1,0,0.5,1,2,3});
     assert(grid.maximum == 3);

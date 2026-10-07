@@ -34,6 +34,7 @@ namespace graded_linalg {
 // Orders supplied by Degree_traits are part of the poset contract. Only a
 // caller-supplied comparator needs the quadratic finite-poset validation.
 template <typename D> struct TraitLinearOrder {
+    static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
     std::function<bool(const D&, const D&)> compare;
     bool operator()(const D& a, const D& b) const { return compare(a, b); }
 };
@@ -42,6 +43,9 @@ template<typename index>
 using Hom_space_temp = std::pair< SparseMatrix<index>, vec<std::pair<index,index>> >;
 
 template <typename D, typename index, typename DERIVED>
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
+    requires Degree<D>
+#endif
 struct GradedSparseMatrix;
 
 /** True when Matrix uses the graded-matrix CRTP contract expected by modules. */
@@ -50,7 +54,8 @@ struct is_graded_sparse_matrix : std::false_type {};
 
 template <typename Matrix>
 struct is_graded_sparse_matrix<Matrix, std::void_t<typename Matrix::degree_type,
-                                                   typename Matrix::index_type>>
+                                                   typename Matrix::index_type,
+                                                   std::enable_if_t<is_degree_v<typename Matrix::degree_type>>>>
     : std::is_base_of<GradedSparseMatrix<typename Matrix::degree_type,
                                          typename Matrix::index_type,
                                          Matrix>, Matrix> {};
@@ -72,7 +77,12 @@ struct has_matrix_graded_kernel<Matrix, std::void_t<decltype(std::declval<Matrix
  * @tparam index
  */
 template <typename D, typename index, typename DERIVED>
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
+    requires Degree<D>
+#endif
 struct GradedSparseMatrix : public SparseMatrix<index> {
+
+    static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
 
     static_assert(std::is_integral_v<index> && std::is_signed_v<index> &&
                   static_cast<index>(-1) < 0,
@@ -1757,6 +1767,7 @@ DERIVED operator*(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSp
 
 template <typename D, typename DERIVED>
 DERIVED shifted_identity( vec<D>& generators, const D& epsilon) {
+    static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
     DERIVED result(generators.size(),generators.size(), "Identity");
     result.col_degrees = generators;
     result.row_degrees = generators;
@@ -1775,6 +1786,7 @@ DERIVED shifted_identity( vec<D>& generators, const D& epsilon) {
  */
 template <typename D, typename index, typename DERIVED>
 struct Compare_by_degrees {
+    static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
 
     /**
      * @brief -1 if a<b, 0 if a=b, 1 if a>b

@@ -13,19 +13,11 @@ namespace detail {
 
 template <typename Degree> struct EpsilonDiagonal;
 
-template <> struct EpsilonDiagonal<r2degree> {
-    static r2degree make(double epsilon) { return {epsilon, epsilon}; }
-};
-
-template <> struct EpsilonDiagonal<triple> {
-    static triple make(double epsilon) { return {epsilon, epsilon, epsilon}; }
-};
-
 template <std::size_t Dimension>
 struct EpsilonDiagonal<CoordinateDegree<double, Dimension>> {
     static CoordinateDegree<double, Dimension> make(double epsilon) {
         CoordinateDegree<double, Dimension> result;
-        result.coordinates.fill(epsilon);
+        result.fill(epsilon);
         return result;
     }
 };

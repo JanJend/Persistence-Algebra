@@ -111,6 +111,7 @@ This library is used as a dependency in the following projects, all part of the 
 - **Graded sparse matrices** parametrised by an arbitrary degree type `D`, with existing specialisations for ℝ¹, ℝ², and ℝ³
 - **Column reduction algorithms**: standard, triangular, graded, with and without tracking of performed operations
 - **Kernel computation** for ℝ²-graded matrices, adapted from the MPfree algorithm (Kerber, Rolle - Implementation by Michael Kerber, TU Graz)
+- **Isomorphism Testing** for persistence modules
 - **Minimisation** of graded presentations
 - **Free resolutions** up to second syzygies
 - **Hom-space computation** between graded modules

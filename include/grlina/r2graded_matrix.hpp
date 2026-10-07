@@ -20,6 +20,7 @@
 #define R2GRADED_MATRIX_HPP
 
 #include "grlina/orders_and_graphs.hpp"
+#include <grlina/coordinate_degree.hpp>
 #include <grlina/graded_matrix.hpp>
 #include <grlina/grid_scheduler.hpp>
 #include <iostream>
@@ -28,12 +29,12 @@
 
 namespace graded_linalg {
 
-using r2degree = std::pair<double, double>;
+using r2degree = CoordinateDegree<double, 2>;
 
 // Vector addition
 inline r2degree operator+(const r2degree& a,
     const r2degree& b) {
-return {a.first + b.first, a.second + b.second};
+return {a[0] + b[0], a[1] + b[1]};
 }
 
 inline vec<r2degree> operator+(const vec<r2degree>& a,
@@ -48,140 +49,23 @@ inline vec<r2degree> operator+(const vec<r2degree>& a,
 // Vector subtraction
 inline r2degree operator-(const r2degree& a,
     const r2degree& b) {
-return {a.first - b.first, a.second - b.second};
+return {a[0] - b[0], a[1] - b[1]};
 }
 
 
-// Scalar multiplication (scalar * pair)
+// Scalar multiplication (scalar * degree)
 inline r2degree operator*(double scalar, const r2degree& p) {
-return {scalar * p.first, scalar * p.second};
+return {scalar * p[0], scalar * p[1]};
 }
 
-// Scalar multiplication (pair * scalar)
+// Scalar multiplication (degree * scalar)
 inline r2degree operator*(const r2degree& p, double scalar) {
-return {p.first * scalar, p.second * scalar};
+return {p[0] * scalar, p[1] * scalar};
 }
 
 inline r2degree operator/(const r2degree& p, double scalar) {
-    return {p.first / scalar, p.second / scalar};
+    return {p[0] / scalar, p[1] / scalar};
 }
-
-template<>
-struct Degree_traits<r2degree> {
-    inline static constexpr const char* poset_id = "2";
-    static bool equals(const r2degree& lhs, const r2degree& rhs) {
-        return lhs.first == rhs.first && lhs.second == rhs.second;
-    }
-
-    static bool smaller(const r2degree& lhs, const r2degree& rhs) {
-        if(lhs.first < rhs.first) {
-            return (lhs.second <= rhs.second);
-        } else if (lhs.first == rhs.first) {
-            return lhs.second < rhs.second;
-        } else {
-            return false;
-        }
-    }
-
-    static bool greater(const r2degree& lhs, const r2degree& rhs) {
-        if(lhs.first > rhs.first) {
-            return (lhs.second >= rhs.second);
-        } else if (lhs.first == rhs.first) {
-            return lhs.second > rhs.second;
-        } else {
-            return false;
-        }
-    }
-
-    static bool greater_equal(const r2degree& lhs, const r2degree& rhs) {
-        return (lhs.first >= rhs.first) && (lhs.second >= rhs.second);
-    }
-
-    static bool smaller_equal(const r2degree& lhs, const r2degree& rhs) {
-        return (lhs.first <= rhs.first) && (lhs.second <= rhs.second);
-    }
-
-    static bool lex_order(const r2degree& a, const r2degree& b) {
-        if (a.first != b.first) {
-            return a.first < b.first;
-        } else {
-            return a.second < b.second;
-        }
-    }
-
-    static bool colex_order(const r2degree& a, const r2degree& b) {
-        if (a.second != b.second) {
-            return a.second < b.second;
-        } else {
-            return a.first < b.first;
-        }
-    }
-
-    /**
-    * @brief Lambda function to compare lexicographically for sorting.
-    */
-    static std::function<bool(const r2degree&, const r2degree&)> lex_lambda() {
-        return [](const r2degree& a, const r2degree& b) {
-            return Degree_traits<r2degree>::lex_order(a, b);
-        };
-    }
-
-    /**
-    * @brief Lambda function to compare colexicographically for sorting.
-    */
-    static std::function<bool(const r2degree&, const r2degree&)> colex_lambda() {
-        return [](const r2degree& a, const r2degree& b) {
-            return Degree_traits<r2degree>::colex_order(a, b);
-        };
-    }
-
-    static vec<double> position(const r2degree& a)  {
-        return {a.first, a.second};
-    }
-
-    static void print_degree(const r2degree& a) {
-        std::cout << "(" << a.first << ", " << a.second << ")";
-    }
-
-    static r2degree join(const r2degree& a, const r2degree& b)  {
-        return {std::max(a.first, b.first), std::max(a.second, b.second)};
-    }
-
-    static r2degree meet(const r2degree& a, const r2degree& b) {
-        return {std::min(a.first, b.first), std::min(a.second, b.second)};
-    }
-
-    
-    /**
-     * @brief Writes the r2degree to an output stream.
-     */
-    template <typename OutputStream>
-    static void write_degree(OutputStream& os, const r2degree& a) {
-        os << a.first << " " << a.second;
-    }
-
-    template <typename InputStream>
-    static r2degree from_stream(InputStream& iss){
-        r2degree deg;
-        iss >> deg.first >> deg.second;
-        return deg;
-    }
-
-    static void add(const r2degree& a, r2degree& b) {
-        b.first += a.first;
-        b.second += a.second;
-    }
-
-    static void subtract(const r2degree& a, r2degree& b){
-        b.first -= a.first;
-        b.second -= a.second;
-    }
-
-
-}; //Degree_traits<r2degree>
-
-
-
 
 /**
  * @brief A graded matrix with degrees in R^2.
@@ -200,8 +84,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     std::unordered_map<double, index> x_to_index;
     std::unordered_map<double, index> y_to_index;
 
-    vec<pair<index>> z2_col_degrees;
-    vec<pair<index>> z2_row_degrees;
+    vec<CoordinateDegree<index, 2>> z2_col_degrees;
+    vec<CoordinateDegree<index, 2>> z2_row_degrees;
 
     // This is also used in kernel computation
     typedef std::priority_queue<index,std::vector<index>,std::greater<index>> PQ;
@@ -365,8 +249,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     private:
 
     template <typename T>
-    void merge_unique_elements(const std::vector<std::pair<T, T>>& vec1,
-                           const std::vector<std::pair<T, T>>& vec2,
+    void merge_unique_elements(const std::vector<CoordinateDegree<T, 2>>& vec1,
+                           const std::vector<CoordinateDegree<T, 2>>& vec2,
                            std::vector<T>& out,
                            bool useFirst = true) {
         auto it1 = vec1.begin();
@@ -378,7 +262,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
             T value;
 
             if (it1 == vec1.end()) {
-                value = useFirst ? it2->first : it2->second;
+                value = useFirst ? (*it2)[0] : (*it2)[1];
                 if (!has_last_x || value != last_x) {
                     out.push_back(value);
                     last_x = value;
@@ -387,7 +271,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
                 ++it2;
             } 
             else if (it2 == vec2.end()) {
-                value = useFirst ? it1->first : it1->second;
+                value = useFirst ? (*it1)[0] : (*it1)[1];
                 if (!has_last_x || value != last_x) {
                     out.push_back(value);
                     last_x = value;
@@ -396,8 +280,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
                 ++it1;
             } 
             else {
-                T val1 = useFirst ? it1->first : it1->second;
-                T val2 = useFirst ? it2->first : it2->second;
+                T val1 = useFirst ? (*it1)[0] : (*it1)[1];
+                T val2 = useFirst ? (*it2)[0] : (*it2)[1];
 
                 if (val1 < val2) {
                     if (!has_last_x || val1 != last_x) {
@@ -481,11 +365,11 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         // Compute Z^2 representation of degrees
 
         for (const auto& pair : this->col_degrees) {
-            z2_col_degrees.emplace_back(x_to_index[pair.first], y_to_index[pair.second]);
+            z2_col_degrees.push_back({x_to_index[pair[0]], y_to_index[pair[1]]});
         }
 
         for (const auto& pair : this->row_degrees) {
-            z2_row_degrees.emplace_back(x_to_index[pair.first], y_to_index[pair.second]);
+            z2_row_degrees.push_back({x_to_index[pair[0]], y_to_index[pair[1]]});
         }
         
         return column_permutation;
@@ -494,16 +378,16 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     private:
 
         pair<index> snap_degree_to_grid_upper(const r2degree& degree, const vec<double>& x_grid, const vec<double>& y_grid) {
-            auto it_x = std::lower_bound(x_grid.begin(), x_grid.end(), degree.first);
-            auto it_y = std::lower_bound(y_grid.begin(), y_grid.end(), degree.second);
+            auto it_x = std::lower_bound(x_grid.begin(), x_grid.end(), degree[0]);
+            auto it_y = std::lower_bound(y_grid.begin(), y_grid.end(), degree[1]);
             index x_index = std::distance(x_grid.begin(), it_x);
             index y_index = std::distance(y_grid.begin(), it_y);
             return {x_index, y_index};
         }
         
         pair<index> snap_degree_to_grid_lower(const r2degree& degree, const vec<double>& x_grid, const vec<double>& y_grid) {
-            auto it_x = std::upper_bound(x_grid.begin(), x_grid.end(), degree.first);
-            auto it_y = std::upper_bound(y_grid.begin(), y_grid.end(), degree.second);
+            auto it_x = std::upper_bound(x_grid.begin(), x_grid.end(), degree[0]);
+            auto it_y = std::upper_bound(y_grid.begin(), y_grid.end(), degree[1]);
             index x_index = std::distance(x_grid.begin(), it_x)-1;
             index y_index = std::distance(y_grid.begin(), it_y)-1;
             return {x_index, y_index};
@@ -579,13 +463,13 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     void print_grid_representation(){
         std::cout << "Z^2 Column Degrees: ";
         for (const auto& pair : z2_col_degrees) {
-            std::cout << "(" << pair.first << ", " << pair.second << ") ";
+            std::cout << "(" << pair[0] << ", " << pair[1] << ") ";
         }
         std::cout << std::endl;
 
         std::cout << "Z^2 Row Degrees: ";
         for (const auto& pair : z2_row_degrees) {
-            std::cout << "(" << pair.first << ", " << pair.second << ") ";
+            std::cout << "(" << pair[0] << ", " << pair[1] << ") ";
         }
         std::cout << std::endl;
     }
@@ -642,7 +526,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
                 }
                 p = this->col_last(i);
             } else if (notify_pq) {
-                index gr_y_index = this->z2_col_degrees[k].second;  
+                index gr_y_index = this->z2_col_degrees[k][1];
 
                 this->pq_row[gr_y_index].push(k);
                 index gr_x_index = curr_gr.first;  
@@ -715,8 +599,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
                     pq.pop();
                 }
 
-                GRLINA_ASSERT(z2_col_degrees[i].first <= x);
-                GRLINA_ASSERT(z2_col_degrees[i].second == y);
+                GRLINA_ASSERT(z2_col_degrees[i][0] <= x);
+                GRLINA_ASSERT(z2_col_degrees[i][1] == y);
 
                 // Reduce the column and check if it's part of the kernel
                 kernel_column_reduction(i, new_degree, col_operations, true, true);
@@ -724,7 +608,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
                 if (!indices_in_kernel[i] && this->is_zero(i)) {
                     std::vector<index> col = col_operations.get_col(i);
                     new_cols.push_back(std::move(col));
-                    new_degrees.emplace_back(this->x_grid[x], this->y_grid[y]);
+                    new_degrees.push_back({this->x_grid[x], this->y_grid[y]});
                     indices_in_kernel[i] = true;
                     // what is this for?
                     this->data[i].clear();
@@ -781,12 +665,12 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         if(n == 1){
             return {box.first};
         }
-        double x_step = (box.second.first - box.first.first) / (n-1);
-        double y_step = (box.second.second - box.first.second) / (n-1);
+        double x_step = (box.second[0] - box.first[0]) / (n-1);
+        double y_step = (box.second[1] - box.first[1]) / (n-1);
         vec<r2degree> grid;
         for(int i = 0; i < n; i++){
             for(int j = 0; j < n; j++){
-                grid.push_back({box.first.first + i * x_step, box.first.second + j * y_step});
+                grid.push_back({box.first[0] + i * x_step, box.first[1] + j * y_step});
             }     
         }  
         return grid;
@@ -806,8 +690,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
             vec<double> new_x_grid;
             vec<double> new_y_grid;
             for(int i = 0; i < n; i++){
-                new_x_grid.push_back(box.first.first + i * step.first);
-                new_y_grid.push_back(box.first.second + i * step.second);
+                new_x_grid.push_back(box.first[0] + i * step[0]);
+                new_y_grid.push_back(box.first[1] + i * step[1]);
             }
             this->snap_to_grid(new_x_grid, new_y_grid);
         }
@@ -816,18 +700,18 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     void cut_above(double x_cutoff, double y_cutoff){
         auto box = this->bounding_box();
         r2degree diagonal = box.second - box.first;
-        auto max_degree_x = box.first.first + x_cutoff * diagonal.first;
-        auto max_degree_y = box.first.second + y_cutoff * diagonal.second;
+        auto max_degree_x = box.first[0] + x_cutoff * diagonal[0];
+        auto max_degree_y = box.first[1] + y_cutoff * diagonal[1];
         vec<index> rows_to_remove;
         vec<index> cols_to_remove;
         for(index i = 0; i < this->get_num_cols(); i++){
-            if(this->col_degrees[i].first > max_degree_x || this->col_degrees[i].second > max_degree_y){
+            if(this->col_degrees[i][0] > max_degree_x || this->col_degrees[i][1] > max_degree_y){
                 cols_to_remove.push_back(i);
             }
         }
 
         for(index i = 0; i < this->get_num_rows(); i++){
-            if(this->row_degrees[i].first > max_degree_x || this->row_degrees[i].second > max_degree_y){
+            if(this->row_degrees[i][0] > max_degree_x || this->row_degrees[i][1] > max_degree_y){
                 rows_to_remove.push_back(i);
             }
         }
@@ -839,13 +723,13 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     void bound_support(r2degree bound){
         vec<index> rows_to_remove;
         for(index i = 0; i < this->get_num_rows(); i++){
-            if(this->row_degrees[i].first > bound.first || this->row_degrees[i].second > bound.second){
+            if(this->row_degrees[i][0] > bound[0] || this->row_degrees[i][1] > bound[1]){
                 rows_to_remove.push_back(i);
             } else {
                 this->append_column(std::vector<index>({i}),
-                                    std::make_pair(bound.first, this->row_degrees[i].second));
+                                    r2degree{bound[0], this->row_degrees[i][1]});
                 this->append_column(std::vector<index>({i}),
-                                    std::make_pair(this->row_degrees[i].first, bound.second));
+                                    r2degree{this->row_degrees[i][0], bound[1]});
             }
         }
         this->delete_rows(rows_to_remove);

@@ -102,8 +102,8 @@ namespace graded_linalg {
               index curr_start = std::numeric_limits<index>::min();
       
               for (index i = 0; i < M.get_num_cols(); ++i) {
-                  index curr_x = M.z2_col_degrees[i].first;
-                  index curr_y = M.z2_col_degrees[i].second;
+                  index curr_x = M.z2_col_degrees[i][0];
+                  index curr_y = M.z2_col_degrees[i][1];
       
                   GRLINA_ASSERT(curr_x < static_cast<index>(M.x_grid.size()));
                   GRLINA_ASSERT(curr_y < static_cast<index>(M.y_grid.size()));

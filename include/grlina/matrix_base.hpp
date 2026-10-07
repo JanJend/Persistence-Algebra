@@ -23,6 +23,7 @@
 
 
 #include <iostream>
+#include <array>
 #include <unordered_map>
 #include <boost/dynamic_bitset.hpp>
 #include <numeric>
@@ -31,6 +32,18 @@
 #include <grlina/column_types.hpp>
 
 namespace graded_linalg {
+
+// Declare array formatting before the container formatters so nested degree
+// containers also find it through ordinary lookup (std::array has no grlina ADL).
+template <typename Scalar, std::size_t Dimension>
+std::ostream& operator<<(std::ostream& out, const std::array<Scalar, Dimension>& degree) {
+    out << "(";
+    for (std::size_t i = 0; i < Dimension; ++i) {
+        if (i != 0) out << ", ";
+        out << degree[i];
+    }
+    return out << ")";
+}
 
 
 template <typename T>

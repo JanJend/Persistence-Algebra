@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <grlina/isomorphism_test.hpp>
 #include <grlina/chain_complex.hpp>
 #include <grlina/hilbert_euler.hpp>
 #include <grlina/r2graded_matrix.hpp>
@@ -43,7 +44,8 @@ public:
 
 private:
     chain_complex_type projective_resolution_;
-    chain_complex_type injective_resolution_;
+    chain_complex_type injective_resolution_; // not used at the moment
+
     bool projective_resolution_complete_ = false;
 
     static void normalize_indices(vec<index_type>& indices, index_type size) {
@@ -437,8 +439,8 @@ public:
                       "This helper is only available for R2 modules");
         vec<double> xs, ys;
         for (const auto& degree : support_degrees()) {
-            xs.push_back(degree.first);
-            ys.push_back(degree.second);
+            xs.push_back(degree[0]);
+            ys.push_back(degree[1]);
         }
         std::sort(xs.begin(), xs.end());
         xs.erase(std::unique(xs.begin(), xs.end()), xs.end());

@@ -111,13 +111,13 @@ void test_preprocessing_and_deferred_deletion() {
 
 void test_no_kernel_required_for_lazy() {
     using Higher = R4GradedSparseMatrix<int>;
-    Higher P(1, 1, {{0}}, {r4degree(1,0,0,0)}, {r4degree(0,0,0,0)});
+    Higher P(1, 1, {{0}}, {r4degree{1,0,0,0}}, {r4degree{0,0,0,0}});
     auto parent = std::make_shared<Module<Higher>>(P);
-    Higher G(2, 1, {{0}, {0}}, {r4degree(0,0,0,0), r4degree(1,0,0,0)}, P.row_degrees);
+    Higher G(2, 1, {{0}, {0}}, {r4degree{0,0,0,0}, r4degree{1,0,0,0}}, P.row_degrees);
     Submodule<Higher> S(parent, G);
     S.reduce_generators_lazy();
     assert(S.generator_map().generator_lift().data == array<int>({{0}}));
-    assert(S.generator_map().generator_lift().col_degrees == vec<r4degree>({r4degree(0,0,0,0)}));
+    assert(S.generator_map().generator_lift().col_degrees == vec<r4degree>({r4degree{0,0,0,0}}));
 }
 
 void test_identity_paths_do_not_refresh_sorting() {

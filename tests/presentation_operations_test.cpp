@@ -39,7 +39,7 @@ void containment() {
     rejects([&] { A.equals(foreign); });
     // No kernel implementation is needed, even in R4.
     using Four = R4GradedSparseMatrix<int>;
-    auto p4 = std::make_shared<const Module<Four>>(Four(0, 1, {}, {}, {r4degree(0,0,0,0)}));
+    auto p4 = std::make_shared<const Module<Four>>(Four(0, 1, {}, {}, {r4degree{0,0,0,0}}));
     auto z4 = Submodule<Four>::zero(p4), w4 = Submodule<Four>::whole(p4);
     assert(w4.contains(z4) && !z4.contains(w4) && w4.equals(w4));
 
@@ -363,7 +363,7 @@ void submodule_quotients_and_parent_minimization() {
     // Lazy cancellation also works where no graded kernel is implemented.
     using Four = R4GradedSparseMatrix<int>;
     auto four = std::make_shared<const Module<Four>>(Four(1, 1, {{0}},
-        {r4degree(0,0,0,0)}, {r4degree(0,0,0,0)}));
+        {r4degree{0,0,0,0}}, {r4degree{0,0,0,0}}));
     auto four_sub = Submodule<Four>::whole(four);
     four_sub.lazy_minimize_parent();
     assert(four_sub.parent()->number_of_generators() == 0);

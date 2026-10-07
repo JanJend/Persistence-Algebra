@@ -28,41 +28,17 @@ template <> struct CoordinatePosetDomain<long> { static constexpr const char* su
 template <> struct CoordinatePosetDomain<long long> { static constexpr const char* suffix = "Z"; };
 
 template <typename Scalar, std::size_t Dimension>
-struct CoordinateDegree {
-    std::array<Scalar, Dimension> coordinates{};
-
-    CoordinateDegree() = default;
-    explicit CoordinateDegree(const std::array<Scalar, Dimension>& values) : coordinates(values) {}
-
-    template <typename... Values,
-              typename = std::enable_if_t<sizeof...(Values) == Dimension>>
-    explicit CoordinateDegree(Values... values)
-        : coordinates{{static_cast<Scalar>(values)...}} {}
-
-    Scalar& operator[](std::size_t i) { return coordinates[i]; }
-    const Scalar& operator[](std::size_t i) const { return coordinates[i]; }
-
-    bool operator==(const CoordinateDegree& other) const {
-        return coordinates == other.coordinates;
-    }
-
-    bool operator!=(const CoordinateDegree& other) const {
-        return !(*this == other);
-    }
-};
+using CoordinateDegree = std::array<Scalar, Dimension>;
 
 template <typename Scalar, std::size_t Dimension>
-std::ostream& operator<<(std::ostream& out, const CoordinateDegree<Scalar, Dimension>& degree) {
-    out << "(";
-    for (std::size_t i = 0; i < Dimension; ++i) {
-        if (i != 0) out << ", ";
-        out << degree[i];
-    }
-    return out << ")";
+std::istream& operator>>(std::istream& in, CoordinateDegree<Scalar, Dimension>& degree) {
+    for (auto& value : degree) in >> value;
+    return in;
 }
 
 template <typename Scalar, std::size_t Dimension>
-struct Degree_traits<CoordinateDegree<Scalar, Dimension>> {
+struct Degree_traits<CoordinateDegree<Scalar, Dimension>,
+                     std::void_t<decltype(CoordinatePosetDomain<Scalar>::suffix)>> {
     using degree_type = CoordinateDegree<Scalar, Dimension>;
 
     inline static const std::string poset_id =
@@ -74,7 +50,7 @@ struct Degree_traits<CoordinateDegree<Scalar, Dimension>> {
 
     static bool smaller_equal(const degree_type& lhs, const degree_type& rhs) {
         for (std::size_t i = 0; i < Dimension; ++i) {
-            if (lhs[i] > rhs[i]) return false;
+            if (!(lhs[i] <= rhs[i])) return false;
         }
         return true;
     }
@@ -92,7 +68,7 @@ struct Degree_traits<CoordinateDegree<Scalar, Dimension>> {
     }
 
     static bool lex_order(const degree_type& lhs, const degree_type& rhs) {
-        return lhs.coordinates < rhs.coordinates;
+        return lhs < rhs;
     }
 
     static bool colex_order(const degree_type& lhs, const degree_type& rhs) {
@@ -113,7 +89,7 @@ struct Degree_traits<CoordinateDegree<Scalar, Dimension>> {
     static vec<double> position(const degree_type& degree) {
         vec<double> result;
         result.reserve(Dimension);
-        for (const auto& value : degree.coordinates) {
+        for (const auto& value : degree) {
             result.push_back(static_cast<double>(value));
         }
         return result;
@@ -124,7 +100,7 @@ struct Degree_traits<CoordinateDegree<Scalar, Dimension>> {
     }
 
     static degree_type join(const degree_type& lhs, const degree_type& rhs) {
-        degree_type result;
+        degree_type result{};
         for (std::size_t i = 0; i < Dimension; ++i) {
             result[i] = std::max(lhs[i], rhs[i]);
         }
@@ -132,7 +108,7 @@ struct Degree_traits<CoordinateDegree<Scalar, Dimension>> {
     }
 
     static degree_type meet(const degree_type& lhs, const degree_type& rhs) {
-        degree_type result;
+        degree_type result{};
         for (std::size_t i = 0; i < Dimension; ++i) {
             result[i] = std::min(lhs[i], rhs[i]);
         }
@@ -149,7 +125,7 @@ struct Degree_traits<CoordinateDegree<Scalar, Dimension>> {
 
     template <typename InputStream>
     static degree_type from_stream(InputStream& in) {
-        degree_type result;
+        degree_type result{};
         for (std::size_t i = 0; i < Dimension; ++i) in >> result[i];
         return result;
     }

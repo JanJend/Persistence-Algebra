@@ -190,7 +190,7 @@ void test_resolution_minimization_and_sorting() {
     rejects([&] { stale.sort_compatibly([](auto a, auto b) { return a > b; }); });
     Mat antichain(3, 0, {{}, {}, {}}, {{0,2}, {1,1}, {2,0}}, {});
     rejects([&] { antichain.sort_compatibly([](auto a, auto b) {
-        return (static_cast<int>(a.first) + 1) % 3 == static_cast<int>(b.first);
+        return (static_cast<int>(a[0]) + 1) % 3 == static_cast<int>(b[0]);
     }); });
     stale.sort_compatibly();
     Mat copied = stale;
@@ -210,7 +210,7 @@ void test_resolution_minimization_and_sorting() {
     auto row_permutation = historical.sort_rows_with_permutation();
     assert(row_permutation.old_to_new == vec<int>({1,2,0}));
     assert(historical.data == permutation_input.data);
-    R4GradedSparseMatrix<int> higher(1, 1, {{0}}, {r4degree(1,1,1,1)}, {r4degree(0,0,0,0)});
+    R4GradedSparseMatrix<int> higher(1, 1, {{0}}, {r4degree{1,1,1,1}}, {r4degree{0,0,0,0}});
     rejects([&] { higher.minimize(); }); // deliberate kernel implementation frame
     higher.semi_minimize();
     assert(higher.get_num_cols() == 1);
@@ -260,12 +260,12 @@ void test_chain_vs_resolution_minimization() {
     // A zero differential is homology, not a contractible summand. The R4
     // example also proves that chain minimization needs no graded_kernel.
     using Higher = R4GradedSparseMatrix<int>;
-    Higher local(2, 2, {{0}, {}}, {r4degree(0,0,0,0), r4degree(1,1,1,1)},
-                                {r4degree(0,0,0,0), r4degree(0,0,0,0)});
+    Higher local(2, 2, {{0}, {}}, {r4degree{0,0,0,0}, r4degree{1,1,1,1}},
+                                {r4degree{0,0,0,0}, r4degree{0,0,0,0}});
     ChainComplex<Higher> general({local});
     general.minimize();
     assert(general[0].get_num_rows() == 1 && general[0].data == array<int>({{}}));
-    assert(general[0].col_degrees == vec<r4degree>({r4degree(1,1,1,1)}));
+    assert(general[0].col_degrees == vec<r4degree>({r4degree{1,1,1,1}}));
     Module<Higher> unsupported(ChainComplex<Higher>({local}));
     rejects([&] { unsupported.minimize_resolution(); });
     assert(unsupported.presentation().data == local.data); // strong exception guarantee
@@ -314,7 +314,7 @@ void test_presentation_adapters() {
     assert(no_rows.empty() && before_birth.get_num_rows() == 0);
 
     auto bounds = module.presentation_degree_bounds();
-    assert(bounds.first == r2degree(0, 0) && bounds.second == r2degree(4, 4));
+    assert((bounds.first == r2degree{0, 0} && bounds.second == r2degree{4, 4}));
     assert(module.equidistant_presentation_grid(2) == vec<r2degree>({{0,0}, {0,4}, {4,0}, {4,4}}));
     assert(module.equidistant_presentation_grid(1) == vec<r2degree>({{0,0}}));
     assert(module.equidistant_presentation_grid(0).empty());

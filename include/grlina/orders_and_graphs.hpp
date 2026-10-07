@@ -30,6 +30,9 @@
 #include <boost/graph/strong_components.hpp>
 #include <boost/graph/topological_sort.hpp>
 #include <functional>
+#include <string>
+#include <type_traits>
+#include <utility>
 #include <map>
 #include "matrix_base.hpp"
 
@@ -58,74 +61,44 @@ void print_edge_list(const edge_list<index>& edges){
     }
 }
 
+/** Specialize this for a degree poset; the primary template supplies no operations. */
+template <typename D, typename = void>
+struct Degree_traits {};
+
+/** Check the Degree_traits interface, including its return types.
+ * Colexicographic order is optional; lex_order must be a linear extension of
+ * the poset. Type checks cannot prove the order/lattice laws or function bodies.
+ */
+template <typename D, typename = void>
+struct is_degree : std::false_type {};
+
 template <typename D>
-struct Degree_traits {
+struct is_degree<D, std::void_t<std::enable_if_t<
+    std::is_constructible_v<std::string, decltype(Degree_traits<D>::poset_id)> &&
+    std::is_same_v<decltype(Degree_traits<D>::equals(std::declval<const D&>(), std::declval<const D&>())), bool> &&
+    std::is_same_v<decltype(Degree_traits<D>::smaller(std::declval<const D&>(), std::declval<const D&>())), bool> &&
+    std::is_same_v<decltype(Degree_traits<D>::greater(std::declval<const D&>(), std::declval<const D&>())), bool> &&
+    std::is_same_v<decltype(Degree_traits<D>::smaller_equal(std::declval<const D&>(), std::declval<const D&>())), bool> &&
+    std::is_same_v<decltype(Degree_traits<D>::greater_equal(std::declval<const D&>(), std::declval<const D&>())), bool> &&
+    std::is_same_v<decltype(Degree_traits<D>::lex_order(std::declval<const D&>(), std::declval<const D&>())), bool> &&
+    std::is_convertible_v<decltype(Degree_traits<D>::lex_lambda()), std::function<bool(const D&, const D&)>> &&
+    std::is_same_v<decltype(Degree_traits<D>::position(std::declval<const D&>())), vec<double>> &&
+    std::is_same_v<decltype(Degree_traits<D>::print_degree(std::declval<const D&>())), void> &&
+    std::is_same_v<decltype(Degree_traits<D>::join(std::declval<const D&>(), std::declval<const D&>())), D> &&
+    std::is_same_v<decltype(Degree_traits<D>::meet(std::declval<const D&>(), std::declval<const D&>())), D> &&
+    std::is_same_v<decltype(Degree_traits<D>::write_degree(std::declval<std::ostream&>(), std::declval<const D&>())), void> &&
+    std::is_same_v<decltype(Degree_traits<D>::from_stream(std::declval<std::istream&>())), D> &&
+    std::is_same_v<decltype(Degree_traits<D>::add(std::declval<const D&>(), std::declval<D&>())), void> &&
+    std::is_same_v<decltype(Degree_traits<D>::subtract(std::declval<const D&>(), std::declval<D&>())), void>
+>>> : std::true_type {};
 
-    /** Stable identifier written to the second line of SCC files. */
-    inline static constexpr const char* poset_id = "unknown";
-    
-    static bool equals (const D& lhs, const D& rhs);
+template <typename D>
+inline constexpr bool is_degree_v = is_degree<D>::value;
 
-    static bool smaller (const D& lhs, const D& rhs);
-
-    static bool greater (const D& lhs, const D& rhs);
-
-    static bool greater_equal (const D& lhs, const D& rhs);
-
-    static bool smaller_equal (const D& lhs, const D& rhs);
-    
-    /**
-     * @brief This can be any topolgical order on the degrees.
-     * 
-     * @param a 
-     * @param b 
-     * @return true 
-     * @return false 
-     */
-    static bool lex_order(const D& a, const D& b);
-
-    /**
-     * @brief Lambda function to compare lexicographically for sorting.
-     * 
-     */
-    static std::function<bool(const D&, const D&)> lex_lambda() {
-        return [](const D& a, const D& b) {
-            return Degree_traits<D>::lex_order(a, b);
-        };
-    }
-
-    /**
-     * @brief Any Embedding of the degree poset into any R^n.
-     * 
-     * @param a 
-     * @return vec<double> 
-     */
-    static vec<double> position(const D& a);
-
-    static void print_degree(const D& a);
-
-    // -> Theses should only need to be there if the degrees form a lattice. TO-DO
-    static D join(const D& a, const D& b);
-
-    static D meet(const D& a, const D& b);
-
-    /**
-     * @brief Writes the degree to an output stream.
-     */
-    template <typename OutputStream>
-    static void write_degree(OutputStream& os, const D& a);
-
-    /**
-     * @brief Gets the degree from an input stream.
-     */
-    template <typename InputStream>
-    static D from_stream(InputStream& iss);
-
-    static void add(const D& a, D& b);
-
-    static void subtract(const D& a, D& b);
-
-}; // Degree_traits
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
+template <typename D>
+concept Degree = is_degree_v<D>;
+#endif
 
 
 /**
@@ -373,6 +346,7 @@ std::vector<index> compute_topological_order(const Graph& g) {
  */
 template <typename D, typename index>
 array<index> minimal_directed_graph(vec<D>& degrees, vec<index> support = vec<index>()) {
+    static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
 
     array<index> edges(degrees.size(), vec<index>());
     Degree_traits<D> D_traits;
@@ -482,6 +456,7 @@ Graph boost_graph_from_edge_list(const array<index>& edges) {
 
 template <typename D>
 void writeDegreeListToCSV(const std::string& filename, const vec<D>& degrees) {
+    static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
 
     Degree_traits<D> D_traits;
     std::ofstream outfile(filename);
@@ -650,6 +625,7 @@ std::unordered_map<index, vec<index>> convert_to_map(const array<index>& arr) {
     template <typename D, typename DataT>
     struct Value
     {
+        static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
         D Order;
         DataT Data;
     };
@@ -657,6 +633,7 @@ std::unordered_map<index, vec<index>> convert_to_map(const array<index>& arr) {
     template <typename D, typename DataT>
     struct ValueReference
     {
+        static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
         D* Order;
         DataT* Data;
         
@@ -712,6 +689,7 @@ std::unordered_map<index, vec<index>> convert_to_map(const array<index>& arr) {
     template <typename D, typename DataT>
     struct ValueIterator
     {
+        static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
         using iterator_category = std::random_access_iterator_tag;
         using difference_type = size_t;
         using value_type = Value<D, DataT>;

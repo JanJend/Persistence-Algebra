@@ -1,10 +1,14 @@
 #include <grlina/modules.hpp>
 
+#include <array>
 #include <cassert>
 #include <filesystem>
+#include <limits>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <stdexcept>
+#include <type_traits>
 
 using namespace graded_linalg;
 using Matrix = R2GradedSparseMatrix<int>;
@@ -12,12 +16,37 @@ using TestModule = R2Module<int>;
 
 static_assert(is_graded_sparse_matrix_v<Matrix>);
 static_assert(std::is_base_of_v<GradedSparseMatrix<r2degree, int, Matrix>, Matrix>);
+static_assert(std::is_same_v<r2degree, std::array<double, 2>>);
+static_assert(std::is_same_v<r3degree, std::array<double, 3>>);
+static_assert(std::is_same_v<triple, r3degree>);
+static_assert(std::is_same_v<r4degree, std::array<double, 4>>);
+static_assert(std::is_same_v<z2degree, std::array<long long, 2>>);
+static_assert(std::is_same_v<z3degree, std::array<long long, 3>>);
+static_assert(std::is_same_v<z4degree, std::array<long long, 4>>);
+static_assert(is_degree<r2degree>::value);
+static_assert(is_degree_v<CoordinateDegree<float, 1>>);
+static_assert(is_degree_v<CoordinateDegree<long double, 4>>);
+static_assert(is_degree_v<CoordinateDegree<int, 3>>);
+static_assert(is_degree_v<CoordinateDegree<long, 5>>);
+static_assert(!is_degree_v<int>);
+static_assert(!is_degree_v<CoordinateDegree<std::string, 2>>);
+
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
+static_assert(Degree<r2degree>);
+static_assert(!Degree<int>);
+#endif
 
 struct NotAGradedMatrix {
     using degree_type = r2degree;
     using index_type = int;
 };
 static_assert(!is_graded_sparse_matrix_v<NotAGradedMatrix>);
+
+struct InvalidMatrixDegree {
+    using degree_type = int;
+    using index_type = int;
+};
+static_assert(!is_graded_sparse_matrix_v<InvalidMatrixDegree>);
 
 struct NamedDegree {
     int rank = 0;
@@ -26,6 +55,10 @@ struct NamedDegree {
         return out << degree.rank;
     }
 };
+
+struct MissingDegreeTraits {};
+struct IncompleteDegreeTraits {};
+struct WrongDegreeResults : NamedDegree {};
 
 namespace graded_linalg {
 
@@ -61,6 +94,16 @@ struct Degree_traits<NamedDegree> {
     static void subtract(const NamedDegree& amount, NamedDegree& degree) { degree.rank -= amount.rank; }
 };
 
+template <>
+struct Degree_traits<IncompleteDegreeTraits> {
+    static bool equals(const IncompleteDegreeTraits&, const IncompleteDegreeTraits&) { return true; }
+};
+
+// Every operation is present and callable, but the lattice and input functions
+// return NamedDegree instead of the degree type being checked.
+template <>
+struct Degree_traits<WrongDegreeResults> : Degree_traits<NamedDegree> {};
+
 template <typename index>
 struct NamedGradedMatrix
     : GradedSparseMatrix<NamedDegree, index, NamedGradedMatrix<index>> {
@@ -71,6 +114,55 @@ struct NamedGradedMatrix
 };
 
 } // namespace graded_linalg
+
+static_assert(is_degree_v<NamedDegree>);
+static_assert(!is_degree_v<MissingDegreeTraits>);
+static_assert(!is_degree_v<IncompleteDegreeTraits>);
+static_assert(!is_degree_v<WrongDegreeResults>);
+
+static void test_array_degree_traits() {
+    using D = CoordinateDegree<long, 5>;
+    using Traits = Degree_traits<D>;
+    const D a{1, 4, -2, 0, 3}, b{2, 3, -2, 0, 1};
+    vec<D> degrees{a, b};
+    assert(degrees.data() + 1 == &degrees[1]);
+    assert(a.data() + 4 == &a[4]);
+    assert(a.size() == 5);
+    assert(Traits::poset_id == "5Z");
+    assert(!Traits::smaller_equal(a, b) && !Traits::greater_equal(a, b));
+    assert(!Traits::smaller(a, b) && !Traits::greater(a, b));
+    assert(Traits::lex_order(a, b) && Traits::lex_lambda()(a, b));
+    assert(Traits::colex_order(b, a) && Traits::colex_lambda()(b, a));
+    assert(Traits::equals(a, a) && !Traits::smaller(a, a));
+    const D upper = Traits::join(a, b), lower = Traits::meet(a, b);
+    assert((upper == D{2, 4, -2, 0, 3}));
+    assert((lower == D{1, 3, -2, 0, 1}));
+    assert(Traits::smaller(a, upper) && Traits::greater(a, lower));
+    assert(Traits::position(a) == vec<double>({1, 4, -2, 0, 3}));
+    D shifted = a;
+    Traits::add(b, shifted);
+    assert((shifted == D{3, 7, -4, 0, 4}));
+    Traits::subtract(b, shifted);
+    assert(shifted == a);
+    std::stringstream encoded;
+    Traits::write_degree(encoded, a);
+    assert(encoded.str() == "1 4 -2 0 3");
+    assert(Traits::from_stream(encoded) == a);
+    std::ostringstream containers;
+    containers << vec<r2degree>{{1, 2}, {3, 4}} << std::set<r2degree>{{1, 2}};
+    assert(containers.str() == "(1, 2) (3, 4) {(1, 2)}");
+
+    using FloatTraits = Degree_traits<CoordinateDegree<float, 1>>;
+    assert(FloatTraits::poset_id == "1");
+    assert(FloatTraits::smaller({0.5f}, {1.25f}));
+    assert(FloatTraits::join({0.5f}, {1.25f})[0] == 1.25f);
+    std::stringstream floating;
+    FloatTraits::write_degree(floating, {-0.5f});
+    assert(FloatTraits::from_stream(floating)[0] == -0.5f);
+    const CoordinateDegree<float, 1> nan{std::numeric_limits<float>::quiet_NaN()};
+    assert(!FloatTraits::smaller_equal(nan, {0.0f}));
+    assert(!FloatTraits::smaller_equal({0.0f}, nan));
+}
 
 static Matrix interval_presentation() {
     Matrix result(1, 1);
@@ -123,7 +215,7 @@ static void test_sort_state_and_degree_traits() {
                  vec<r2degree>{{0.0, 0.0}});
     colex.sort_colexicographically();
     assert(colex.compatible_sorting_is_verified());
-    assert(colex.col_degrees.front() == r2degree(1.0, 0.0));
+    assert((colex.col_degrees.front() == r2degree{1.0, 0.0}));
     colex.minimize();
     assert(colex.compatible_sorting_is_verified());
     assert(colex.get_num_cols() == 2); // incomparable relations are both needed
@@ -142,7 +234,7 @@ static void test_checked_chain_complex_sorting() {
     std::stringstream sorted_input(unsorted_scc);
     auto sorted = ChainComplex<Matrix>::from_stream(sorted_input, true);
     assert(sorted[0].compatibly_sorted);
-    assert(sorted[0].col_degrees.front() == r2degree(1.0, 1.0));
+    assert((sorted[0].col_degrees.front() == r2degree{1.0, 1.0}));
 }
 
 static void assert_cancellation_result(const Matrix& minimized) {
@@ -189,7 +281,7 @@ static void test_correct_minimization() {
                      vec<r2degree>{{0.0, 0.0}});
     redundant.minimize();
     assert(redundant.get_num_cols() == 1);
-    assert(redundant.col_degrees.front() == r2degree(1.0, 1.0));
+    assert((redundant.col_degrees.front() == r2degree{1.0, 1.0}));
     assert(redundant.data == array<int>{{0}});
 
     Matrix two_cancellations(
@@ -343,7 +435,7 @@ static void test_module_hilbert_function_and_editing() {
     assert(module.projective_resolution().size() == 2);
     module.shift({1.0, 1.0});
     assert(module.projective_resolution().size() == 2);
-    assert(module.presentation().row_degrees.front() == r2degree(-1.0, -1.0));
+    assert((module.presentation().row_degrees.front() == r2degree{-1.0, -1.0}));
     (void)module.mutable_presentation();
     assert(module.projective_resolution().size() == 1);
 }
@@ -443,10 +535,10 @@ static void test_r3_colex_sorting() {
     matrix.data = {{0}, {0}};
     matrix.sort_colexicographically();
     assert(matrix.compatibly_sorted);
-    assert(matrix.col_degrees.front() == triple(0, 1, 1));
+    assert((matrix.col_degrees.front() == triple{0, 1, 1}));
     R3Module<int> r3_module(matrix);
-    r3_module.shift(triple(1, 1, 1));
-    assert(r3_module.presentation().col_degrees.front() == triple(-1, 0, 0));
+    r3_module.shift(triple{1, 1, 1});
+    assert((r3_module.presentation().col_degrees.front() == triple{-1, 0, 0}));
 
     R3GradedSparseMatrix<int> cancellable(
         2, 2, array<int>{{0, 1}, {0}},
@@ -460,8 +552,8 @@ static void test_r3_colex_sorting() {
 
 static void test_four_parameter_io() {
     R4GradedSparseMatrix<int> real_matrix(1, 1);
-    real_matrix.col_degrees = {r4degree(1.0, 2.0, 3.0, 4.0)};
-    real_matrix.row_degrees = {r4degree(0.0, 0.0, 0.0, 0.0)};
+    real_matrix.col_degrees = {r4degree{1.0, 2.0, 3.0, 4.0}};
+    real_matrix.row_degrees = {r4degree{0.0, 0.0, 0.0, 0.0}};
     real_matrix.data = {{0}};
     real_matrix.sort_colexicographically();
     assert(real_matrix.compatibly_sorted);
@@ -471,8 +563,8 @@ static void test_four_parameter_io() {
     assert(real_round_trip[0].col_degrees == real_matrix.col_degrees);
 
     Z4GradedSparseMatrix<int> discrete_matrix(1, 1);
-    discrete_matrix.col_degrees = {z4degree(1, 2, 3, 4)};
-    discrete_matrix.row_degrees = {z4degree(0, 0, 0, 0)};
+    discrete_matrix.col_degrees = {z4degree{1, 2, 3, 4}};
+    discrete_matrix.row_degrees = {z4degree{0, 0, 0, 0}};
     discrete_matrix.data = {{0}};
     std::stringstream discrete_scc;
     ChainComplex<Z4GradedSparseMatrix<int>>({discrete_matrix}).to_stream(discrete_scc);
@@ -480,22 +572,23 @@ static void test_four_parameter_io() {
     assert(discrete_round_trip[0].row_degrees == discrete_matrix.row_degrees);
 
     Z3GradedSparseMatrix<int> z3_matrix(1, 1);
-    z3_matrix.col_degrees = {z3degree(2, 3, 4)};
-    z3_matrix.row_degrees = {z3degree(1, 1, 1)};
+    z3_matrix.col_degrees = {z3degree{2, 3, 4}};
+    z3_matrix.row_degrees = {z3degree{1, 1, 1}};
     z3_matrix.data = {{0}};
     z3_matrix.sort_colexicographically();
     assert(z3_matrix.compatibly_sorted);
 
     Z2GradedSparseMatrix<int> z2_matrix(1, 1);
-    z2_matrix.col_degrees = {z2degree(2, 3)};
-    z2_matrix.row_degrees = {z2degree(1, 1)};
+    z2_matrix.col_degrees = {z2degree{2, 3}};
+    z2_matrix.row_degrees = {z2degree{1, 1}};
     z2_matrix.data = {{0}};
     Z2Module<int> z2_module(z2_matrix);
-    z2_module.shift(z2degree(1, 1));
-    assert(z2_module.presentation().col_degrees.front() == z2degree(1, 2));
+    z2_module.shift(z2degree{1, 1});
+    assert((z2_module.presentation().col_degrees.front() == z2degree{1, 2}));
 }
 
 int main() {
+    test_array_degree_traits();
     test_sort_state_and_degree_traits();
     test_checked_chain_complex_sorting();
     test_correct_minimization();

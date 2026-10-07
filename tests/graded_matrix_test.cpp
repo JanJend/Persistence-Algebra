@@ -37,7 +37,7 @@ void functionality_demo() {
     O_dense.print();
 
     // Creating graded matrices:
-    std::cout << "  We can create a graded matrix from scratch: \n The data type of the degrees is a pair of doubles, r2degree = std::pair<double, double>"
+    std::cout << "  We can create a graded matrix from scratch: \n The data type of the degrees is an array of doubles, r2degree = std::array<double, 2>"
         << std::endl;
     array<int> test_data = {{0}, {0, 1}, {2}};
     vec<r2degree> col_degrees = {{1.0, 2.0}, {2.0, 1.0}, {2.0, 2.0}};
@@ -345,11 +345,11 @@ void test_submodule_generated_at(){
     r2degree average = {0, 0};
     r2degree specific = {0.333631, -0.0675645};
     for(auto d : support){
-        average.first += d.first;
-        average.second += d.second;
+        average[0] += d[0];
+        average[1] += d[1];
     }
-    average.first /= 2*support.size();
-    average.second /= 2*support.size();
+    average[0] /= 2*support.size();
+    average[1] /= 2*support.size();
     std::cout << "The half average degree is: " << average << std::endl;
     vec<int> basislift = M.basislift_at(average);
     auto M_induced_a = M.submodule_generated_at(average);

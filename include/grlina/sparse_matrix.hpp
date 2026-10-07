@@ -857,7 +857,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param i 
      * @param row 
      */
-    void compute_row(index i, vec<index>& row) {
+    void compute_row_rev(index i, vec<index>& row) {
         row.clear();
         for(index j = this->num_cols - 1; j >= 0; j--) {
             if(is_nonzero_at(this->data[j], i)) {
@@ -1493,33 +1493,6 @@ void simultaneous_row_reduction_on_submatrix(std::unordered_map<index, SparseMat
 }
 
 
-/**
- * @brief F_2 Sparse Matrix using std::set / binary trees for its columns.
- * This could work better if the matrix is not very sparse and a lot of single elements need to be changed.
- * @tparam index 
- */
-template <typename index>
-struct SparseMatrix_set : public MatrixUtil<set<index>, index, SparseMatrix_set<index>>{
-
-    SparseMatrix_set() : MatrixUtil<set<index>, index, SparseMatrix_set<index>>() {}
-
-    SparseMatrix_set(index m) : MatrixUtil<set<index>, index, SparseMatrix_set<index>>(m) {}
-
-    SparseMatrix_set(index m, index n) : MatrixUtil<set<index>, index, SparseMatrix_set<index>>(m, n) {}
-
-    SparseMatrix_set(const SparseMatrix_set& other) : MatrixUtil<set<index>, index, SparseMatrix_set<index>>(other)  {}
-
-    SparseMatrix_set(index m, index n, const vec<set<index>>& data) : MatrixUtil<set<index>, index, SparseMatrix_set<index>>(m, n, data) {}
-
-    SparseMatrix_set(index m, index n, const std::string& type, const index percent = -1) : MatrixUtil<set<index>, index, SparseMatrix_set<index>>(m, n, type, percent) {}
-
-    SparseMatrix_set(SparseMatrix<index>& M) : MatrixUtil<set<index>, index, SparseMatrix_set<index>>(M.get_num_cols(), M.get_num_rows()) {
-        for(index i = 0; i < M.get_num_cols(); i++){
-            this->data.push_back(set<index>(M.data[i].begin(), M.data[i].end()));
-        }
-    }
-
-}; // SparseMatrix_set;
 
 
 } // namespace graded_linalg

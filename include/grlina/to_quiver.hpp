@@ -31,6 +31,7 @@ array<index> equidistant_grid_edges(int m, index n) {
 
 template <typename index, typename D>
 struct QuiverRepresentation {
+    static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
 	vec<D> degrees;
     vec<index> dimensionVector;
 	edge_list<index> edges;

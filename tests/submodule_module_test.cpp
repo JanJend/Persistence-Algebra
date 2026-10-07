@@ -156,16 +156,16 @@ void test_invalidation_and_automatic_resolution() {
 
 void test_zero_without_kernel_and_polymorphic_destruction() {
     using Higher = R4GradedSparseMatrix<int>;
-    auto parent = std::make_shared<Module<Higher>>(Higher(0, 1, {}, {}, {r4degree(0,0,0,0)}));
+    auto parent = std::make_shared<Module<Higher>>(Higher(0, 1, {}, {}, {r4degree{0,0,0,0}}));
     auto zero = Submodule<Higher>::zero(parent);
     zero.compute_projective_resolution();
     assert(zero.has_presentation() && zero.has_complete_projective_resolution());
-    assert(zero.number_of_generators() == 0 && zero.dimension_at(r4degree(0,0,0,0)) == 0);
+    assert(zero.number_of_generators() == 0 && zero.dimension_at(r4degree{0,0,0,0}) == 0);
     auto whole = Submodule<Higher>::whole(parent);
     whole.compute_presentation(); // The whole submodule reuses the known parent.
     assert(whole.generator_map().domain().get() == static_cast<const Module<Higher>*>(&whole));
     Submodule<Higher> nontrivial(parent, Higher(1, 1, {{0}},
-        {r4degree(1,1,1,1)}, parent->presentation().row_degrees));
+        {r4degree{1,1,1,1}}, parent->presentation().row_degrees));
     rejects([&] { nontrivial.compute_presentation(); }); // nontrivial kernel still unsupported
     assert(!nontrivial.has_presentation());
 
@@ -293,8 +293,8 @@ void test_self_domain_copy_move_and_explicit_computation() {
     // R4 has no kernel implementation, so even this accessor must still work.
     using Four = R4GradedSparseMatrix<int>;
     using FourHom = Homomorphism<Four>;
-    auto four_parent = std::make_shared<const Module<Four>>(Four(0, 1, {}, {}, {r4degree(0,0,0,0)}));
-    Submodule<Four> S(four_parent, Four(1, 1, {{0}}, {r4degree(1,1,1,1)},
+    auto four_parent = std::make_shared<const Module<Four>>(Four(0, 1, {}, {}, {r4degree{0,0,0,0}}));
+    Submodule<Four> S(four_parent, Four(1, 1, {{0}}, {r4degree{1,1,1,1}},
                                         four_parent->presentation().row_degrees));
     const auto& inclusion = S.generator_map();
     assert(inclusion.domain().get() == &S && !inclusion.domain()->has_presentation());

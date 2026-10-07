@@ -47,7 +47,6 @@ if(OpenMP_CXX_FOUND)
     link_libraries(OpenMP::OpenMP_CXX)
 endif()
 
-
 add_executable(shift_endo shift_endo.cpp)
 target_link_libraries(shift_endo ${Boost_LIBRARIES})
 set_target_properties(shift_endo PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
@@ -92,14 +91,19 @@ add_executable(cut_module cut_module.cpp)
 target_link_libraries(cut_module ${Boost_LIBRARIES})
 set_target_properties(cut_module PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
-foreach(_module_cli birth_death delete_gens_and_rels minimize_pres mpfree_clone)
+add_executable(iso_test iso_test.cpp)
+target_link_libraries(iso_test ${Boost_LIBRARIES})
+set_target_properties(iso_test PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
+
+
+foreach(_module_cli delete_gens_and_rels minimize_pres mpfree_clone)
     add_executable(${_module_cli} ${_module_cli}.cpp)
     target_link_libraries(${_module_cli} ${Boost_LIBRARIES})
     set_target_properties(${_module_cli} PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 endforeach()
 
 install(TARGETS shift_endo cut_module hom minimize pres_to_quiver resolution snap_grid submodule_at analyse_ind thickness size
-                birth_death delete_gens_and_rels minimize_pres mpfree_clone
+                delete_gens_and_rels minimize_pres mpfree_clone
     RUNTIME DESTINATION bin
 )
 
@@ -153,7 +157,6 @@ if(BUILD_TESTING)
         $<TARGET_FILE:thickness>
         $<TARGET_FILE:size>
         $<TARGET_FILE:cut_module>
-        $<TARGET_FILE:birth_death>
         $<TARGET_FILE:delete_gens_and_rels>
         $<TARGET_FILE:minimize_pres>
         $<TARGET_FILE:mpfree_clone>)
