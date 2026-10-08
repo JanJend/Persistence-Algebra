@@ -20,12 +20,12 @@ bool graded_linear_system_is_solvable(const Matrix& A, const Matrix& B) {
     auto less = Degree_traits<D>::lex_lambda();
     std::map<D, array<index>, decltype(less)> by_degree(less);
     for (index j = 0; j < B.get_num_cols(); ++j)
-        by_degree[B.col_degrees[j]].push_back(B.data[j]);
+        by_degree[B.col_degrees[j]].push_back(B.get_col(j));
     for (const auto& [degree, columns] : by_degree) {
         array<index> available;
         for (index k = 0; k < A.get_num_cols(); ++k)
             if (Degree_traits<D>::smaller_equal(A.col_degrees[k], degree))
-                available.push_back(A.data[k]);
+                available.push_back(A.get_col(k));
         SparseMatrix<index> local(static_cast<index>(available.size()), A.get_num_rows(), available);
         SparseMatrix<index> rhs(static_cast<index>(columns.size()), B.get_num_rows(), columns);
         if (!local.solve_col_reduction(rhs)) return false;
@@ -56,14 +56,16 @@ std::optional<Matrix> solve_graded_linear_system(const Matrix& A, const Matrix& 
         for (index k = 0; k < A.get_num_cols(); ++k) {
             if (Degree_traits<D>::smaller_equal(A.col_degrees[k], B.col_degrees[j])) {
                 selected.push_back(k);
-                columns.push_back(A.data[k]);
+                columns.push_back(A.get_col(k));
             }
         }
         SparseMatrix<index> local(static_cast<index>(columns.size()), A.get_num_rows(), columns);
-        vec<index> rhs = B.data[j], solution;
+        vec<index> rhs = B.get_col(j), solution;
         if (!local.solve_col_reduction(rhs, solution, true, true, true)) return std::nullopt;
-        for (index k : solution) X.data[j].push_back(selected.at(k));
-        std::sort(X.data[j].begin(), X.data[j].end());
+        vec<index> column;
+        for (index k : solution) column.push_back(selected.at(k));
+        std::sort(column.begin(), column.end());
+        X.set_col(j, column);
     }
     X.refresh_compatible_sorted();
     return X;

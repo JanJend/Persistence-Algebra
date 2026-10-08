@@ -161,6 +161,28 @@ if(BUILD_TESTING)
         $<TARGET_FILE:minimize_pres>
         $<TARGET_FILE:mpfree_clone>)
 
+    foreach(_csc_test csc_matrix_test csc_graded_test)
+        add_executable(${_csc_test} tests/${_csc_test}.cpp)
+        target_link_libraries(${_csc_test} ${Boost_LIBRARIES})
+        add_test(NAME ${_csc_test} COMMAND ${_csc_test})
+    endforeach()
+    add_executable(r2grid_gs_matrix_test tests/r2grid_gs_matrix_test.cpp)
+    target_link_libraries(r2grid_gs_matrix_test ${Boost_LIBRARIES})
+    add_test(NAME r2grid_gs_matrix_test COMMAND r2grid_gs_matrix_test)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        set(_csc_cxx20_supported OFF)
+        if("cxx_std_20" IN_LIST CMAKE_CXX_COMPILE_FEATURES)
+            set(_csc_cxx20_supported ON)
+        endif()
+        add_test(NAME csc_warning_test COMMAND ${CMAKE_COMMAND}
+            "-DCXX_COMPILER=${CMAKE_CXX_COMPILER}"
+            "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+            "-DBINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+            "-DBOOST_INCLUDE_DIRS=${Boost_INCLUDE_DIRS}"
+            "-DCXX20_SUPPORTED=${_csc_cxx20_supported}"
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/csc_warnings.cmake)
+    endif()
+
     # Keep the established matrix-level API under test while the module API is
     # introduced alongside it.
     foreach(_legacy_test dense_matrix_test sparse_matrix_test graded_matrix_test hom_space_test)
@@ -171,7 +193,7 @@ if(BUILD_TESTING)
     endforeach()
     # These tests use assert; keep checks active in Release builds as well.
     foreach(_test epsilon_functors_test presentation_operations_test submodule_module_test submodule_reduction_test module_hilbert_test module_operations_test module_framework_test cli_programs_test
-                  dense_matrix_test sparse_matrix_test graded_matrix_test hom_space_test)
+                  dense_matrix_test sparse_matrix_test graded_matrix_test hom_space_test csc_matrix_test csc_graded_test r2grid_gs_matrix_test)
         # These suites exercise rejection of invalid input as well as algebra.
         # Keep diagnostic checks on even when optimizing their test binaries.
         target_compile_definitions(${_test} PRIVATE GRLINA_ENABLE_CHECKS=1)

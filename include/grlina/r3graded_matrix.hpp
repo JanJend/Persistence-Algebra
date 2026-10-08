@@ -26,17 +26,17 @@ namespace graded_linalg {
 using r3degree = CoordinateDegree<double, 3>;
 using triple = r3degree;
 
-template <typename index>
-struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>> {
+template <typename index, typename MatrixBase = SparseMatrix<index>>
+struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index, MatrixBase>, MatrixBase> {
 
-    R3GradedSparseMatrix() : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>() {}
-    R3GradedSparseMatrix(index m, index n) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(m, n) {}
-    R3GradedSparseMatrix(index n, vec<index> indicator) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(n, indicator) {}
-    R3GradedSparseMatrix(SparseMatrix<index>&& other) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(std::move(other)) {}
+    R3GradedSparseMatrix() : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index, MatrixBase>, MatrixBase>() {}
+    R3GradedSparseMatrix(index m, index n) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index, MatrixBase>, MatrixBase>(m, n) {}
+    R3GradedSparseMatrix(index n, vec<index> indicator) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index, MatrixBase>, MatrixBase>(n, indicator) {}
+    R3GradedSparseMatrix(MatrixBase&& other) : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index, MatrixBase>, MatrixBase>(std::move(other)) {}
     R3GradedSparseMatrix(index m, index n, vec<triple> c_degrees, vec<triple> r_degrees)
-        : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(m, n, std::move(c_degrees), std::move(r_degrees)) {}
+        : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index, MatrixBase>, MatrixBase>(m, n, std::move(c_degrees), std::move(r_degrees)) {}
     R3GradedSparseMatrix(index m, index n, const array<index>& data, vec<triple> c_degrees, vec<triple> r_degrees)
-        : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(m, n, data, std::move(c_degrees), std::move(r_degrees)) {}
+        : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index, MatrixBase>, MatrixBase>(m, n, data, std::move(c_degrees), std::move(r_degrees)) {}
 
     void sort_rows_colexicographically() {
         this->sort_rows(TraitLinearOrder<triple>{Degree_traits<triple>::colex_lambda()});
@@ -63,10 +63,7 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMa
     vec<index> sort_columns_colexicographically_with_output() {
         vec<index> permutation = sort_and_get_permutation<triple, index>(
             this->col_degrees, Degree_traits<triple>::colex_lambda());
-        array<index> new_data(this->data.size());
-        for (index i = 0; i < static_cast<index>(this->data.size()); ++i)
-            new_data[i] = std::move(this->data[permutation[i]]);
-        this->data = std::move(new_data);
+        this->permute_columns(permutation);
         this->invalidate_cached_rows();
         this->compatible_order_ = Degree_traits<triple>::colex_lambda();
         this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(), this->compatible_order_);
@@ -84,7 +81,7 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMa
      * @param compute_batches whether to compute the column batches and k_max
      */
     R3GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false) 
-        : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(filepath, lex_sort, compute_batches) {
+        : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index, MatrixBase>, MatrixBase>(filepath, lex_sort, compute_batches) {
     } // Constructor from file
 
     /**
@@ -95,7 +92,7 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMa
      * @param compute_batches whether to compute the column batches and k_max
      */
     R3GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false, bool compute_batches = false)
-        : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index>>(file_stream, lex_sort, compute_batches ) {
+        : GradedSparseMatrix<triple, index, R3GradedSparseMatrix<index, MatrixBase>, MatrixBase>(file_stream, lex_sort, compute_batches ) {
     }
 
 
@@ -138,9 +135,9 @@ struct R3GradedSparseMatrix : GradedSparseMatrix<triple, index, R3GradedSparseMa
      * 
      * @return SparseMatrix<index> 
      */
-    SparseMatrix<index> graded_kernel()  {
+    MatrixBase graded_kernel()  {
         // Implement
-        return SparseMatrix<index>();
+        return MatrixBase();
     }
 
 

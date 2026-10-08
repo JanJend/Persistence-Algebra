@@ -1,0 +1,55 @@
+# Required: CXX_COMPILER, SOURCE_DIR, BINARY_DIR. Optional: BOOST_INCLUDE_DIRS.
+file(MAKE_DIRECTORY "${BINARY_DIR}/csc_warning_checks")
+set(source "${SOURCE_DIR}/tests/csc_warnings.cpp")
+set(includes "-I${SOURCE_DIR}/include")
+foreach(directory IN LISTS BOOST_INCLUDE_DIRS)
+    list(APPEND includes "-I${directory}")
+endforeach()
+
+function(compile_case name expected_success)
+    set(output "${BINARY_DIR}/csc_warning_checks/${name}")
+    execute_process(
+        COMMAND "${CXX_COMPILER}" ${includes} -Werror=deprecated-declarations
+                ${ARGN} "${source}" -o "${output}"
+        RESULT_VARIABLE status OUTPUT_VARIABLE stdout ERROR_VARIABLE stderr)
+    if(expected_success AND NOT status EQUAL 0)
+        message(FATAL_ERROR "CSC warning check ${name} failed to compile:\n${stdout}${stderr}")
+    elseif(NOT expected_success)
+        if(status EQUAL 0)
+            message(FATAL_ERROR "CSC mutation did not produce a compile-time warning")
+        endif()
+        if(NOT stderr MATCHES "CSC performance warning")
+            message(FATAL_ERROR "CSC mutation failed for an unrelated reason:\n${stdout}${stderr}")
+        endif()
+    endif()
+endfunction()
+
+compile_case(read_cxx17 TRUE -std=c++17 -DCSC_WARNING_TEST_MUTATE=0)
+set(read_cases read_cxx17)
+if(CXX20_SUPPORTED)
+    compile_case(read_cxx20 TRUE -std=c++20 -DCSC_WARNING_TEST_MUTATE=0)
+    list(APPEND read_cases read_cxx20)
+endif()
+compile_case(mutation_diagnostic FALSE -std=c++17 -DCSC_WARNING_TEST_MUTATE=1)
+compile_case(runtime_diagnostic TRUE -std=c++17 -DCSC_WARNING_TEST_MUTATE=1
+             -DGRLINA_CSC_COMPILE_WARNINGS=0)
+compile_case(shared_append TRUE -std=c++17 -DCSC_WARNING_TEST_MUTATE=2)
+compile_case(suppressed TRUE -std=c++17 -DCSC_WARNING_TEST_MUTATE=1
+             -DGRLINA_CSC_COMPILE_WARNINGS=0 -DGRLINA_CSC_RUNTIME_WARNINGS=0)
+
+foreach(name IN ITEMS ${read_cases} runtime_diagnostic shared_append suppressed)
+    execute_process(COMMAND "${BINARY_DIR}/csc_warning_checks/${name}"
+                    RESULT_VARIABLE status OUTPUT_VARIABLE stdout ERROR_VARIABLE stderr)
+    if(NOT status EQUAL 0)
+        message(FATAL_ERROR "CSC warning check ${name} returned ${status}:\n${stdout}${stderr}")
+    endif()
+    if(name STREQUAL "runtime_diagnostic" OR name STREQUAL "shared_append")
+        string(REGEX MATCHALL "CSC performance warning" warnings "${stderr}")
+        list(LENGTH warnings count)
+        if(NOT count EQUAL 1)
+            message(FATAL_ERROR "Expected one CSC runtime warning, got ${count}: ${stderr}")
+        endif()
+    elseif(NOT stderr STREQUAL "")
+        message(FATAL_ERROR "Unexpected CSC warning from ${name}: ${stderr}")
+    endif()
+endforeach()

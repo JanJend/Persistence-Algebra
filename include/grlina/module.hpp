@@ -205,7 +205,7 @@ public:
     /** Relations available at degree, retaining ALL original generator rows.
      * relation_indices is replaced with their original column indices.
      */
-    SparseMatrix<index_type> relations_at(const degree_type& degree,
+    auto relations_at(const degree_type& degree,
                                          vec<index_type>& relation_indices) const {
         relation_indices.clear();
         return presentation().map_at_degree(degree, relation_indices);
@@ -525,7 +525,8 @@ public:
 
 // Compatibility spelling from the first module API.
 template <typename Matrix> using PersistenceModule = Module<Matrix>;
-template <typename index> using R2Module = Module<R2GradedSparseMatrix<index>>;
+template <typename index, typename MatrixBase = SparseMatrix<index>>
+using R2Module = Module<R2GradedSparseMatrix<index, MatrixBase>>;
 
 /**
  * Present H_k = ker(d_k) / im(d_{k+1}) from a chain complex.
@@ -555,7 +556,7 @@ Module<Matrix> homology_module(const ChainComplex<Matrix>& complex,
 
         using index_type = typename Matrix::index_type;
         using degree_type = typename Matrix::degree_type;
-        array<index_type> relation_coordinates;
+        typename Matrix::storage_type relation_coordinates;
         vec<degree_type> relation_degrees;
 
         if (homological_degree < complex.size()) {
@@ -566,7 +567,7 @@ Module<Matrix> homology_module(const ChainComplex<Matrix>& complex,
             for (index_type column = 0; column < incoming.get_num_cols(); ++column) {
                 const degree_type& degree = incoming.col_degrees[column];
                 auto local_pair = kernel_generators.map_at_degree_pair(degree, true);
-                SparseMatrix<index_type> local_kernel = std::move(local_pair.first);
+                auto local_kernel = std::move(local_pair.first);
                 const vec<index_type>& selected_rows = local_pair.second;
 
                 vec<index_type> selected_kernel_columns;
@@ -612,8 +613,9 @@ Module<Matrix> homology_module(const ChainComplex<Matrix>& complex,
 
         Matrix presentation(
             static_cast<index_type>(relation_coordinates.size()),
-            kernel_generators.get_num_cols(), relation_coordinates,
+            kernel_generators.get_num_cols(),
             relation_degrees, kernel_generators.col_degrees);
+        presentation.assign_data(std::move(relation_coordinates));
         Module<Matrix> result(std::move(presentation));
         if (minimize) result.minimize();
         return result;

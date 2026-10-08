@@ -20,6 +20,8 @@
 #define COLUMN_TYPES_HPP
 
 #include <vector>
+#include <algorithm>
+#include <iterator>
 #include <set>
 #include <random>
 #include <boost/dynamic_bitset.hpp>
@@ -182,8 +184,12 @@ void rev_add_to(vec<index>& a, vec<index>& b) {
 template <typename index>
 struct Column_traits<vec<index>, index> {
 
-    static void add_to(const vec<index>& v, vec<index>& w) {
-        w = v + w;
+    template<class Range>
+    static void add_to(const Range& v, vec<index>& w) {
+        vec<index> result;
+        std::set_symmetric_difference(v.begin(), v.end(), w.begin(), w.end(),
+                                    std::back_inserter(result));
+        w = std::move(result);
     }
 
     static bool is_nonzero_at(const vec<index>& v, index i) {
@@ -199,7 +205,8 @@ struct Column_traits<vec<index>, index> {
     }
 
 
-    static bool scalar_product(const vec<index>& v,const vec<index>& w){
+    template<class Left, class Right>
+    static bool scalar_product(const Left& v, const Right& w){
         auto it_v = v.begin();
         auto it_w = w.begin();
         index count = 0;
@@ -278,7 +285,7 @@ set<index> operator+(set<index>& a, set<index>& b) {
 template <typename index>
 struct Column_traits<set<index>, index> {
 
-    static void add_to(set<index>& v, set<index>& w) {
+    static void add_to(const set<index>& v, set<index>& w) {
         auto it_v = v.begin();
         auto it_w = w.begin();
     
@@ -297,7 +304,7 @@ struct Column_traits<set<index>, index> {
         w.insert(it_v, v.end());
     }
 
-    static bool is_nonzero_at(set<index>& v, index i) {
+    static bool is_nonzero_at(const set<index>& v, index i) {
         return (v.find(i) != v.end());
     }
 
@@ -323,7 +330,7 @@ struct Column_traits<set<index>, index> {
         }   
     }
 
-    static bool is_equal(set<index>& v, set<index>& w) {
+    static bool is_equal(const set<index>& v, const set<index>& w) {
         return v == w;
     }
 
@@ -353,12 +360,12 @@ struct Column_traits<set<index>, index> {
 template <typename index>
 struct Column_traits<bitset, index> {
 
-    static void add_to(bitset& v, bitset& w) {
+    static void add_to(const bitset& v, bitset& w) {
         GRLINA_ASSERT(v.size() == w.size());
         w ^= v;
     }
 
-    static bool is_nonzero_at(bitset& v, index i) {
+    static bool is_nonzero_at(const bitset& v, index i) {
         return v[i];
     }
 
@@ -379,7 +386,7 @@ struct Column_traits<bitset, index> {
         v.flip(j);
     }
 
-    static bool is_equal(bitset& v, bitset& w) {
+    static bool is_equal(const bitset& v, const bitset& w) {
         return v == w;
     }
 

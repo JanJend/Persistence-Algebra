@@ -28,16 +28,19 @@ Biproduct<Matrix> direct_sum(std::shared_ptr<const Module<Matrix>> left,
     P.col_degrees.insert(P.col_degrees.end(), B.col_degrees.begin(), B.col_degrees.end());
     P.row_degrees = A.row_degrees;
     P.row_degrees.insert(P.row_degrees.end(), B.row_degrees.begin(), B.row_degrees.end());
-    for (index j = 0; j < A.get_num_cols(); ++j) P.data[j] = A.data[j];
-    for (index j = 0; j < B.get_num_cols(); ++j)
-        for (index i : B.data[j]) P.data[A.get_num_cols() + j].push_back(A.get_num_rows() + i);
+    for (index j = 0; j < A.get_num_cols(); ++j) P.set_col(j, A.get_col(j));
+    for (index j = 0; j < B.get_num_cols(); ++j) {
+        auto column = B.get_col(j);
+        for (auto& i : column) i += A.get_num_rows();
+        P.set_col(A.get_num_cols() + j, column);
+    }
     auto sum = std::make_shared<const Module<Matrix>>(std::move(P));
     auto injection = [&](const auto& domain, index offset) {
         Matrix I(domain->number_of_generators(), sum->number_of_generators());
         I.data.resize(I.get_num_cols());
         I.col_degrees = domain->presentation().row_degrees;
         I.row_degrees = sum->presentation().row_degrees;
-        for (index j = 0; j < I.get_num_cols(); ++j) I.data[j] = {offset + j};
+        for (index j = 0; j < I.get_num_cols(); ++j) I.set_col(j, {offset + j});
         return Homomorphism<Matrix>(domain, sum, std::move(I));
     };
     auto projection = [&](const auto& target, index offset) {
@@ -45,7 +48,7 @@ Biproduct<Matrix> direct_sum(std::shared_ptr<const Module<Matrix>> left,
         Q.data.resize(Q.get_num_cols());
         Q.col_degrees = sum->presentation().row_degrees;
         Q.row_degrees = target->presentation().row_degrees;
-        for (index i = 0; i < Q.get_num_rows(); ++i) Q.data[offset + i] = {i};
+        for (index i = 0; i < Q.get_num_rows(); ++i) Q.set_col(offset + i, {i});
         return Homomorphism<Matrix>(sum, target, std::move(Q));
     };
     return {sum, injection(left, 0), injection(right, A.get_num_rows()),

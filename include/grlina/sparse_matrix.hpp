@@ -131,17 +131,17 @@ namespace graded_linalg {
      *  
      * @return vec<index> 
      */
-    template <typename index>
-    vec<index> vectorXORMulti(const vec<vec<index>>& matrix, const vec<index>& mask) {
+    template <typename index, typename Storage>
+    vec<index> vectorXORMulti(const Storage& matrix, const vec<index>& mask) {
         vec<index> result;
 
         int n = mask.size();
         if (n == 1){
-            return matrix[mask[0]];
+            return vec<index>(matrix[mask[0]].begin(), matrix[mask[0]].end());
         }
 
         // Initialize iterators for all vectors
-        std::vector<typename vec<index>::const_iterator> iterators;
+        std::vector<decltype(std::declval<const Storage&>()[0].begin())> iterators;
         for (index i = 0; i < n; ++i) {
             iterators.push_back(matrix[mask[i]].begin());
         }
@@ -194,15 +194,15 @@ namespace graded_linalg {
      * @param mask
      * @return vec<index> 
      */
-    template <typename index>
-    vec<index> vectorXORMulti(const vec<vec<index>>& matrix, const bitset& mask) {
+    template <typename index, typename Storage>
+    vec<index> vectorXORMulti(const Storage& matrix, const bitset& mask) {
         vec<index> result;
 
         GRLINA_ASSERT(mask.size() == matrix.size());
 
         // Initialize iterators for all vectors
-        std::vector<typename vec<index>::const_iterator> iterators;
-        std::vector<typename vec<index>::const_iterator> endIterators;
+        std::vector<decltype(std::declval<const Storage&>()[0].begin())> iterators;
+        std::vector<decltype(std::declval<const Storage&>()[0].begin())> endIterators;
         for (int i = mask.find_first(); i != -1; i = mask.find_next(i)){
             iterators.push_back(matrix[i].begin());
             endIterators.push_back(matrix[i].end());
@@ -247,6 +247,12 @@ namespace graded_linalg {
         return result;
     }
     
+
+// Preserve index deduction for the original vector-backed bitset overload.
+template <typename index>
+vec<index> vectorXORMulti(const vec<vec<index>>& matrix, const bitset& mask) {
+    return vectorXORMulti<index, vec<vec<index>>>(matrix, mask);
+}
 
 /**
  * @brief Erases i from v and returns true if i was found and erased.
@@ -512,8 +518,12 @@ bool is_sorted(vec<index>& v){
  * @brief Every column is stored as a list of non-zero entries.
  * 
  */
-template <typename index>
-struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
+template <typename index, typename Storage = vec<vec<index>>>
+struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index, Storage>, Storage>{
+
+    template<typename OtherIndex>
+    using rebind_index = SparseMatrix<OtherIndex,
+        typename MatrixStorageTraits<vec<index>, index, Storage>::template rebind_index<OtherIndex>>;
 
     // Stores the rows (sometimes in reverse order!).
     vec<vec<index>> _rows;
@@ -523,14 +533,14 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 
     protected:
         SparseMatrix& assign(const SparseMatrix& other) {
-            MatrixUtil<vec<index>, index, SparseMatrix<index>>::assign(other); // Call base
+            MatrixUtil<vec<index>, index, SparseMatrix<index, Storage>, Storage>::assign(other); // Call base
             _rows = other._rows;
             rows_computed = other.rows_computed;
             return *this;
         }
     
         SparseMatrix& assign(SparseMatrix&& other) {
-            MatrixUtil<vec<index>, index, SparseMatrix<index>>::assign(std::move(other));
+            MatrixUtil<vec<index>, index, SparseMatrix<index, Storage>, Storage>::assign(std::move(other));
             _rows = std::move(other._rows);
             rows_computed = other.rows_computed;
             return *this;
@@ -550,25 +560,25 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         }
 
 
-    SparseMatrix() : MatrixUtil<vec<index>, index, SparseMatrix<index>>() { rows_computed = false; }
+    SparseMatrix() : MatrixUtil<vec<index>, index, SparseMatrix<index, Storage>, Storage>() { rows_computed = false; }
 
-    SparseMatrix(index m) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m) {rows_computed = false;}
+    SparseMatrix(index m) : MatrixUtil<vec<index>, index, SparseMatrix<index, Storage>, Storage>(m) {rows_computed = false;}
 
-    SparseMatrix(index m, index n) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n) {rows_computed = false;}
+    SparseMatrix(index m, index n) : MatrixUtil<vec<index>, index, SparseMatrix<index, Storage>, Storage>(m, n) {rows_computed = false;}
 
     SparseMatrix(const SparseMatrix& other)
-        : MatrixUtil<vec<index>, index, SparseMatrix<index>>(other),
+        : MatrixUtil<vec<index>, index, SparseMatrix<index, Storage>, Storage>(other),
           _rows(other._rows), rows_computed(other.rows_computed) {}
 
     SparseMatrix(SparseMatrix&& other)
-        : MatrixUtil<vec<index>, index, SparseMatrix<index>>(std::move(other)),
+        : MatrixUtil<vec<index>, index, SparseMatrix<index, Storage>, Storage>(std::move(other)),
           _rows(std::move(other._rows)), rows_computed(other.rows_computed) {}
 
-    SparseMatrix(index m, index n, const array<index>& data) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, data) {rows_computed = false;}
+    SparseMatrix(index m, index n, const array<index>& data) : MatrixUtil<vec<index>, index, SparseMatrix<index, Storage>, Storage>(m, n, data) {rows_computed = false;}
     
-    SparseMatrix(index m, index n, const std::string& type, const index percent = -1) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(m, n, type, percent) {rows_computed = false;}
+    SparseMatrix(index m, index n, const std::string& type, const index percent = -1) : MatrixUtil<vec<index>, index, SparseMatrix<index, Storage>, Storage>(m, n, type, percent) {rows_computed = false;}
 
-    SparseMatrix(index n, vec<index> indicator) : MatrixUtil<vec<index>, index, SparseMatrix<index>>(n, indicator) {rows_computed = false;}
+    SparseMatrix(index n, vec<index> indicator) : MatrixUtil<vec<index>, index, SparseMatrix<index, Storage>, Storage>(n, indicator) {rows_computed = false;}
 
     /**
      *   To treat a sparse matrix as a big vector for reduction we will need this function.
@@ -596,7 +606,9 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param i 
      */
     void sort_column(index i){
-        std::sort(this->data[i].begin(), this->data[i].end());
+        this->edit_col(i, [](vec<index>& column) {
+            std::sort(column.begin(), column.end());
+        });
     }
     
     /**
@@ -726,13 +738,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param col_indices 
      */
     void compute_columns_from_rows() {
-        this->data.clear();
-        this->data.resize(this->num_cols);
-        for(index i = 0; i < _rows.size(); i++) {
-            for(index j : _rows[i]) {
-                this->data[j].push_back(i);
-            }
-        }
+        this->assign_transpose(_rows, this->num_cols);
     }
 
     /**
@@ -742,13 +748,14 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      */
     void compute_columns_from_rows(vec<index>& col_indices, vec<index>& row_indices) {
         auto shiftMap = shiftIndicesMap(col_indices);
-        this->data.clear();
-        this->data.resize(this->num_cols);
-        for(index i = 0; i < _rows.size(); i++) {
-            for(index j : _rows[i]) {
-                this->data[shiftMap[j]].push_back(row_indices[i]);
+        auto rows = _rows;
+        for(auto& row : rows) {
+            for(auto& entry : row) {
+                entry = shiftMap[entry];
             }
         }
+        this->assign_transpose(rows, this->num_cols);
+        transform_data(row_indices);
     }
 
     /**
@@ -757,13 +764,8 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param col_indices 
      */
     void compute_columns_from_rows(vec<index>& row_indices) {
-        this->data.clear();
-        this->data.resize(this->num_cols);
-        for(index i = 0; i < _rows.size(); i++) {
-            for(index j : _rows[i]) {
-                this->data[j].push_back(row_indices[i]);
-            }
-        }
+        this->assign_transpose(_rows, this->num_cols);
+        transform_data(row_indices);
     }
 
 
@@ -776,7 +778,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      */
     void compute_normalisation(const vec<index>& row_indices) {
         auto row_map = shiftIndicesMap(row_indices);
-        transform_matrix(this->data, row_map, true);
+        transform_data(row_map);
     }
 
     /**
@@ -790,9 +792,9 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
             return;
         }
         vec<index> remaining_rows = vec<index>();
-        for(index i = 0; i < this->num_cols; i++) {
-            remove_intersection(this->data[i], row_indices_to_remove);
-        }
+        this->transform_columns([&](vec<index>& column) {
+            remove_intersection(column, row_indices_to_remove);
+        });
         auto it = row_indices_to_remove.begin();
         for(index j = 0; j < this->num_rows; j++) {
             if(it != row_indices_to_remove.end() && j == *it){
@@ -815,7 +817,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         if(col_indices_to_remove.empty()){
             return;
         }
-        vec_deletion(this->data, col_indices_to_remove);
+        this->erase_columns(col_indices_to_remove);
         this->num_cols = this->data.size();
     }
 
@@ -823,18 +825,22 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     void compute_normalisation_with_pivots(const vec<index>& row_indices) {
         GRLINA_ASSERT(row_indices.size() == this->num_rows);
         auto row_map = shiftIndicesMap(row_indices);
-        transform_matrix(this->data, row_map, true);
+        transform_data(row_map);
         // Create a new map with updated keys
         this->set_pivots_without_reducing();
     }
 
     void transform_data(const std::unordered_map<index, index>& indexMap) {
-        transform_matrix(this->data, indexMap, true);
+        this->transform_columns([&](vec<index>& column) {
+            apply_transformation(column, indexMap, true);
+        }, true);
     }
 
 
     void transform_data(const vec<index>& index_vector){
-        transform_matrix(this->data, index_vector);
+        this->transform_columns([&](vec<index>& column) {
+            apply_transformation(column, index_vector);
+        }, true);
     }
 
     /**
@@ -860,7 +866,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     void compute_row_rev(index i, vec<index>& row) {
         row.clear();
         for(index j = this->num_cols - 1; j >= 0; j--) {
-            if(is_nonzero_at(this->data[j], i)) {
+            if(this->is_nonzero_entry(j, i)) {
                 row.push_back(j);
             }
         }
@@ -879,8 +885,9 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     }    
 
     bool is_sorted_sparse(){
-        for(auto col : this->data){
-            if(!is_sorted<index>(col)){
+        for(index i = 0; i < this->num_cols; ++i){
+            const auto& col = this->data[i];
+            if(std::adjacent_find(col.begin(), col.end(), std::greater_equal<index>()) != col.end()){
                 return false;
             }
         }
@@ -904,7 +911,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     void fast_rev_row_op(index i, index j){
         GRLINA_ASSERT(i != j);
         for(index k : this->_rows[i]){
-            this->data[k].push_back(j);
+            this->append_entry(k, j);
         }
         rev_add_to(this->_rows[i], this->_rows[j]);
     }
@@ -924,14 +931,11 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * 
      */
     void delete_last_entries(){
-        #pragma omp parallel for
-        for(std::size_t i = 0; i < this->data.size(); ++i) {
-            vec<index>& c = this->data[i];
-            #pragma omp critical
-            if (!c.empty()) {
-             c.pop_back();  // Delete the last entry if the column is not empty
+        this->transform_columns([](vec<index>& column) {
+            if (!column.empty()) {
+                column.pop_back();
             }
-        }
+        }, true);
     }
     
     /**
@@ -946,11 +950,11 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
             this->set_num_rows(threshold);
         }
 
-        for (index j = 0; j < this->num_cols; j++){
-            while(this->col_last(j) >= this->num_rows){
-                this->data[j].pop_back();
+        this->transform_columns([&](vec<index>& column) {
+            while(!column.empty() && column.back() >= this->num_rows){
+                column.pop_back();
             }
-        }
+        });
 
     };
 
@@ -968,7 +972,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         }
         SparseMatrix result(colIndices.size(), this->num_rows);
         for(index i = 0; i < colIndices.size(); i++){
-            result.data.push_back(this->data[colIndices[i]]);
+            result.append_col(this->get_col(colIndices[i]));
         }
         return result;
     }
@@ -982,12 +986,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
     */
     SparseMatrix transposed_copy() const {
         SparseMatrix result(this->num_rows, this->num_cols);
-        result.data.resize(result.num_cols);
-        for(index i=0;i<this->num_cols;i++) {
-            for(index j : this->data[i]) {
-                result.data[j].push_back(i);
-            }
-        }
+        result.assign_transpose(this->data, this->num_rows);
         return result;
     }
 
@@ -998,8 +997,8 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param performed_ops Applies all column operations to this matrix.
      * @param zero_cols Stores the indices of the columns which are completely zero.
      */
-    template< typename smaller_index>
-    void column_reduction_triangular_with_memory_int(SparseMatrix<smaller_index>& performed_ops, vec<smaller_index>& zero_cols) {
+    template<typename smaller_index, typename OtherStorage>
+    void column_reduction_triangular_with_memory_int(SparseMatrix<smaller_index, OtherStorage>& performed_ops, vec<smaller_index>& zero_cols) {
         for(index j=0; j < this->num_cols; j++) {
             index p = this->col_last(j);
             while( p >= 0) {
@@ -1028,14 +1027,14 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @return DERIVED 
      */
     template< typename smaller_index>
-    SparseMatrix<smaller_index> get_kernel_int(){
-        SparseMatrix<smaller_index> col_operations(this->num_cols, this->num_cols, "Identity");
+    rebind_index<smaller_index> get_kernel_int(){
+        rebind_index<smaller_index> col_operations(this->num_cols, this->num_cols, "Identity");
         vec<smaller_index> zero_cols;
         this->column_reduction_triangular_with_memory_int<smaller_index>(col_operations, zero_cols);
         return col_operations.restricted_domain_copy(zero_cols);
     }
 
-    SparseMatrix<index> get_kernel(){
+    SparseMatrix get_kernel(){
 			//TODO Just added this to be able to compile! 
 			return *this;
 		}
@@ -1063,22 +1062,22 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 		auto indexMap = shiftIndicesMap(quotientBasis);
 		SparseMatrix trunc(*this);
 		trunc.delete_last_entries();
-		transform_matrix(trunc.data, indexMap, true);
+		trunc.transform_data(indexMap);
 	
 		index newRows = quotientBasis.size();
 		index newCols = this->get_num_rows();
 		SparseMatrix result(newCols, newRows);
-        result.data = vec<vec<index>>(newCols, vec<index>());
+
 		index j = 0;
 		for(index i = 0; i < newCols; i++){
 		// Construct Identity Matrix on the generators which descend to the quotient basis. 
 			if(j < quotientBasis.size() && quotientBasis[j] == i){
-				result.data[i].push_back(j);
+				result.append_col(vec<index>{j});
 				j++;
 			} else {
 				// Locate the unqiue column with the last entry at i.
 				index colForPivot = this->pivots[i];
-				result.data[i] = trunc.data[colForPivot];
+				result.append_col(trunc.get_col(colForPivot));
 			}
 		}
 		GRLINA_ASSERT(j == quotientBasis.size() && "Not all quotient basis elements were used");
@@ -1103,7 +1102,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         // Since the matrix is fully reduced, every pivot row has a unique last entry in some column 
         // and this is still stored in the pivot map. Therefore for computation this re-indexed matrix works better.
         trunc.delete_last_entries();
-        transform_matrix(trunc.data, indexMap, true);
+        trunc.transform_data(indexMap);
 
         index newRows = quotientBasis.size();
         index newCols = this->num_rows;
@@ -1111,16 +1110,16 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 
         index j = 0;
         for(index i = 0; i < newCols; i++){
-            result.data.push_back(vec<index>());
+
         // Construct Identity Matrix on the generators which descend to the quotient basis. 
             if(j < quotientBasis.size() && quotientBasis[j] == i){
-                result.data[i].push_back(j);
+                result.append_col(vec<index>{j});
                 j++;
             } else {
                 // If were in a non-basis-column, compute the entries directly:
                 // Locate the unqiue column in the input matrix with the last entry at i.
                 // Observe that the matrix trunc is exactly the non-identity part of the matrix as long as we work over F_2
-                result.data[i] = trunc.data[this->pivots[i]];
+                result.append_col(trunc.get_col(this->pivots[i]));
             }
         }
         GRLINA_ASSERT(j == quotientBasis.size() && "Not all quotient basis elements were used");
@@ -1143,23 +1142,22 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         index new_cols_t = basislift.size();
         SparseMatrix result_t(new_cols_t, new_rows_t);
 
-        result_t.data = vec<vec<index>>(new_cols_t, vec<index>());
-
+        SparseMatrix result(new_rows_t, new_cols_t);
         index j = 0;
-
-        for(index i = 0; i < new_rows_t; i++){
-            if (j < basislift.size() && basislift[j] == i) {
-                result_t.data[j].push_back(i);
-                j++;
-            } else  {
+        for(index i = 0; i < new_rows_t; ++i){
+            vec<index> column;
+            if(j < basislift.size() && basislift[j] == i){
+                column.push_back(j++);
+            } else {
                 index k = this->pivots[i];
-                for(index l = 0; this->data[k].size()-1; l++){
-                    index entry = this->data[k][l];
-                    index row_index = index_map[ entry];
-                    result_t.data[row_index].push_back(i);
+                const auto& source = this->data[k];
+                for(std::size_t l = 0; l + 1 < source.size(); ++l){
+                    column.push_back(index_map[source[l]]);
                 }
             }
+            result.append_col(std::move(column));
         }
+        result_t.assign_transpose(result.data, new_cols_t);
 
         return result_t;
     }       
@@ -1184,11 +1182,11 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param B 
      * @param col_indices 
      */
-    SparseMatrix<index> transformed_restricted_copy(const DenseMatrix& B, vec<index>& col_indices){
-        index m = B.num_cols;
-        index n = B.num_rows;
+    SparseMatrix transformed_restricted_copy(const DenseMatrix& B, vec<index>& col_indices){
+        index m = B.get_num_cols();
+        index n = B.get_num_rows();
         GRLINA_ASSERT(n == col_indices.size());
-        SparseMatrix<index> result(m, this->num_rows);
+        SparseMatrix result(m, this->num_rows);
         for(const bitset& v : B.data){
             vec<index> w;
             for(index i = 0; i < n; i++){
@@ -1196,7 +1194,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
                     w.push_back(col_indices[i]);
                 }
             }
-            result.data.emplace_back(vectorXORMulti(this->data, w));
+            result.append_col(vectorXORMulti(this->data, w));
         }
         return result;
     }
@@ -1210,7 +1208,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         GRLINA_ASSERT(this->num_cols == D.get_num_rows());
         auto copy = this->data;
         for(index i = 0; i < D.get_num_cols(); i++){
-            this->data[i] = vectorXORMulti(copy, D.data[i]);
+            this->set_col(i, vectorXORMulti<index>(copy, D.data[i]));
         }    
     }
 
@@ -1226,7 +1224,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         GRLINA_ASSERT(this->num_cols == D.get_num_rows());
         for(index i = 0; i < D.get_num_cols(); i++){
             if(D.data[i].any()){
-                this->add_to_col(i, vectorXORMulti(this->data, D.data[i]));
+                this->add_to_col(i, vectorXORMulti<index>(this->data, D.data[i]));
             }
         }    
     }
@@ -1237,12 +1235,12 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
      * @param D 
      */
     void multiply_dense_with_e_check(DenseMatrix& D, vec<bitset>& e){
-        GRLINA_ASSERT(this->num_cols == D.num_rows);
-        GRLINA_ASSERT(D.num_cols == e.size());
-        array<index> copy = this->data;
-        for(index i = 0; i < D.num_cols; i++){
+        GRLINA_ASSERT(this->num_cols == D.get_num_rows());
+        GRLINA_ASSERT(D.get_num_cols() == e.size());
+        auto copy = this->data;
+        for(index i = 0; i < D.get_num_cols(); i++){
             if(D.data[i] != e[i]){
-                this->data[i] = vectorXORMulti(copy, D.data[i]);
+                this->set_col(i, vectorXORMulti<index>(copy, D.data[i]));
             }
         }    
     }
@@ -1260,11 +1258,11 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
         array<index> copy;
         int counter = 0;
         for(auto i = col_indices.find_first(); i != -1; i = col_indices.find_next(i)){
-            copy.push_back(this->data[i]);
+            copy.push_back(this->get_col(i));
         }
         for(auto i = col_indices.find_first(); i != -1; i = col_indices.find_next(i)){
             if(D.data[counter] != e_vec[counter]){
-                this->data[i] = vectorXORMulti(copy, D.data[counter]);
+                this->set_col(i, vectorXORMulti<index>(copy, D.data[counter]));
             }
             counter++;
         }    
@@ -1274,14 +1272,14 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 
 
     vec<index> multiply_with_sparse_vector(vec<index>& v){
-        return vectorXORMulti(this->data, v);
+        return vectorXORMulti<index>(this->data, v);
     }
 
     vec<index> multiply_with_dense_vector(bitset& v){
-        return vectorXORMulti(this->data, v);
+        return vectorXORMulti<index>(this->data, v);
     }
 
-    SparseMatrix<index> multiply_right(SparseMatrix<index>& N);
+    SparseMatrix multiply_right(SparseMatrix& N);
 
     /**
      * @brief Reduces N as much as possible using column reduction to get a quotient space representation.
@@ -1301,7 +1299,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
                     col_ops.push_back(this->pivots[*it]);
                 }
             }
-            Column_traits<vec<index>, index>::add_to(vectorXORMulti(this->data, col_ops), N.data[i]);
+            N.add_to_col(i, vectorXORMulti(this->data, col_ops));
         }
         return N.is_zero();
     }
@@ -1323,13 +1321,13 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
             while( p >= 0) {
                 if(this->pivots.count(p)) {
                     index i = this->pivots[p];
-                     Column_traits<vec<index>, index>::add_to(this->data[i], N.data[j]);
+                     N.add_to_col(j, this->column(i));
                     auto new_p = N.col_last(j);
                     GRLINA_ASSERT( new_p < p);
                     p = new_p;
                 } else if ( N.pivots.count(p)){
                     index i = N.pivots[p];
-                    Column_traits<vec<index>, index>::add_to(N.data[i], N.data[j]);
+                    N.col_op(i, j);
                     auto new_p = N.col_last(j);
                     GRLINA_ASSERT( new_p < p);
                     p = new_p;
@@ -1339,8 +1337,8 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
                 }
             }
             if (p == -1){
-                std::swap(N.data[j], N.data[N.get_num_cols()-1]);
-                N.data.pop_back();
+                N.swap_cols(j, N.get_num_cols()-1);
+                N.resize_data(N.data.size()-1);
                 N.num_cols--;
                 j--;
             }
@@ -1371,12 +1369,12 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index>>{
 
 }; // SparseMatrix;
 
-template< typename index>
-void add_to (const SparseMatrix<index>& A, SparseMatrix<index>& B){
+template<typename index, typename Storage>
+void add_to (const SparseMatrix<index, Storage>& A, SparseMatrix<index, Storage>& B){
     GRLINA_ASSERT(A.get_num_cols() == B.get_num_cols());
     GRLINA_ASSERT(A.get_num_rows() == B.get_num_rows());
     for(index i = 0; i< A.get_num_cols(); i++){
-        Column_traits<vec<index>, index>::add_to(A.data[i],B.data[i]);
+        B.add_to_col(i, A.column(i));
     }
 }
 
@@ -1384,17 +1382,18 @@ void add_to (const SparseMatrix<index>& A, SparseMatrix<index>& B){
  * @brief Assumes that M is already transposed, then multiplies as before.
  * 
  */
-template <typename index>
-SparseMatrix<index> multiply_transpose(const SparseMatrix<index>& M, const SparseMatrix<index>& N){
-  SparseMatrix<index> result(N.get_num_cols(), M.get_num_cols());
-  result.data.resize(result.get_num_cols());
+template<typename index, typename Storage>
+SparseMatrix<index, Storage> multiply_transpose(const SparseMatrix<index, Storage>& M, const SparseMatrix<index, Storage>& N){
+  SparseMatrix<index, Storage> result(N.get_num_cols(), M.get_num_cols());
   // GRLINA_ASSERT(M.get_num_rows() == N.get_num_rows()); Sometimes we dont know.
   for(index i = 0; i < N.get_num_cols(); i++){
+    vec<index> column;
     for(index j = 0; j < M.get_num_cols(); j++){
-      if(Column_traits<vec<index>, index>::scalar_product(M.data[j], N.data[i])){ 
-        result.data[i].push_back(j);
+      if(Column_traits<vec<index>, index>::scalar_product(M.data[j], N.data[i])){
+        column.push_back(j);
       }
     }
+    result.append_col(std::move(column));
   }
   return result;
 }
@@ -1403,21 +1402,21 @@ SparseMatrix<index> multiply_transpose(const SparseMatrix<index>& M, const Spars
  * @brief Computes the transpose of M, then multiplies the columns.
  * 
  */
-template <typename index>
-SparseMatrix<index> multiply(const SparseMatrix<index>& M, const SparseMatrix<index>& N){
+template<typename index, typename Storage>
+SparseMatrix<index, Storage> multiply(const SparseMatrix<index, Storage>& M, const SparseMatrix<index, Storage>& N){
     GRLINA_ASSERT(M.get_num_cols() == N.get_num_rows());
-    SparseMatrix<index> transpose = M.transposed_copy();
+    SparseMatrix<index, Storage> transpose = M.transposed_copy();
     return multiply_transpose(transpose, N);
 }
 
-template <typename index>
-SparseMatrix<index>  operator*(const SparseMatrix<index>& M, const SparseMatrix<index>& N){
+template<typename index, typename Storage>
+SparseMatrix<index, Storage>  operator*(const SparseMatrix<index, Storage>& M, const SparseMatrix<index, Storage>& N){
     return multiply(M, N);
 }
 
 
-template <typename index>
-SparseMatrix<index> SparseMatrix<index>::multiply_right(SparseMatrix<index>& N) {
+template<typename index, typename Storage>
+SparseMatrix<index, Storage> SparseMatrix<index, Storage>::multiply_right(SparseMatrix<index, Storage>& N) {
     return multiply(*this, N);
 }
 
@@ -1433,8 +1432,8 @@ SparseMatrix<index> SparseMatrix<index>::multiply_right(SparseMatrix<index>& N) 
  * @param blocks
  * @param support 
  */
-template <typename index>
-void simultaneous_row_reduction(std::unordered_map<index, SparseMatrix<index>>& N_map, vec<index>& blocks, bitset& support){
+template<typename index, typename Storage>
+void simultaneous_row_reduction(std::unordered_map<index, SparseMatrix<index, Storage>>& N_map, vec<index>& blocks, bitset& support){
     std::unordered_map<index, index> pivots;
     for(index b : blocks){
         vec<index>& row_b = N_map[b]._rows[0];
@@ -1467,8 +1466,8 @@ void simultaneous_row_reduction(std::unordered_map<index, SparseMatrix<index>>& 
  * @param blocks
  * @param support 
  */
-template <typename index>
-void simultaneous_row_reduction_on_submatrix(std::unordered_map<index, SparseMatrix<index>>& N_map, vec<index>& blocks, bitset& support, SparseMatrix<index>& A){
+template<typename index, typename Storage>
+void simultaneous_row_reduction_on_submatrix(std::unordered_map<index, SparseMatrix<index, Storage>>& N_map, vec<index>& blocks, bitset& support, SparseMatrix<index, Storage>& A){
     std::unordered_map<index, index> pivots;
     for(index b : blocks){
         vec<index>& row_b = N_map[b]._rows[0];

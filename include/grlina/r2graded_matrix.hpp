@@ -72,8 +72,8 @@ inline r2degree operator/(const r2degree& p, double scalar) {
  * 
  * @tparam index 
  */
-template <typename index>
-struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>> {
+template <typename index, typename MatrixBase = SparseMatrix<index>>
+struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase> {
 
     // For kernel computation we will need to compute a grid, i.e. a function Z^2 -> R^2, 
     // such that all degrees of columsn and rows are in the image of this function.
@@ -94,61 +94,61 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     std::vector<PQ> pq_row;
 
 
-    R2GradedSparseMatrix() : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>() {}
+    R2GradedSparseMatrix() : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>() {}
 
 
-    R2GradedSparseMatrix( SparseMatrix<index>&& other) :  GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(std::move(other)) {}
+    R2GradedSparseMatrix( MatrixBase&& other) :  GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>(std::move(other)) {}
     
 
     public:
 
     R2GradedSparseMatrix& operator= (const R2GradedSparseMatrix& other) {
         if (this != &other)
-            GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>::assign(other);
+            GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>::assign(other);
         return *this;
     }
 
     R2GradedSparseMatrix& operator= (R2GradedSparseMatrix&& other) {
         if (this != &other)
-            GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>::assign(std::move(other));
+            GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>::assign(std::move(other));
         return *this;
     }
 
-    R2GradedSparseMatrix& operator = (const GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>& other) {
-        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>::assign(other);
+    R2GradedSparseMatrix& operator = (const GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>& other) {
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>::assign(other);
         return *this;
     }
 
-    R2GradedSparseMatrix& operator = (GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>&& other) {
-        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>::assign(std::move(other));
+    R2GradedSparseMatrix& operator = (GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>&& other) {
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>::assign(std::move(other));
         return *this;
     }
 
 
 
     R2GradedSparseMatrix(index cols, index rows) : 
-        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(cols, rows) {}
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>(cols, rows) {}
     R2GradedSparseMatrix(index n, vec<index> indicator) : 
-        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(n, indicator) {} 
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>(n, indicator) {}
     R2GradedSparseMatrix(index cols, index rows, std::string type, const index percent = -1) : 
-        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(cols, rows, type, percent) {} // Constructor with type
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>(cols, rows, type, percent) {} // Constructor with type
     R2GradedSparseMatrix(index m, index n, vec<r2degree> c_degrees, vec<r2degree> r_degrees) : 
-        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, n, c_degrees, r_degrees) {} // Constructor with degrees
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>(m, n, c_degrees, r_degrees) {} // Constructor with degrees
     R2GradedSparseMatrix(index m, index n, const array<index>& data, vec<r2degree> c_degrees, vec<r2degree> r_degrees) : 
-        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(m, n, data, c_degrees, r_degrees) {} // Constructor with data and degrees
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>(m, n, data, c_degrees, r_degrees) {} // Constructor with data and degrees
 
     R2GradedSparseMatrix(const R2GradedSparseMatrix& other)
-        : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(other) {
+        : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>(other) {
     } // Copy constructor
 
     R2GradedSparseMatrix(R2GradedSparseMatrix&& other)
-        : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(std::move(other)) {
+        : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>(std::move(other)) {
     } // Move constructor
 
-    R2GradedSparseMatrix(const GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix>& other) {
+    R2GradedSparseMatrix(const GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix, MatrixBase>& other) {
         this->assign(other);
     } // Copy constructor from GradedSparseMatrix
-    R2GradedSparseMatrix( const SparseMatrix<index>& other) : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(other.get_num_cols(), other.get_num_rows()) {
+    R2GradedSparseMatrix( const MatrixBase& other) : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>(other.get_num_cols(), other.get_num_rows()) {
         this->data = other.data;
     } // Copy constructor from SparseMatrix
 
@@ -159,7 +159,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      * @param compute_batches whether to compute the column batches and k_max
      */
     R2GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false) 
-        : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(filepath, lex_sort, compute_batches) {
+        : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>(filepath, lex_sort, compute_batches) {
     } // Constructor from file
 
 
@@ -171,7 +171,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      * @param compute_batches whether to compute the column batches and k_max
      */
     R2GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false, bool compute_batches = false)
-        : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index>>(file_stream, lex_sort, compute_batches) {
+        : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, MatrixBase>, MatrixBase>(file_stream, lex_sort, compute_batches) {
     } // Constructor from ifstream
 
     /**
@@ -219,11 +219,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      */
     void sort_columns_colexicographically() {
         vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda());
-        array<index> new_data = array<index>(this->data.size());
-        for(index i = 0; i < this->data.size(); i++) {
-            new_data[i] = this->data[permutation[i]];
-        }
-        this->data = new_data;
+        this->permute_columns(permutation);
         this->invalidate_cached_rows();
         this->compatible_order_ = Degree_traits<r2degree>::colex_lambda();
         this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(), this->compatible_order_);
@@ -231,11 +227,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
 
     vec<index> sort_columns_colexicographically_with_output() {
         vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda());
-        array<index> new_data = array<index>(this->data.size());
-        for(index i = 0; i < this->data.size(); i++) {
-            new_data[i] = this->data[permutation[i]];
-        }
-        this->data = new_data;
+        this->permute_columns(permutation);
         this->invalidate_cached_rows();
         this->compatible_order_ = Degree_traits<r2degree>::colex_lambda();
         this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(), this->compatible_order_);
@@ -511,7 +503,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      * @brief used in graded_kernel. Adapted from MPfree
      * 
      */
-    void kernel_column_reduction(index i, pair<index>& curr_gr, SparseMatrix<index>& column_operations, bool store_col_ops=false, bool notify_pq=false){
+    void kernel_column_reduction(index i, pair<index>& curr_gr, MatrixBase& column_operations, bool store_col_ops=false, bool notify_pq=false){
 
         index p = this->col_last(i);
         
@@ -563,10 +555,10 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         
         pq_row.resize(this->y_grid.size());
         // This is the "slave" matrix in mpfree
-        SparseMatrix<index> col_operations = SparseMatrix<index>(this->get_num_cols(), this->get_num_cols(), "Identity");
+        MatrixBase col_operations = MatrixBase(this->get_num_cols(), this->get_num_cols(), "Identity");
 
         std::vector<r2degree> new_degrees; // Basis for the free module which is part of the kernel
-        std::vector<std::vector<index>> new_cols; // representing the matrix given by the kernel
+        typename MatrixBase::storage_type new_cols; // representing the matrix given by the kernel
         
         std::vector<bool> indices_in_kernel(this->get_num_cols(), false);
 
@@ -611,15 +603,15 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
                     new_degrees.push_back({this->x_grid[x], this->y_grid[y]});
                     indices_in_kernel[i] = true;
                     // what is this for?
-                    this->data[i].clear();
-                    col_operations.data[i].clear();
+                    this->clear_col(i);
+                    col_operations.clear_col(i);
                 }
             }
         }
 
         // Build the resulting kernel matrix
-        R2GradedSparseMatrix<index> result(new_cols.size(), this->get_num_cols());
-        result.data = std::move(new_cols);
+        R2GradedSparseMatrix<index, MatrixBase> result(new_cols.size(), this->get_num_cols());
+        result.assign_data(std::move(new_cols));
         result.col_degrees = std::move(new_degrees);
         result.row_degrees = this->col_degrees;
     
@@ -739,11 +731,11 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
 
 }; // R2GradedSparseMatrix
 
-template<typename index>
+template<typename index, typename MatrixBase = SparseMatrix<index>>
 struct R2Sequence{
 
-    R2GradedSparseMatrix<index> first;
-    R2GradedSparseMatrix<index> second;
+    R2GradedSparseMatrix<index, MatrixBase> first;
+    R2GradedSparseMatrix<index, MatrixBase> second;
 
     private:
     static std::pair<r2degree, std::vector<index>> parse_line(const std::string& line,  const bool& hasEntries = false) {
@@ -805,13 +797,13 @@ struct R2Sequence{
         this->first.set_num_cols(b);
         this->first.row_degrees.reserve(c);
         this->first.col_degrees.reserve(b);
-        this->first.data.reserve(b);
+        this->first.reserve_data(b);
 
         this->second.set_num_rows(b);
         this->second.set_num_cols(a);
         this->second.row_degrees.reserve(b);
         this->second.col_degrees.reserve(a);
-        this->second.data.reserve(a);
+        this->second.reserve_data(a);
 
         index rel_counter = 0;
 
@@ -825,13 +817,13 @@ struct R2Sequence{
             if (rel_counter < a) {
                 line_data = parse_line(line, true);
                 this->second.col_degrees.push_back(line_data.first);
-                this->second.data.push_back(line_data.second);
+                this->second.append_col(std::move(line_data.second));
                 rel_counter++;
             } else if (rel_counter < a + b) {
                 line_data = parse_line(line, true);
                 this->second.row_degrees.push_back(line_data.first);
                 this->first.col_degrees.push_back(line_data.first);
-                this->first.data.push_back(line_data.second);
+                this->first.append_col(std::move(line_data.second));
                 rel_counter++;
             } else {
                 line_data = parse_line(line, false);
@@ -844,12 +836,12 @@ struct R2Sequence{
     public:
     R2Sequence() {}
 
-    R2Sequence(const R2GradedSparseMatrix<index>& first, const R2GradedSparseMatrix<index>& second) 
+    R2Sequence(const R2GradedSparseMatrix<index, MatrixBase>& first, const R2GradedSparseMatrix<index, MatrixBase>& second)
         : first(first), second(second) {}
     
     R2Sequence(const std::string& filepath) {
-        first = R2GradedSparseMatrix<index>();
-        second = R2GradedSparseMatrix<index>();
+        first = R2GradedSparseMatrix<index, MatrixBase>();
+        second = R2GradedSparseMatrix<index, MatrixBase>();
         std::ifstream file_stream(filepath);
         if (!file_stream.is_open()) {
             std::cerr << "Error: Could not open file " << filepath << std::endl;
@@ -860,12 +852,12 @@ struct R2Sequence{
     }
 
     R2Sequence(std::istream& file_stream) {
-        first = R2GradedSparseMatrix<index>();
-        second = R2GradedSparseMatrix<index>();
+        first = R2GradedSparseMatrix<index, MatrixBase>();
+        second = R2GradedSparseMatrix<index, MatrixBase>();
         parse_stream(file_stream);
     }
 
-    R2GradedSparseMatrix<index> get_homology() {
+    R2GradedSparseMatrix<index, MatrixBase> get_homology() {
         auto K = first.graded_kernel();
         second.sort_columns_lexicographically();
         second.sort_rows_lexicographically();
@@ -876,33 +868,33 @@ struct R2Sequence{
 };
 
 
-template<typename index>
+template<typename index, typename MatrixBase = SparseMatrix<index>>
 struct R2Resolution {
 
-    R2GradedSparseMatrix<index> d1;
-    R2GradedSparseMatrix<index> d2;
+    R2GradedSparseMatrix<index, MatrixBase> d1;
+    R2GradedSparseMatrix<index, MatrixBase> d2;
 
     R2Resolution() {}
 
-    R2Resolution(const R2GradedSparseMatrix<index>& d1, const R2GradedSparseMatrix<index>& d2) 
+    R2Resolution(const R2GradedSparseMatrix<index, MatrixBase>& d1, const R2GradedSparseMatrix<index, MatrixBase>& d2)
         : d1(d1), d2(d2) {}
     
         //TO-DO: Test this:
-    R2Resolution(const R2GradedSparseMatrix<index>& d1, const bool& is_minimal = false) 
+    R2Resolution(const R2GradedSparseMatrix<index, MatrixBase>& d1, const bool& is_minimal = false)
         : d1(d1) {
             // Kernel computation is easy if the presentation is minimal, sorted, and has one generator.
             if(is_minimal && d1.get_num_rows() == 1 && d1.get_num_cols() > 0 &&
                d1.are_columns_sorted_lexicographically()){
                 // A minimal one-generator presentation has incomparable
                 // relation grades; adjacent lex-ordered joins generate its kernel.
-                d2 = R2GradedSparseMatrix<index>(d1.get_num_cols()-1, d1.get_num_cols());
-                d2.data = vec< vec<index> >(d1.get_num_cols()-1);
+                d2 = R2GradedSparseMatrix<index, MatrixBase>(d1.get_num_cols()-1, d1.get_num_cols());
+                d2.resize_data(d1.get_num_cols()-1);
                 d2.row_degrees = d1.col_degrees;
                 d2.col_degrees = vec<r2degree>(d1.get_num_cols()-1);
                 r2degree last_degree = d1.col_degrees[0];
                 for(index i = 1; i < d1.get_num_cols(); i++){
                     r2degree join = Degree_traits<r2degree>::join(last_degree, d1.col_degrees[i]);
-                    d2.data[i - 1] = {i -1, i};
+                    d2.set_col(i - 1, {i - 1, i});
                     d2.col_degrees[i - 1] = join;
                     last_degree = d1.col_degrees[i];
                 }

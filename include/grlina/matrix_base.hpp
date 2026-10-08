@@ -30,6 +30,7 @@
 #include <cassert>
 #include <regex>
 #include <grlina/column_types.hpp>
+#include <grlina/matrix_storage.hpp>
 
 namespace graded_linalg {
 
@@ -121,13 +122,16 @@ std::pair<index, index> delinearise_position_reverse(index& k, index& ncols, ind
 }
 
 // Interface for a matrix
-template<typename COLUMN, typename index, typename DERIVED>
+template<typename COLUMN, typename index, typename DERIVED, typename Storage = vec<COLUMN>>
 class MatrixUtil{
 
     using CT = Column_traits<COLUMN, index>;
+    using ST = MatrixStorageTraits<COLUMN, index, Storage>;
 
     public:
-    vec<COLUMN> data; //stores the columns of the matrix
+    using storage_type = Storage;
+    using column_type = COLUMN;
+    Storage data; // stores the columns of the matrix
     std::unordered_map<index,index> pivots; // for the reduction algorithm
     index get_num_rows() const {return num_rows;};
     index get_num_cols() const {return num_cols;};
@@ -143,11 +147,11 @@ class MatrixUtil{
     
     MatrixUtil() {};
 
-    MatrixUtil(index m) : num_cols(m), data(vec<COLUMN>()) {
+    MatrixUtil(index m) : num_cols(m), data() {
         data.reserve(m);
     }
 
-    MatrixUtil(index m, index n) : num_cols(m), num_rows(n), data(vec<COLUMN>()) {
+    MatrixUtil(index m, index n) : num_cols(m), num_rows(n), data() {
         data.reserve(m);
     }
 
@@ -197,12 +201,12 @@ class MatrixUtil{
 
     }
 
-    MatrixUtil(index m, index n, const std::string& type, const index percent = -1) : num_cols(m), num_rows(n), data(vec<COLUMN>()) {
+    MatrixUtil(index m, index n, const std::string& type, const index percent = -1) : num_cols(m), num_rows(n), data() {
         data.reserve(m);
         if (type == "Identity") {
             GRLINA_ASSERT(m == n);
             for(index i = 0; i < m; i++) {
-                this->data.emplace_back( CT::get_standard_vector(i, n) );
+                this->append_col( CT::get_standard_vector(i, n) );
             }
         } else if (type == "Random") {
             float fill = percent/100.0;
@@ -211,7 +215,7 @@ class MatrixUtil{
                 std::cout << "fill rate: " << fill << std::endl;
             }
             for(index i = 0; i < m; i++) {
-                this->data.emplace_back( CT::get_random_vector(n, fill) );
+                this->append_col( CT::get_random_vector(n, fill) );
             }
         }  else {
                 // Check if the type matches "Random" followed by an integer of at most two digits
@@ -221,7 +225,7 @@ class MatrixUtil{
                 if (match.size() == 2) {
                     int fill = std::stoi(match[1].str());
                     for(index i = 0; i < m; i++) {
-                        this->data.emplace_back( CT::get_random_vector(n, static_cast<float>(fill)/100 ) );
+                        this->append_col( CT::get_random_vector(n, static_cast<float>(fill)/100 ) );
                     }
                 } else {
                     throw std::invalid_argument("Invalid format for Random with an integer: " + type);
@@ -232,20 +236,15 @@ class MatrixUtil{
         }  
     }
 
-    MatrixUtil(index n, vec<index> indicator) : num_cols(indicator.size()), num_rows(n), data(vec<COLUMN>()) {
+    MatrixUtil(index n, vec<index> indicator) : num_cols(indicator.size()), num_rows(n), data() {
         data.reserve(indicator.size());
         for(index i : indicator) {
-            this->data.emplace_back( CT::get_standard_vector(i, n) );
+            this->append_col( CT::get_standard_vector(i, n) );
         }
     }
 
 
-    // Destructor
-    ~MatrixUtil() {
-        // std::cout << "MatrixUtil Destructor Called on the instance of size" << get_num_cols() << " x "<< get_num_rows() << std::endl;
-        data.clear();
-        // Do I need to do something else here?
-    }
+    ~MatrixUtil() = default;
     
     protected:
     /**
@@ -253,7 +252,7 @@ class MatrixUtil{
      * 
      */
     void set_entry(index i, index j){
-        CT::set_entry(data[i], j);
+        ST::set_entry(data, i, j);
     }
 
     /**
@@ -268,11 +267,7 @@ class MatrixUtil{
         GRLINA_ASSERT(threshold <= this->get_num_cols());
         GRLINA_ASSERT(threshold >= 0);
 
-        if(from_end){
-            data.erase(data.end() - threshold, data.end());
-        } else {
-            data.erase(data.begin() + threshold, data.end());
-        }
+        resize_data(from_end ? data.size() - threshold : threshold);
         this->compute_num_cols();
     };
 
@@ -298,33 +293,61 @@ class MatrixUtil{
      * @param j 
      */
     void swap_cols(index i, index j) {
-        std::swap(data[i], data[j]);
+        ST::swap_cols(data, i, j);
     };
 
 
-    COLUMN get_col(index i){
-        return data[i];
+    decltype(auto) column(index i) const { return ST::column(data, i); }
+    COLUMN get_col(index i) const { return ST::get_col(data, i); }
+    COLUMN take_col(index i) { return ST::take_col(data, i); }
+    void set_col(index i, const COLUMN& col) { ST::set_col(data, i, col); }
+    void set_col(index i, COLUMN&& col) { ST::set_col(data, i, std::move(col)); }
+    void append_col(const COLUMN& col) { ST::append_col(data, col); }
+    void append_col(COLUMN&& col) { ST::append_col(data, std::move(col)); }
+    void clear_col(index i) { ST::clear_col(data, i); }
+    void append_entry(index i, index entry) { ST::append_entry(data, i, entry); }
+    void pop_entry(index i) { ST::pop_entry(data, i); }
+    void resize_data(std::size_t n) { data.resize(n); }
+    void reserve_data(std::size_t n) { data.reserve(n); }
+    void clear_data() { data.clear(); }
+    template<class Input> void assign_data(Input&& input) {
+        data = Storage(std::forward<Input>(input));
     }
+    template<class Function> void edit_col(index i, Function&& f) {
+        ST::edit_col(data, i, std::forward<Function>(f));
+    }
+    template<class Function> void transform_columns(Function&& f, bool parallel = false) {
+        ST::transform_columns(data, std::forward<Function>(f), parallel);
+    }
+    void erase_columns(const vec<index>& indices) { ST::erase_columns(data, indices); }
+    void permute_columns(const vec<index>& new_to_old) { ST::permute_columns(data, new_to_old); }
+    template<class SourceStorage> void assign_transpose(const SourceStorage& source, index count) {
+        ST::assign_transpose(data, source, count);
+    }
+    void add_column_to(index i, COLUMN& scratch) const { ST::add_column_to(data, i, scratch); }
 
     /**
      * @brief Adds column i to column j. 
      */
     void col_op(index i, index j){
-        CT::add_to(data[i], data[j]);
+        ST::col_op(data, i, j);
     };
 
     /**
      * @brief Adds v to column i.
      */
-    void add_to_col(index i, COLUMN v){
-        CT::add_to(v, data[i]);
+    void add_to_col(index i, const COLUMN& v) { ST::add_to_col(data, i, v); }
+
+    template<class Range>
+    void add_to_col(index i, const Range& v){
+        ST::add_to_col(data, i, v);
     }
 
     /**
      * @brief Returns the entry at col i and row j 
      */
-    bool is_nonzero_entry(index i, index j){
-        return CT::is_nonzero_at(data[i] , j);   
+    bool is_nonzero_entry(index i, index j) const {
+        return ST::is_nonzero_entry(data, i, j);
     };
 
     
@@ -335,7 +358,7 @@ class MatrixUtil{
      * @return index 
      */
     index col_last(index i) const {
-        return CT::last_entry_index(data[i]);
+        return ST::col_last(data, i);
     };
     
     public:
@@ -372,7 +395,7 @@ class MatrixUtil{
      */
     bool is_zero(){
         for(auto i = 0; i < this->num_cols; i++){
-            if(!CT::is_zero(this->data[i])){
+            if(!ST::is_zero(this->data, i)){
                 return false;
             }
         }
@@ -387,7 +410,7 @@ class MatrixUtil{
     vec<index> where_is_nonzero(){
         vec<index> result;
         for(auto i = 0; i < this->num_cols; i++){
-            if(!CT::is_zero(this->data[i])){
+            if(!ST::is_zero(this->data, i)){
                 result.push_back(i);
             }
         }
@@ -402,7 +425,7 @@ class MatrixUtil{
      */
     bool is_zero(bitset& col_indices){
         for(auto i = col_indices.find_first(); i != bitset::npos ; i = col_indices.find_next(i)){
-            if(!CT::is_zero(this->data[i])){
+            if(!ST::is_zero(this->data, i)){
                 return false;
             }
         }
@@ -430,11 +453,11 @@ class MatrixUtil{
     }
    
     bool is_zero(index i){
-        return CT::is_zero(this->data[i]);
+        return ST::is_zero(this->data, i);
     }
     
     bool is_nonzero(index i){
-        return !CT::is_zero(this->data[i]);
+        return !ST::is_zero(this->data, i);
     }
 
     protected:
@@ -497,7 +520,7 @@ class MatrixUtil{
                 }
             }
             if (p == -1 && delete_zero_columns){
-                std::swap(data[j], data[num_cols-1]);
+                swap_cols(j, num_cols-1);
                 data.pop_back();
                 num_cols--;
                 j--;
@@ -530,7 +553,7 @@ class MatrixUtil{
                 }
             }
             if (p < threshold && delete_zero_columns){
-                std::swap(data[j], data[num_cols-1]);
+                swap_cols(j, num_cols-1);
                 data.pop_back();
                 num_cols--;
                 j--;
@@ -685,7 +708,7 @@ class MatrixUtil{
             return false;
         }
         for(index i = 0; i< num_cols; i++){
-            if( !CT::is_equal(data[i], other.data[i]) ){
+            if( !ST::columns_equal(data, i, other.data, i) ){
                 if(output){
                     std::cout << "Column " << i << " does not match.";
                     std::cout << "This: " << data[i] << "\n Other: " << other.data[i] << std::endl;
@@ -707,7 +730,7 @@ class MatrixUtil{
     index equals_with_entry_check(MatrixUtil& other, bool output = false){
         
         for(index i = 0; i< num_cols; i++){
-            if( !CT::is_equal (data[i], other.data[i]) ){
+            if( !ST::columns_equal(data, i, other.data, i) ){
                 if(output){
                     std::cout << "Column " << i << " does not match.";
                 }
@@ -730,8 +753,9 @@ class MatrixUtil{
             GRLINA_ASSERT(i < this->num_cols);
         }
         DERIVED result(colIndices.size(), this->num_rows);
+        result.resize_data(colIndices.size());
         for(index i = 0; i < colIndices.size(); i++){
-            result.data[i] = this->data[colIndices[i]];
+            result.set_col(i, this->get_col(colIndices[i]));
         }
         return result;
     }
@@ -746,10 +770,11 @@ class MatrixUtil{
     DERIVED restricted_domain_copy(bitset& colIndices, index start = 0){
         GRLINA_ASSERT(colIndices.size() + start <= this->num_cols);
         DERIVED result(colIndices.count(), this->num_rows);
+        result.resize_data(colIndices.count());
         index col = 0;
         for(index i = 0; i < colIndices.size(); i++){
             if(colIndices[i]){
-                result.data[col] = this->data[i+start];
+                result.set_col(col, this->get_col(i+start));
                 col++;
             }
         }
@@ -835,9 +860,9 @@ class MatrixUtil{
             while(p >= 0){
                 if(this->pivots.count(p)){
                     index j = this->pivots[p];
-                    CT::add_to(this->data[j], N.data[i]);
+                    N.add_to_col(i, this->column(j));
                     if (get_ops){
-                        CT::add_to(pre_performed_ops.data[j], solution.data[i]);
+                        solution.add_to_col(i, pre_performed_ops.column(j));
                     }
                 } else {
                     return false;
@@ -880,10 +905,10 @@ class MatrixUtil{
         while(p >= 0 || (!complete_reduce)) {
             if( this->pivots.count(p) ) {
                 index i = pivots[p];
-                CT::add_to(this->data[i], c);
+                this->add_column_to(i, c);
                 if(get_ops){
                     if(reduce_S){
-                        CT::add_to(pre_performed_ops.data[i], solution);
+                        pre_performed_ops.add_column_to(i, solution);
                     } else {
                         CT::set_entry(solution, i);
                     }
@@ -1042,7 +1067,7 @@ class MatrixUtil{
     void append_matrix(const DERIVED& other) {
         GRLINA_ASSERT(this->num_rows == other.num_rows);
         for(index i = 0; i < other.num_cols; i++) {
-            this->data.push_back(other.data[i]);
+            this->append_col(other.get_col(i));
         }
         this->num_cols += other.num_cols;
     }
@@ -1112,10 +1137,9 @@ class MatrixUtil{
      */
     void reorder_columns(vec<index> permutation){
         GRLINA_ASSERT(permutation.size() == this->num_cols);
-        DERIVED copy(static_cast<DERIVED&>(*this));
-        for(index i = 0; i < this->num_cols; i++){
-            this->data[permutation[i]] = copy.data[i];
-        }
+        vec<index> new_to_old(permutation.size());
+        for(index i = 0; i < this->num_cols; i++) new_to_old[permutation[i]] = i;
+        permute_columns(new_to_old);
     }
 
     /**
@@ -1230,11 +1254,13 @@ class MatrixUtil{
 
         // Create a new DERIVED object to store the result
         DERIVED result(this->num_cols, this->num_rows);
+        result.resize_data(this->num_cols);
 
         // Add the columns of the two matrices
         for (index i = 0; i < this->num_cols; ++i) {
-            result.data[i] = this->data[i];
-            this->CT::add_to(other.data[i], result.data[i]);
+            auto col = this->get_col(i);
+            other.add_column_to(i, col);
+            result.set_col(i, std::move(col));
         }
 
         return result;
@@ -1252,7 +1278,7 @@ class MatrixUtil{
 
         // Add the columns of the two matrices
         for (index i = 0; i < this->num_cols; ++i) {
-            CT::add_to(this->data[i], other.data[i]);
+            other.add_to_col(i, this->column(i));
         }
     }
 
@@ -1411,7 +1437,7 @@ void simultaneous_align(std::unordered_map<index, DERIVED>& N_map, vec<index>& a
             non_zero = non_zero_cols.find_next(non_zero);
         } else {
             for(index b : all_blocks){
-                std::swap( N_map[b].data[col], N_map[b].data[non_zero]);
+                N_map[b].swap_cols(col, non_zero);
                 non_zero = non_zero_cols.find_next(non_zero);
             }
         }

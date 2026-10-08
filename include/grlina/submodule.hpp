@@ -206,7 +206,7 @@ public:
                 // removes its dependency without shifting any indices. Row r
                 // can never reappear under later column additions, so physical
                 // syzygy row/column deletion is unnecessary.
-                syzygies.data[c].clear();
+                syzygies.clear_col(c);
                 redundant_generators.push_back(r - relations);
             }
             std::sort(redundant_generators.begin(), redundant_generators.end());

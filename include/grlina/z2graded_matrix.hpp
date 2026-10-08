@@ -7,13 +7,13 @@ namespace graded_linalg {
 
 using z2degree = CoordinateDegree<long long, 2>;
 
-template <typename index>
+template <typename index, typename MatrixBase = SparseMatrix<index>>
 struct Z2GradedSparseMatrix
-    : CoordinateGradedSparseMatrix<long long, 2, index, Z2GradedSparseMatrix<index>> {
-    using Base = CoordinateGradedSparseMatrix<long long, 2, index, Z2GradedSparseMatrix<index>>;
+    : CoordinateGradedSparseMatrix<long long, 2, index, Z2GradedSparseMatrix<index, MatrixBase>, MatrixBase> {
+    using Base = CoordinateGradedSparseMatrix<long long, 2, index, Z2GradedSparseMatrix<index, MatrixBase>, MatrixBase>;
     using Base::Base;
     Z2GradedSparseMatrix() = default;
-    explicit Z2GradedSparseMatrix(SparseMatrix<index>&& other) : Base(std::move(other)) {}
+    explicit Z2GradedSparseMatrix(MatrixBase&& other) : Base(std::move(other)) {}
 };
 
 } // namespace graded_linalg

@@ -7,6 +7,83 @@ The compatibility-preserving persistence-module API is documented in
 matrix APIs remain available; new clients should start with
 `#include <grlina/modules.hpp>` and `R2Module<index>`.
 
+### Optional CSC matrix storage
+
+Include `<grlina/csc_matrix.hpp>` to select contiguous compressed sparse columns:
+
+```cpp
+#include <grlina/csc_matrix.hpp>
+#include <grlina/modules.hpp>
+
+using namespace graded_linalg;
+using PackedMatrix = R2GradedSparseMatrix<int, CSCMatrix<int>>;
+using PackedModule = R2Module<int, CSCMatrix<int>>;
+
+PackedMatrix presentation("presentation.scc");
+const PackedModule module(presentation);
+auto copy = presentation;
+copy.shift({1, 2}); // Changes degrees; the entry buffers remain shared.
+copy.col_op(0, 1);  // Supported, but warns about CSC mutation cost.
+```
+
+`SparseMatrix<int>`, `R2GradedSparseMatrix<int>`, and `R2Module<int>` keep their
+vector-of-vectors storage. The added template argument selects storage at compile
+time; `const` controls mutability and does not choose the representation. The same
+option is available for the other coordinate-graded matrices and module aliases.
+Their shared algorithms dispatch to storage primitives, without virtual calls or
+a runtime variant. All CSC storage and diagnostics live in `csc_storage.hpp` and
+`csc_matrix.hpp`; existing headers contain only generic storage hooks.
+
+CSC uses a contiguous row-index array and a `std::size_t` column-offset array.
+Matrix copies share these two buffers; a write detaches them first. Degree arrays,
+row caches, and algorithm workspaces retain their ordinary copy semantics, so
+copying an entire graded matrix or module is not necessarily constant-time.
+Changing a column's length can move the remaining entries and update all later
+offsets. Same-length edits avoid those shifts, but still detach shared buffers.
+Bulk transforms rebuild the packed buffers once. No column operation implicitly
+converts the entire matrix to vector storage.
+
+Both warning channels are enabled by default:
+
+- **Compile time:** expensive CSC primitives carry a C++17 `[[deprecated]]`
+  diagnostic labelled “CSC performance warning”. The operation remains supported;
+  the attribute communicates cost, not planned removal. Higher-level algorithms
+  that instantiate these primitives also warn, even if a runtime branch does not
+  eventually execute them. Read-only module construction can also warn because
+  its virtual methods instantiate mutation paths. Compilers treating deprecation
+  warnings as errors will reject these instantiations until the warning is
+  acknowledged.
+- **Runtime:** the first expensive edit or detach of nonempty shared buffers emits
+  one message to `std::cerr`, across CSC index types and translation units.
+
+Define `GRLINA_CSC_COMPILE_WARNINGS=0` and/or
+`GRLINA_CSC_RUNTIME_WARNINGS=0` before including the CSC header to acknowledge the
+cost and disable either channel independently. Keep these definitions consistent
+across translation units. Plain `CSCMatrix` construction, reads, and copies do not
+warn. Graded/module loading can produce the conservative compile diagnostics
+described above; disable compile warnings and retain runtime warnings if this is
+too noisy for a read-only client.
+
+`matrix.column(i)` and `matrix.data[i]` provide borrowed, read-only columns.
+Mutation may invalidate these views. `matrix.get_col(i)` returns an independent
+vector; use `set_col`, `append_entry`, or `col_op` to edit the matrix. Existing
+vector-backed matrices still expose their mutable `data` as before.
+
+SCC readers append directly into the selected storage. To adopt buffers received
+from another program, move them into `CSCStorage` (offsets start at zero and end at
+the entry count), then assign the storage:
+
+```cpp
+std::vector<std::size_t> offsets{0, 2, 2, 3};
+std::vector<int> entries{0, 2, 1};
+CSCMatrix<int> matrix(3, 3); // columns, rows
+matrix.assign_data(CSCStorage<int>(std::move(offsets), std::move(entries)));
+```
+
+As with the existing low-level `data` API, storage primitives do not update matrix
+dimensions, grades, or algorithm caches. Maintain these when assembling a matrix;
+after appending columns, `compute_num_cols()` updates the column count.
+
 A C++17 header-only library for computational multiparameter persistent homology. It provides flexible, efficient data structures and algorithms for working with **presentations of persistence modules** — graded linear maps between free modules over arbitrary posets — with a focus on the two-parameter case over ℝ².
 
 This library forms the algebraic backbone of the author's PhD research and is used directly by three companion projects:

@@ -42,7 +42,7 @@ template <typename D> struct TraitLinearOrder {
 template<typename index>
 using Hom_space_temp = std::pair< SparseMatrix<index>, vec<std::pair<index,index>> >;
 
-template <typename D, typename index, typename DERIVED>
+template <typename D, typename index, typename DERIVED, typename MatrixBase = SparseMatrix<index>>
 #if defined(__cpp_concepts) && __cpp_concepts >= 201907L
     requires Degree<D>
 #endif
@@ -55,10 +55,11 @@ struct is_graded_sparse_matrix : std::false_type {};
 template <typename Matrix>
 struct is_graded_sparse_matrix<Matrix, std::void_t<typename Matrix::degree_type,
                                                    typename Matrix::index_type,
+                                                   typename Matrix::sparse_matrix_type,
                                                    std::enable_if_t<is_degree_v<typename Matrix::degree_type>>>>
     : std::is_base_of<GradedSparseMatrix<typename Matrix::degree_type,
                                          typename Matrix::index_type,
-                                         Matrix>, Matrix> {};
+                                         Matrix, typename Matrix::sparse_matrix_type>, Matrix> {};
 
 template <typename Matrix>
 inline constexpr bool is_graded_sparse_matrix_v = is_graded_sparse_matrix<Matrix>::value;
@@ -76,11 +77,11 @@ struct has_matrix_graded_kernel<Matrix, std::void_t<decltype(std::declval<Matrix
  * @tparam D
  * @tparam index
  */
-template <typename D, typename index, typename DERIVED>
+template <typename D, typename index, typename DERIVED, typename MatrixBase>
 #if defined(__cpp_concepts) && __cpp_concepts >= 201907L
     requires Degree<D>
 #endif
-struct GradedSparseMatrix : public SparseMatrix<index> {
+struct GradedSparseMatrix : public MatrixBase {
 
     static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
 
@@ -91,6 +92,7 @@ struct GradedSparseMatrix : public SparseMatrix<index> {
     using degree_type = D;
     using index_type = index;
     using derived_type = DERIVED;
+    using sparse_matrix_type = MatrixBase;
 
     vec<D> col_degrees;
     vec<D> row_degrees;
@@ -146,13 +148,13 @@ public:
 
 
     protected:
-        GradedSparseMatrix(SparseMatrix<index>&& other) : SparseMatrix<index>(std::move(other)) {
+        GradedSparseMatrix(MatrixBase&& other) : MatrixBase(std::move(other)) {
             this->col_degrees = vec<D>(other.get_num_cols());
             this->row_degrees = vec<D>(other.get_num_rows());
         }
 
         GradedSparseMatrix& assign(const GradedSparseMatrix& other) {
-            SparseMatrix<index>::assign(other);
+            MatrixBase::assign(other);
             this->col_degrees = other.col_degrees;
             this->row_degrees = other.row_degrees;
             this->col_batches = other.col_batches;
@@ -163,7 +165,7 @@ public:
         }
 
         GradedSparseMatrix& assign(GradedSparseMatrix&& other) {
-            SparseMatrix<index>::assign(std::move(other));
+            MatrixBase::assign(std::move(other));
             this->col_degrees = std::move(other.col_degrees);
             this->row_degrees = std::move(other.row_degrees);
             this->col_batches = std::move(other.col_batches);
@@ -188,41 +190,41 @@ public:
         return *this;
     }
 
-    GradedSparseMatrix() : SparseMatrix<index>() {};
+    GradedSparseMatrix() : MatrixBase() {};
 
-    GradedSparseMatrix(const GradedSparseMatrix& other) : SparseMatrix<index>(other), col_degrees(other.col_degrees), row_degrees(other.row_degrees), compatibly_sorted(this, other.compatibly_sorted), compatible_order_(other.compatible_order_), col_batches(other.col_batches), k_max(other.k_max) {}
+    GradedSparseMatrix(const GradedSparseMatrix& other) : MatrixBase(other), col_degrees(other.col_degrees), row_degrees(other.row_degrees), compatibly_sorted(this, other.compatibly_sorted), compatible_order_(other.compatible_order_), col_batches(other.col_batches), k_max(other.k_max) {}
 
-    GradedSparseMatrix(GradedSparseMatrix&& other) : SparseMatrix<index>(std::move(other)), col_degrees(std::move(other.col_degrees)), row_degrees(std::move(other.row_degrees)), compatibly_sorted(this, other.compatibly_sorted), compatible_order_(std::move(other.compatible_order_)), col_batches(std::move(other.col_batches)), k_max(other.k_max) {}
+    GradedSparseMatrix(GradedSparseMatrix&& other) : MatrixBase(std::move(other)), col_degrees(std::move(other.col_degrees)), row_degrees(std::move(other.row_degrees)), compatibly_sorted(this, other.compatibly_sorted), compatible_order_(std::move(other.compatible_order_)), col_batches(std::move(other.col_batches)), k_max(other.k_max) {}
 
-    GradedSparseMatrix(index m, index n) : SparseMatrix<index>(m, n), col_degrees(vec<D>(m)), row_degrees(vec<D>(n)) {}
+    GradedSparseMatrix(index m, index n) : MatrixBase(m, n), col_degrees(vec<D>(m)), row_degrees(vec<D>(n)) {}
 
-    GradedSparseMatrix(index m, index n, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index>(m, n), col_degrees(c_degrees), row_degrees(r_degrees) {
+    GradedSparseMatrix(index m, index n, vec<D> c_degrees, vec<D> r_degrees) : MatrixBase(m, n), col_degrees(c_degrees), row_degrees(r_degrees) {
         GRLINA_ASSERT(col_degrees.size() == m);
         GRLINA_ASSERT(row_degrees.size() == n);
         refresh_compatible_sorted();
     }
 
-    GradedSparseMatrix(index m, index n, const array<index>& data, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index>(m, n, data), col_degrees(c_degrees), row_degrees(r_degrees) {
+    GradedSparseMatrix(index m, index n, const array<index>& data, vec<D> c_degrees, vec<D> r_degrees) : MatrixBase(m, n, data), col_degrees(c_degrees), row_degrees(r_degrees) {
         GRLINA_ASSERT(col_degrees.size() == m);
         GRLINA_ASSERT(row_degrees.size() == n);
         refresh_compatible_sorted();
     }
 
     GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false, bool compute_batches = false)
-        : SparseMatrix<index>() {
+        : MatrixBase() {
         this->parse_stream(file_stream, lex_sort, compute_batches);
     }
 
     GradedSparseMatrix(const std::string& filepath, bool lex_sort = false, bool compute_batches = false)
-        : SparseMatrix<index>() {
+        : MatrixBase() {
         std::ifstream file = create_ifstream(filepath);
         this->parse_stream(file, lex_sort, compute_batches);
     }
 
     GradedSparseMatrix(index n, vec<index> indicator)
-        : SparseMatrix<index>(n, indicator), col_degrees(vec<D>(indicator.size())), row_degrees(vec<D>(n)) {}
+        : MatrixBase(n, indicator), col_degrees(vec<D>(indicator.size())), row_degrees(vec<D>(n)) {}
     GradedSparseMatrix(index cols, index rows, std::string type, const index percent = -1)
-        : SparseMatrix<index>(cols, rows, type, percent), col_degrees(vec<D>(cols)), row_degrees(vec<D>(rows)) {}
+        : MatrixBase(cols, rows, type, percent), col_degrees(vec<D>(cols)), row_degrees(vec<D>(rows)) {}
 
     template <typename Compare>
     bool degrees_are_sorted(Compare compare) const {
@@ -521,7 +523,7 @@ public:
 
         this->col_degrees.reserve(num_rel);
         this->row_degrees.reserve(num_gen);
-        this->data.reserve(num_gen);
+        this->reserve_data(num_rel);
 
         index rel_counter = 0;
 
@@ -563,7 +565,7 @@ public:
                     this->col_batches[j].push_back(rel_counter);
                 }
                 this->col_degrees.push_back(line_data.first);
-                this->data.push_back(line_data.second);
+                this->append_col(std::move(line_data.second));
                 rel_counter++;
             } else {
                 line_data = parse_line(line, false);
@@ -605,7 +607,7 @@ public:
 
     void cull_columns(const index& threshold, bool from_end) {
 
-        SparseMatrix<index>::cull_columns(threshold, from_end);
+        MatrixBase::cull_columns(threshold, from_end);
         this->invalidate_cached_rows();
         this->row_degrees.resize(this->num_rows);
         GRLINA_DEBUG_CHECK(if (this->compatibly_sorted &&
@@ -653,7 +655,7 @@ public:
      * @param shifted if true then this reshifts to normalise the entries
      * @return std::pair<SparseMatrix, vec<index>>
      */
-    std::pair<SparseMatrix<index>, vec<index>> map_at_degree_pair(D d, bool shifted = true) const {
+    std::pair<MatrixBase, vec<index>> map_at_degree_pair(D d, bool shifted = true) const {
         vec<index> selectedRowDegrees;
 
         // GRLINA_ASSERT(row_degrees.size() == this->get_num_rows());
@@ -664,7 +666,7 @@ public:
             }
         }
         index new_row = selectedRowDegrees.size();
-        SparseMatrix<index> result;
+        MatrixBase result;
         result.set_num_rows(new_row);
         if(new_row == 0){
             result.set_num_cols(0);
@@ -672,14 +674,14 @@ public:
         }
         for(index i = 0; i < this->num_cols; i++) {
             if( Degree_traits<D>::smaller_equal(col_degrees[i], d) ) {
-                result.data.emplace_back(this->data[i]);
+                result.append_col(this->get_col(i));
             }
         }
 
         result.compute_num_cols();
 
         if(shifted){
-            transform_matrix(result.data, shiftIndicesMap(selectedRowDegrees), true);
+            result.transform_data(shiftIndicesMap(selectedRowDegrees));
         }
 
         return std::move(std::make_pair(result, selectedRowDegrees));
@@ -691,7 +693,7 @@ public:
      * @param d
      * @return std::pair<SparseMatrix, vec<index>>
      */
-    SparseMatrix<index> map_at_degree(D d, vec<index>& local_admissible_columns) const  {
+    MatrixBase map_at_degree(D d, vec<index>& local_admissible_columns) const  {
         // local_data = std::make_shared<Sparse_Matrix>(Sparse_Matrix(0,0));
         for(index i = 0; i < this->num_cols; i++){
             if(is_admissible_column_operation(i, d)){
@@ -937,7 +939,7 @@ public:
      * @param indices
      */
     void delete_columns(vec<index>& indices) {
-        SparseMatrix<index>::delete_columns(indices);
+        MatrixBase::delete_columns(indices);
         vec_deletion(col_degrees, indices);
         this->invalidate_cached_rows();
     }
@@ -948,7 +950,7 @@ public:
      * @param indices
      */
     void delete_rows(vec<index>& indices) {
-        SparseMatrix<index>::delete_rows(indices);
+        MatrixBase::delete_rows(indices);
         vec_deletion(row_degrees, indices);
         this->invalidate_cached_rows();
     }
@@ -968,11 +970,7 @@ public:
     void sort_columns(Compare compare) {
         GRLINA_DEBUG_CHECK(require_linear_extension(compare));
         vec<index> permutation = sort_and_get_permutation<D, index>(this->col_degrees, compare);
-        array<index> new_data(this->data.size());
-        for(index i = 0; i < static_cast<index>(this->data.size()); i++) {
-            new_data[i] = std::move(this->data[permutation[i]]);
-        }
-        this->data = std::move(new_data);
+        this->permute_columns(permutation);
         this->invalidate_cached_rows();
         compatible_order_ = compare;
         compatibly_sorted = std::is_sorted(row_degrees.begin(), row_degrees.end(), compare);
@@ -999,10 +997,7 @@ public:
     void sort_compatibly(Compare compare) {
         GRLINA_DEBUG_CHECK(require_linear_extension(compare));
         auto columns = sort_and_get_permutation<D, index>(col_degrees, compare);
-        array<index> sorted_data(this->data.size());
-        for (index i = 0; i < this->num_cols; ++i)
-            sorted_data[i] = std::move(this->data[columns[i]]);
-        this->data = std::move(sorted_data);
+        this->permute_columns(columns);
         auto rows = sort_and_get_permutation<D, index>(row_degrees, compare);
         vec<index> old_to_new(rows.size());
         for (index i = 0; i < this->num_rows; ++i) old_to_new[rows[i]] = i;
@@ -1071,11 +1066,7 @@ public:
      */
     vec<index> sort_columns_lexicographically_with_output() {
         vec<index> permutation = sort_and_get_permutation<D, index>(this->col_degrees, Degree_traits<D>::lex_lambda());
-        array<index> new_data = array<index>(this->data.size());
-        for(index i = 0; i < this->data.size(); i++) {
-            new_data[i] = this->data[permutation[i]];
-        }
-        this->data = new_data;
+        this->permute_columns(permutation);
         this->invalidate_cached_rows();
         vec<index> reverse = vec<index>(permutation.size());
         for (int i = 0; i < permutation.size(); ++i) {
@@ -1128,7 +1119,7 @@ public:
     }
 
     DERIVED restricted_domain_copy(vec<index>& colIndices) const {
-        DERIVED result( this->SparseMatrix<index>::restricted_domain_copy(colIndices) );
+        DERIVED result( this->MatrixBase::restricted_domain_copy(colIndices) );
         result.col_degrees = vec<D>(colIndices.size());
         for(index i = 0; i < (index)colIndices.size(); i++) {
             result.col_degrees[i] = this->col_degrees[colIndices[i]];
@@ -1198,7 +1189,7 @@ public:
             if (elements) {
                 for (index j = 0; j < elements->get_num_cols(); ++j)
                     if (std::binary_search(elements->data[j].begin(), elements->data[j].end(), r))
-                        elements->add_to_col(j, this->data[c]);
+                        elements->add_to_col(j, this->get_col(c));
             }
             vec<index> columns{c}, rows{r};
             delete_columns(columns);
@@ -1387,7 +1378,7 @@ public:
     }
 
     void append_column(const vec<index>& column_data, const D& column_degree) {
-        this->data.push_back(column_data);
+        this->append_col(column_data);
         this->col_degrees.push_back(column_degree);
         this->num_cols += 1;
         this->invalidate_cached_rows();
@@ -1403,7 +1394,7 @@ public:
         GRLINA_ASSERT(this->num_rows == other.num_rows);
         GRLINA_ASSERT(this->row_degrees == other.row_degrees);
         for(index i = 0; i < other.num_cols; i++) {
-            this->data.push_back(other.data[i]);
+            this->append_col(other.get_col(i));
             this->col_degrees.push_back(other.col_degrees[i]);
         }
         this->num_cols += other.num_cols;
@@ -1414,7 +1405,7 @@ public:
     void append_move_matrix(GradedSparseMatrix&& other) {
         GRLINA_ASSERT(this->num_rows == other.num_rows);
         for(index i = 0; i < other.num_cols; i++) {
-            this->data.push_back(std::move(other.data[i]));
+            this->append_col(other.take_col(i));
             this->col_degrees.push_back(std::move(other.col_degrees[i]));
         }
         this->num_cols += other.num_cols;
@@ -1429,7 +1420,7 @@ public:
      *
      * @param Y
      */
-    void quotient_by (GradedSparseMatrix<D, index, DERIVED>& Y) {
+    void quotient_by (GradedSparseMatrix<D, index, DERIVED, MatrixBase>& Y) {
         this->append_matrix(Y);
         this->sort_compatibly();
         this->minimize();
@@ -1563,56 +1554,26 @@ public:
      * @param cs
      */
     void delete_all_but_columns(vec<index> cs){
-        this->invalidate_cached_rows();
-        auto i = cs.rbegin();
-        for(index j = this->get_num_cols() - 1; j >= 0; j--){ // caution: will not work if index is unsigned
-            if(i < cs.rend() && j == *i){
-                i++;
-            } else {
-                this->data.erase(this->data.begin() + j);
-                this->col_degrees.erase(this->col_degrees.begin() + j);
-                this->num_cols--;
-            }
+        vec<index> remove;
+        auto keep = cs.begin();
+        for (index j = 0; j < this->get_num_cols(); ++j) {
+            if (keep != cs.end() && *keep == j) ++keep;
+            else remove.push_back(j);
         }
+        this->delete_columns(remove);
     }
 
     void delete_all_but_columns_alt(vec<index> cs) {
-        this->invalidate_cached_rows();
-        decltype(this->data) new_data;
-        decltype(this->col_degrees) new_col_degrees;
-        
-        auto cs_it = cs.begin();
-        
-        for (index i = 0; i < this->get_num_cols(); ++i) {
-            // If current column index matches next column to keep
-            if (cs_it != cs.end() && i == *cs_it) {
-                new_data.push_back(this->data[i]);
-                new_col_degrees.push_back(this->col_degrees[i]);
-                ++cs_it;
-            }
-            // Otherwise skip this column (don't add to new vectors)
-        }
-        
-        this->data = std::move(new_data);
-        this->col_degrees = std::move(new_col_degrees);
-        this->num_cols = cs.size();
+        delete_all_but_columns(std::move(cs));
     }
 
     DERIVED transposed_copy() const {
-        DERIVED result;
-        result.set_num_rows(this->num_cols);
-        result.set_num_cols(this->num_rows);
+        DERIVED result(MatrixBase::transposed_copy());
         result.col_degrees = this->row_degrees;
         result.row_degrees = this->col_degrees;
-        result.data.resize(this->num_rows);
         result.compatible_order_ = this->compatible_order_;
         result.compatibly_sorted = this->compatibly_sorted;
 
-        for(index i = 0; i < this->num_cols; i++){
-            for(index j : this->data[i]){
-                result.data[j].push_back(i);
-            }
-        }
         return result;
     }
 
@@ -1676,7 +1637,7 @@ public:
 	 * @brief This function computes a quiver representation on the poset of unique degrees 
      * appearing for the columns and rows of the matrix.
 	 */
-	QuiverRepresentation<index, D> induced_quiver_rep(
+	QuiverRepresentation<index, D, MatrixBase> induced_quiver_rep(
         vec<D> vertices = vec<D>(), array<index> edges = array<index>()) {
 
         if (vertices.empty() && edges.empty()) vertices = discrete_support();
@@ -1693,7 +1654,7 @@ public:
                     !Degree_traits<D>::smaller_equal(vertices[i], vertices[j]))
                     throw std::invalid_argument("Quiver edge must follow the degree order");
 		
-        QuiverRepresentation<index, D> rep;
+        QuiverRepresentation<index, D, MatrixBase> rep;
         rep.degrees = vertices;
         for(index i = 0; i < rep.degrees.size(); i++) {
             for(index j : edges[i]){
@@ -1707,7 +1668,7 @@ public:
 		// For each degree we want to store the cokernel, 
 		// the row-indices of the generators which form its domain 
 		// and a section of the cokernel given by column indices which are mapped to a basis
-		vec< SparseMatrix<index> > pointwise_Presentations;
+		vec< MatrixBase > pointwise_Presentations;
         vec< std::pair< vec<index> , vec<index>> > pointwise_base;
 		pointwise_Presentations.reserve(num_vert);
         pointwise_base.reserve(num_vert);
@@ -1716,7 +1677,7 @@ public:
         // #pragma omp parallel for
 		for (index i = 0; i < num_vert; i++) {
 
-            SparseMatrix<index> S;
+            MatrixBase S;
             vec<index> gens;
             std::tie(S, gens) = this->map_at_degree_pair(rep.degrees[i]);
             S.column_reduction();
@@ -1752,10 +1713,10 @@ public:
 }; // GradedSparseMatrix
 
 
-template <typename D, typename index, typename DERIVED>
-DERIVED operator*(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B) {
+template <typename D, typename index, typename DERIVED, typename MatrixBase>
+DERIVED operator*(const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& A, const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& B) {
     GRLINA_ASSERT(A.col_degrees == B.row_degrees);
-    SparseMatrix<index> product = static_cast<const SparseMatrix<index>&>(A) * static_cast<const SparseMatrix<index>&>(B);
+    MatrixBase product = static_cast<const MatrixBase&>(A) * static_cast<const MatrixBase&>(B);
     DERIVED result(std::move(product));
     result.row_degrees = A.row_degrees;
     result.col_degrees = B.col_degrees;
@@ -1784,7 +1745,7 @@ DERIVED shifted_identity( vec<D>& generators, const D& epsilon) {
  * @tparam D
  * @tparam index
  */
-template <typename D, typename index, typename DERIVED>
+template <typename D, typename index, typename DERIVED, typename MatrixBase = typename DERIVED::sparse_matrix_type>
 struct Compare_by_degrees {
     static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
 
@@ -1795,7 +1756,7 @@ struct Compare_by_degrees {
      * @param b
      * @return int
      */
-    static int compare_three_way(const GradedSparseMatrix<D, index, DERIVED>& a, const GradedSparseMatrix<D, index, DERIVED>& b) {
+    static int compare_three_way(const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& a, const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& b) {
         // Compare row degrees
         for (size_t i = 0; i < std::min(a.row_degrees.size(), b.row_degrees.size()); ++i) {
             if (Degree_traits<D>::smaller(a.row_degrees[i], b.row_degrees[i])) {
@@ -1825,7 +1786,7 @@ struct Compare_by_degrees {
         return 0;
     }
 
-    bool operator()(const GradedSparseMatrix<D, index, DERIVED>& a, const GradedSparseMatrix<D, index, DERIVED>& b) const {
+    bool operator()(const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& a, const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& b) const {
         return compare_three_way(a, b) == -1;
     }
 };

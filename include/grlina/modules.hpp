@@ -23,10 +23,15 @@
 
 namespace graded_linalg {
 
-template <typename index> using R3Module = Module<R3GradedSparseMatrix<index>>;
-template <typename index> using Z2Module = Module<Z2GradedSparseMatrix<index>>;
-template <typename index> using Z3Module = Module<Z3GradedSparseMatrix<index>>;
-template <typename index> using R4Module = Module<R4GradedSparseMatrix<index>>;
-template <typename index> using Z4Module = Module<Z4GradedSparseMatrix<index>>;
+template <typename index, typename MatrixBase = SparseMatrix<index>>
+using R3Module = Module<R3GradedSparseMatrix<index, MatrixBase>>;
+template <typename index, typename MatrixBase = SparseMatrix<index>>
+using Z2Module = Module<Z2GradedSparseMatrix<index, MatrixBase>>;
+template <typename index, typename MatrixBase = SparseMatrix<index>>
+using Z3Module = Module<Z3GradedSparseMatrix<index, MatrixBase>>;
+template <typename index, typename MatrixBase = SparseMatrix<index>>
+using R4Module = Module<R4GradedSparseMatrix<index, MatrixBase>>;
+template <typename index, typename MatrixBase = SparseMatrix<index>>
+using Z4Module = Module<Z4GradedSparseMatrix<index, MatrixBase>>;
 
 } // namespace graded_linalg

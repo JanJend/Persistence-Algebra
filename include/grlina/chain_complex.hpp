@@ -211,9 +211,7 @@ public:
                 old_to_new[new_to_old[i]] = i;
             if (group > 0) {
                 auto& outgoing = differentials_[group - 1];
-                auto data = outgoing.data;
-                for (index_type i = 0; i < outgoing.get_num_cols(); ++i)
-                    outgoing.data[i] = std::move(data[new_to_old[i]]);
+                outgoing.permute_columns(new_to_old);
                 outgoing.col_degrees = degrees;
                 outgoing.invalidate_cached_rows();
                 outgoing.invalidate_compatible_sorting();
@@ -254,7 +252,7 @@ public:
                     }
                 }
                 // Row i += row r; inverse basis change: lower column r += column i.
-                const auto pivot_column = d.data[c];
+                const auto pivot_column = d.get_col(c);
                 for (index_type i : pivot_column) if (i != r) {
                     d.row_op_on_cols(r, i);
                     if (level > 0) maps[level - 1].col_op(i, r);
@@ -339,7 +337,7 @@ public:
 
         struct Group {
             std::vector<degree_type> degrees;
-            std::vector<std::vector<index_type>> columns;
+            typename Matrix::storage_type columns;
         };
         std::vector<Group> groups(ranks.size());
 
@@ -363,7 +361,7 @@ public:
             Matrix differential(ranks[i], ranks[i + 1]);
             differential.col_degrees = groups[i].degrees;
             differential.row_degrees = groups[i + 1].degrees;
-            differential.data = groups[i].columns;
+            differential.assign_data(std::move(groups[i].columns));
             differential.refresh_compatible_sorted();
             high_to_low.push_back(std::move(differential));
         }

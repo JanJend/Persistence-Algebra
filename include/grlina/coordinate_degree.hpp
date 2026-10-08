@@ -139,15 +139,16 @@ struct Degree_traits<CoordinateDegree<Scalar, Dimension>,
     }
 };
 
-template <typename Scalar, std::size_t Dimension, typename index, typename Derived>
+template <typename Scalar, std::size_t Dimension, typename index, typename Derived,
+          typename MatrixBase = SparseMatrix<index>>
 struct CoordinateGradedSparseMatrix
-    : GradedSparseMatrix<CoordinateDegree<Scalar, Dimension>, index, Derived> {
+    : GradedSparseMatrix<CoordinateDegree<Scalar, Dimension>, index, Derived, MatrixBase> {
     using degree_type = CoordinateDegree<Scalar, Dimension>;
-    using Base = GradedSparseMatrix<degree_type, index, Derived>;
+    using Base = GradedSparseMatrix<degree_type, index, Derived, MatrixBase>;
     using Base::Base;
 
     CoordinateGradedSparseMatrix() = default;
-    explicit CoordinateGradedSparseMatrix(SparseMatrix<index>&& other)
+    explicit CoordinateGradedSparseMatrix(MatrixBase&& other)
         : Base(std::move(other)) {}
 
     void sort_rows_colexicographically() {
@@ -175,10 +176,7 @@ struct CoordinateGradedSparseMatrix
     vec<index> sort_columns_colexicographically_with_output() {
         vec<index> permutation = sort_and_get_permutation<degree_type, index>(
             this->col_degrees, Degree_traits<degree_type>::colex_lambda());
-        array<index> new_data(this->data.size());
-        for (index i = 0; i < static_cast<index>(this->data.size()); ++i)
-            new_data[i] = std::move(this->data[permutation[i]]);
-        this->data = std::move(new_data);
+        this->permute_columns(permutation);
         this->invalidate_cached_rows();
         this->compatible_order_ = Degree_traits<degree_type>::colex_lambda();
         this->compatibly_sorted = std::is_sorted(this->row_degrees.begin(), this->row_degrees.end(), this->compatible_order_);

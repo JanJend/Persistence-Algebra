@@ -29,19 +29,19 @@ array<index> equidistant_grid_edges(int m, index n) {
     return result;
 }
 
-template <typename index, typename D>
+template <typename index, typename D, typename Matrix = SparseMatrix<index>>
 struct QuiverRepresentation {
     static_assert(is_degree_v<D>, "D must implement the Degree_traits interface");
 	vec<D> degrees;
     vec<index> dimensionVector;
 	edge_list<index> edges;
-	vec<SparseMatrix<index>> matrices;
+	vec<Matrix> matrices;
     
     QuiverRepresentation(){
         degrees = vec<D>();
         dimensionVector = vec<index>();
         edges = edge_list<index>();
-        matrices = vec<SparseMatrix<index>>();
+        matrices = vec<Matrix>();
     }
 
     void print(){
@@ -62,7 +62,7 @@ struct QuiverRepresentation {
         }
     }
 
-    QuiverRepresentation(vec<D> degrees, const vec<index>& dimensionVector, const edge_list<index>& edges, const vec<SparseMatrix<index>>& matrices) : 
+    QuiverRepresentation(vec<D> degrees, const vec<index>& dimensionVector, const edge_list<index>& edges, const vec<Matrix>& matrices) :
     degrees(degrees), dimensionVector(dimensionVector), edges(edges), matrices(matrices) {}
 
     template <typename OutStream>
@@ -98,7 +98,7 @@ struct QuiverRepresentation {
             auto source = edges[j].first;
             auto target = edges[j].second;
             
-            const SparseMatrix<index>* current_mat_ptr = &matrices[j];
+            const Matrix* current_mat_ptr = &matrices[j];
             // We write our matrices column wise. If you want the row format, uncomment the next lines.
             // SparseMatrix transposed = matrices[j].transposed_copy();
             // current_mat_ptr = &transposed;

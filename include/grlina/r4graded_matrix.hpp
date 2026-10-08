@@ -7,13 +7,13 @@ namespace graded_linalg {
 
 using r4degree = CoordinateDegree<double, 4>;
 
-template <typename index>
+template <typename index, typename MatrixBase = SparseMatrix<index>>
 struct R4GradedSparseMatrix
-    : CoordinateGradedSparseMatrix<double, 4, index, R4GradedSparseMatrix<index>> {
-    using Base = CoordinateGradedSparseMatrix<double, 4, index, R4GradedSparseMatrix<index>>;
+    : CoordinateGradedSparseMatrix<double, 4, index, R4GradedSparseMatrix<index, MatrixBase>, MatrixBase> {
+    using Base = CoordinateGradedSparseMatrix<double, 4, index, R4GradedSparseMatrix<index, MatrixBase>, MatrixBase>;
     using Base::Base;
     R4GradedSparseMatrix() = default;
-    explicit R4GradedSparseMatrix(SparseMatrix<index>&& other) : Base(std::move(other)) {}
+    explicit R4GradedSparseMatrix(MatrixBase&& other) : Base(std::move(other)) {}
 };
 
 } // namespace graded_linalg

@@ -27,6 +27,7 @@
 #include <grlina/matrix_base.hpp>
 #include <grlina/graded_matrix.hpp>
 #include <grlina/r2graded_matrix.hpp>
+#include <grlina/r2grid_gs_matrix.hpp>
 #include <grlina/r3graded_matrix.hpp>
 #include <grlina/dense_matrix.hpp>
 #include <grlina/homomorphisms.hpp>
@@ -167,13 +168,13 @@ void fill_up_grassmannians (vec<vec<vec<SparseMatrix<index>>>>& subspaces, index
  * @param compute_batches whether to compute the column batches and k_max
  * @return std::vector<R2GradedSparseMatrix> vector of R2GradedSparseMatrix objects
  */
-template <typename index>
-std::vector<R2GradedSparseMatrix<index>> get_matrices_from_stream(std::ifstream& file_stream, bool lex_sort = false, bool compute_batches = false) {
-    std::vector<R2GradedSparseMatrix<index>> matrices;
+template <typename index, typename MatrixBase = SparseMatrix<index>>
+std::vector<R2GradedSparseMatrix<index, MatrixBase>> get_matrices_from_stream(std::ifstream& file_stream, bool lex_sort = false, bool compute_batches = false) {
+    std::vector<R2GradedSparseMatrix<index, MatrixBase>> matrices;
 
     while (file_stream) {
         // Construct a new matrix from the stream
-        R2GradedSparseMatrix<index> matrix(file_stream, lex_sort, compute_batches);
+        R2GradedSparseMatrix<index, MatrixBase> matrix(file_stream, lex_sort, compute_batches);
         matrices.push_back(std::move(matrix));
 
         // Check if the stream is exhausted
@@ -194,12 +195,12 @@ std::vector<R2GradedSparseMatrix<index>> get_matrices_from_stream(std::ifstream&
  * @param compute_batches whether to compute the column batches and k_max
  * @return std::vector<R2GradedSparseMatrix> vector of R2GradedSparseMatrix objects
  */
-template <typename index, typename InputStream>
-void construct_matrices_from_stream(std::vector<R2GradedSparseMatrix<index>>& matrices, InputStream& file_stream, bool lex_sort = false, bool compute_batches = false) {
+template <typename index, typename InputStream, typename MatrixBase = SparseMatrix<index>>
+void construct_matrices_from_stream(std::vector<R2GradedSparseMatrix<index, MatrixBase>>& matrices, InputStream& file_stream, bool lex_sort = false, bool compute_batches = false) {
 
     while (file_stream) {
         // Construct a new matrix from the stream
-        R2GradedSparseMatrix<index> matrix(file_stream, lex_sort, compute_batches);
+        R2GradedSparseMatrix<index, MatrixBase> matrix(file_stream, lex_sort, compute_batches);
         matrices.push_back(std::move(matrix));
 
         // Skip empty lines
@@ -263,9 +264,9 @@ void write_vector_to_file(const std::vector<T>& vec, const std::string& folder, 
  * @param compute_batches whether to compute the column batches and k_max
  * @param matrix_types optional vector to store the type of each matrix (e.g., "cyclic")
  */
-template <typename index, typename InputStream>
+template <typename index, typename InputStream, typename MatrixBase = SparseMatrix<index>>
 void read_sccsum(
-    std::vector<R2GradedSparseMatrix<index>>& matrices, 
+    std::vector<R2GradedSparseMatrix<index, MatrixBase>>& matrices,
     InputStream& file_stream, 
     bool lex_sort = false, 
     bool compute_batches = false,
@@ -297,7 +298,7 @@ void read_sccsum(
         }
         
         // Construct matrix from stream
-        R2GradedSparseMatrix<index> matrix(file_stream, lex_sort, compute_batches);
+        R2GradedSparseMatrix<index, MatrixBase> matrix(file_stream, lex_sort, compute_batches);
         matrices.push_back(std::move(matrix));
     }
 }

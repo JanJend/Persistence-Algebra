@@ -244,8 +244,7 @@ public:
         for (std::size_t i = 0; i < std::min(lifts_.size(), other.lifts_.size()); ++i) {
             Matrix sum = lifts_[i];
             for (std::size_t j = 0; j < sum.data.size(); ++j)
-                Column_traits<vec<typename Matrix::index_type>, typename Matrix::index_type>::add_to(
-                    other.lifts_[i].data[j], sum.data[j]);
+                sum.add_to_col(j, other.lifts_[i].column(j));
             sum.invalidate_cached_rows();
             result.push_back(std::move(sum));
         }

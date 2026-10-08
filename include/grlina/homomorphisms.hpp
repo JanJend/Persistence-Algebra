@@ -121,10 +121,10 @@ vec<index>index_pair_to_position(index row_index,
  * @param B
  * @return vec<DERIVED>
  */
-template <typename D, typename index, typename DERIVED>
+template <typename D, typename index, typename DERIVED, typename MatrixBase>
 vec<DERIVED> hom_space_basis_new(
-    const GradedSparseMatrix<D, index, DERIVED>& A,
-    const GradedSparseMatrix<D, index, DERIVED>& B, 
+    const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& A,
+    const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& B,
     bool use_hom_exactness = false,
     const bool info = false,
     const bool reduce_lift_duplicates = false
@@ -199,7 +199,7 @@ vec<DERIVED> hom_space_basis_new(
             for(index j = 0; j < B.get_num_cols(); j++){
                 if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.col_degrees[j])){
                     // Add a new homotopy
-                    vec<index> h = index_pair_to_position(i,variable_positions_separator[i], B.data[j], variable_positions);
+                    vec<index> h = index_pair_to_position(i,variable_positions_separator[i], B.get_col(j), variable_positions);
                     N_bar.data.push_back(h);
                 }
             }
@@ -216,7 +216,7 @@ vec<DERIVED> hom_space_basis_new(
             A.row_degrees, B.row_degrees);
         for(index j : current_map){
             auto& index_pairs = variable_positions[j];
-            Q.data[index_pairs.first].push_back(index_pairs.second);
+            Q.append_entry(index_pairs.first, index_pairs.second);
         }
         GRLINA_ASSERT(Q.is_sorted_sparse());
         result.push_back(std::move(Q));
@@ -226,7 +226,7 @@ vec<DERIVED> hom_space_basis_new(
     //  Hom(A.target, coker B)_0 -(A^t)-> Hom(A.domain, coker B)_0
     } else {
 
-        vec<SparseMatrix<index>> B_local_spaces = vec<SparseMatrix<index>>();
+        vec<MatrixBase> B_local_spaces;
         B_local_spaces.reserve(A.get_num_rows() + A.get_num_cols());
         vec< std::pair<vec<index>, vec<index>> > B_local_basislifts =  vec< std::pair<vec<index>, vec<index>> >();
         B_local_basislifts.reserve(A.get_num_rows() + A.get_num_cols());
@@ -235,7 +235,7 @@ vec<DERIVED> hom_space_basis_new(
         array<index> S_column_partition = array<index>();
         index S_num_col = 0;
         for(size_t p = 0; p < A.get_num_rows() + A.get_num_cols(); p++){
-            SparseMatrix<index> presentation;
+            MatrixBase presentation;
             vec<index> gens; // the set of generators which appear before the selected degree.
             if(p < A.get_num_rows()){
                 std::tie(presentation, gens) = B.map_at_degree_pair(A.row_degrees[p]);
@@ -320,15 +320,15 @@ vec<DERIVED> hom_space_basis_new(
         for(auto f_vec : K.data){
             DERIVED new_Q(A.get_num_rows(), B.get_num_rows(), A.row_degrees, B.row_degrees);
             result.emplace_back(std::move(new_Q));
-            auto& Q = result.back().data;
-            Q.resize(A.get_num_rows());
+            auto& Q = result.back();
+            Q.resize_data(A.get_num_rows());
             auto it = f_vec.begin();
             index column_counter = 0;
             // We need to advance the iterator for the next block of size S_column_partition[i]
             for(index i = 0; i < A.get_num_rows(); i++){
                 index block_end = column_counter + S_column_partition[i].size();
                 while(it != f_vec.end() && *it < block_end){
-                    Q[i].push_back(S_column_partition[i][*it - column_counter]);
+                    Q.append_entry(i, S_column_partition[i][*it - column_counter]);
                     it++;
                 }
                 if( it == f_vec.end()){
@@ -349,10 +349,10 @@ vec<DERIVED> hom_space_basis_new(
  * lifts that differ by a factorisation through target relations are removed.
  * Existing users of hom_space_basis_new retain its original default.
  */
-template <typename D, typename index, typename DERIVED>
+template <typename D, typename index, typename DERIVED, typename MatrixBase>
 vec<DERIVED> hom_space_basis(
-    const GradedSparseMatrix<D, index, DERIVED>& A,
-    const GradedSparseMatrix<D, index, DERIVED>& B,
+    const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& A,
+    const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& B,
     bool use_hom_exactness = false,
     const bool info = false
     ) {
@@ -369,10 +369,10 @@ vec<DERIVED> hom_space_basis(
  * @param B
  * @return vec<DERIVED>
  */
-template <typename D, typename index, typename DERIVED>
+template <typename D, typename index, typename DERIVED, typename MatrixBase>
 SparseMatrix<index> Alg_B_test(
-    const GradedSparseMatrix<D, index, DERIVED>& A,
-    const GradedSparseMatrix<D, index, DERIVED>& B, 
+    const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& A,
+    const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& B,
     const bool info = false
     ) {
 
@@ -386,7 +386,7 @@ SparseMatrix<index> Alg_B_test(
         std::abort();
     }
 
-        vec<SparseMatrix<index>> B_local_spaces = vec<SparseMatrix<index>>();
+        vec<MatrixBase> B_local_spaces;
         B_local_spaces.reserve(A.get_num_rows() + A.get_num_cols());
         vec< std::pair<vec<index>, vec<index>> > B_local_basislifts =  vec< std::pair<vec<index>, vec<index>> >();
         B_local_basislifts.reserve(A.get_num_rows() + A.get_num_cols());
@@ -395,7 +395,7 @@ SparseMatrix<index> Alg_B_test(
         array<index> S_column_partition = array<index>();
         index S_num_col = 0;
         for(size_t p = 0; p < A.get_num_rows() + A.get_num_cols(); p++){
-            SparseMatrix<index> presentation;
+            MatrixBase presentation;
             vec<index> gens; // the set of generators which appear before the selected degree.
             if(p < A.get_num_rows()){
                 std::tie(presentation, gens) = B.map_at_degree_pair(A.row_degrees[p]);
@@ -484,8 +484,8 @@ SparseMatrix<index> Alg_B_test(
  * @param row_indices If the row indices of B are shifted, this vector contains the shift.
  * @return vec<SparseMatrix<index>> 
  */
-template <typename D, typename index, typename DERIVED>
-std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimised(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, 
+template <typename D, typename index, typename DERIVED, typename MatrixBase>
+std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimised(const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& A, const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& B,
     const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>(),
     const bool info = false)  {
     
@@ -599,8 +599,8 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_optimise
  * @param row_indices If the row indices of B are shifted, this vector contains the shift.
  * @return vec<SparseMatrix<index>> 
  */
-template <typename D, typename index, typename DERIVED>
-std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_restriction(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, 
+template <typename D, typename index, typename DERIVED, typename MatrixBase>
+std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_restriction(const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& A, const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& B,
     const vec<index>& row_indices_A = vec<index>(), const vec<index>& row_indices_B = vec<index>(),
     const bool info = false)  {
     
@@ -702,8 +702,8 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_full_res
     return std::make_pair(K, variable_positions);
 }
 
-template <typename D, typename index, typename DERIVED>
-vec<index> no_opt_system_info(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B){
+template <typename D, typename index, typename DERIVED, typename MatrixBase>
+vec<index> no_opt_system_info(const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& A, const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& B){
     GRLINA_ASSERT(A.rows_computed);
     boost::timer::cpu_timer timer;
     
@@ -773,10 +773,10 @@ vec<index> no_opt_system_info(const GradedSparseMatrix<D, index, DERIVED>& A, co
  * @param row_indices If the row indices of B are shifted, this vector contains the shift.
  * @return vec<SparseMatrix<index>> 
  */
-template <typename D, typename index, typename DERIVED>
+template <typename D, typename index, typename DERIVED, typename MatrixBase>
 std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(
-    const GradedSparseMatrix<D, index, DERIVED>& A, 
-    const GradedSparseMatrix<D, index, DERIVED>& B, 
+    const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& A,
+    const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& B,
     const bool reduce = true,
     const vec<index>& row_indices_A = vec<index>(), 
     const vec<index>& row_indices_B = vec<index>(), 
@@ -872,7 +872,7 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(
             for(index j = 0; j < B.get_num_cols(); j++){
                 if(Degree_traits<D>::greater_equal(A.row_degrees[i], B.col_degrees[j])){
                     // Add a new homotopy
-                    vec<index> h = index_pair_to_position(i, variable_positions_separator[i], B.data[j], variable_positions);
+                    vec<index> h = index_pair_to_position(i, variable_positions_separator[i], B.get_col(j), variable_positions);
                     N_bar.data.push_back(h);
                 }
             }
@@ -891,8 +891,8 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(
  * @brief Returns a vector of matrices Q which form a basis of Hom(C, B), where Q is a map on the generators. 
  * C, B are both blocks in the large matrix A. Used in AIDA.
 */
-template <typename D, typename index, typename DERIVED>
-std::pair< SparseMatrix<index>, vec<std::pair<index, index> > > block_hom_space_without_optimisation(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& C, const GradedSparseMatrix<D, index, DERIVED>& B,
+template <typename D, typename index, typename DERIVED, typename MatrixBase>
+std::pair< SparseMatrix<index>, vec<std::pair<index, index> > > block_hom_space_without_optimisation(const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& A, const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& C, const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& B,
         vec<index>& C_rows, vec<index>& B_rows, bool system_size = false)  { 
     vec<std::pair<index, index>> row_ops; // we store the matrices Q_i which form the basis of hom(C, B) as vectors
     // This translates from entries of the vector to entries of the matrix.
@@ -1111,8 +1111,8 @@ bool hom_quotient_zero( const Hom_space_temp<index>& full_space,
  * @param alpha 
  * @return Hom_space_temp<index> 
  */
-template <typename D, typename index, typename DERIVED>
-Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index, DERIVED>& A, const GradedSparseMatrix<D, index, DERIVED>& B, Hom_space_temp<index>& full_hom_space, const D alpha) {
+template <typename D, typename index, typename DERIVED, typename MatrixBase>
+Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& A, const GradedSparseMatrix<D, index, DERIVED, MatrixBase>& B, Hom_space_temp<index>& full_hom_space, const D alpha) {
     
     Hom_space_temp<index> result;
     auto [B_alpha, B_alpha_gens] = B.map_at_degree_pair(alpha);
@@ -1122,7 +1122,7 @@ Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index, DERIVED>& A, 
     vec<index> A_alpha_basis = A_alpha.coKernel_basis(A_alpha_gens);
 
     // What should the indexing for this be? TO-DO: Check this.
-    SparseMatrix<index> coker_B_alpha = B_alpha.coKernel_without_prelim(B_alpha_basis, B_alpha_gens);
+    auto coker_B_alpha = B_alpha.coKernel_without_prelim(B_alpha_basis, B_alpha_gens);
 
     //TO-DO: Finish this.
 }   
