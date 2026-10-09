@@ -11,6 +11,8 @@
 #include <grlina/chain_complex.hpp>
 #include <grlina/module.hpp>
 #include <grlina/submodule.hpp>
+#include <grlina/module_storage.hpp>
+#include <grlina/module_transformations.hpp>
 #include <grlina/hom_interface.hpp>
 #include <grlina/module_operations.hpp>
 #include <grlina/epsilon_functors.hpp>

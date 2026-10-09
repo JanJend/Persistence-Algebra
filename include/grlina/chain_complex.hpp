@@ -16,6 +16,8 @@
 #include <vector>
 
 #include <grlina/graded_matrix.hpp>
+#include <grlina/graded_matrix_io.hpp>
+#include <grlina/chain_basis_maps.hpp>
 
 namespace graded_linalg {
 
@@ -26,20 +28,31 @@ namespace graded_linalg {
  *
  * The class is generic in Matrix and therefore has no knowledge of the
  * underlying degree type or poset.  Matrix supplies those through its
- * inherited degree_type/index_type aliases and Degree_traits.
+ * degree_type/index_type aliases, Degree_traits, and GradedMatrixIO.
  */
 template <typename Matrix>
 class ChainComplex {
 public:
     static_assert(is_graded_sparse_matrix_v<Matrix>,
-                  "ChainComplex<Matrix> requires Matrix to inherit "
-                  "GradedSparseMatrix<D, index, Matrix> via CRTP");
+                  "ChainComplex<Matrix> requires the graded sparse matrix interface");
     using matrix_type = Matrix;
     using degree_type = typename Matrix::degree_type;
     using index_type = typename Matrix::index_type;
 
 private:
+    using matrix_io = GradedMatrixIO<Matrix>;
+    using serialized_degree_type = typename matrix_io::serialized_degree_type;
     std::vector<Matrix> differentials_;
+    typename matrix_io::context_type poset_context_ = 0;
+    bool poset_context_is_set_ = false;
+
+    void initialize_poset_context() {
+        if (!differentials_.empty()) {
+            matrix_io::normalize_complex(differentials_);
+            poset_context_ = matrix_io::matrix_context(differentials_.front());
+            poset_context_is_set_ = true;
+        }
+    }
 
     void refresh_sorting_certificates() {
         for (auto& matrix : differentials_) {
@@ -55,10 +68,11 @@ private:
         return value;
     }
 
-    static std::pair<degree_type, std::vector<index_type>> parse_degree_line(
-        const std::string& line, bool with_entries, index_type row_count) {
+    static std::pair<serialized_degree_type, std::vector<index_type>> parse_degree_line(
+        const std::string& line, bool with_entries, index_type row_count,
+        typename matrix_io::context_type poset_context) {
         std::istringstream input(line);
-        degree_type degree = Degree_traits<degree_type>::from_stream(input);
+        serialized_degree_type degree = matrix_io::parse_degree(input, poset_context);
         if (!input) {
             throw std::runtime_error("Invalid degree in SCC line: " + line);
         }
@@ -91,8 +105,15 @@ private:
 public:
     ChainComplex() = default;
 
+    /** Retain a runtime poset even when this complex has no differentials. */
+    template <typename M = Matrix,
+              std::enable_if_t<GradedMatrixIO<M>::runtime_dimension, int> = 0>
+    explicit ChainComplex(std::size_t parameter_count)
+        : poset_context_(parameter_count), poset_context_is_set_(true) {}
+
     explicit ChainComplex(std::vector<Matrix> differentials, bool validate = GRLINA_ENABLE_CHECKS)
         : differentials_(std::move(differentials)) {
+        initialize_poset_context();
         if (validate) {
             refresh_sorting_certificates();
             validate_structure();
@@ -101,6 +122,7 @@ public:
 
     ChainComplex(std::initializer_list<Matrix> differentials)
         : differentials_(differentials) {
+        initialize_poset_context();
         GRLINA_DEBUG_CHECK(refresh_sorting_certificates());
         GRLINA_DEBUG_CHECK(validate_structure());
     }
@@ -139,17 +161,26 @@ public:
     }
 
     static std::string poset_identifier() {
-        return std::string(Degree_traits<degree_type>::poset_id);
+        if constexpr (matrix_io::runtime_dimension)
+            throw std::logic_error("Runtime-dimensional complexes require runtime_poset_identifier()");
+        else
+            return matrix_io::identifier();
+    }
+
+    std::string runtime_poset_identifier() const {
+        return matrix_io::identifier(poset_context_);
     }
 
     void validate_structure() const {
         for (std::size_t i = 0; i < differentials_.size(); ++i) {
             const auto& matrix = differentials_[i];
+            if (matrix_io::matrix_context(matrix) != poset_context_)
+                throw std::invalid_argument("Chain differentials have incompatible parameter counts");
             matrix.validate();
             if (i != 0) {
                 const auto& previous = differentials_[i - 1];
                 if (previous.get_num_cols() != matrix.get_num_rows() ||
-                    previous.col_degrees != matrix.row_degrees) {
+                    !matrix_io::matching_chain_group(previous, matrix)) {
                     throw std::invalid_argument("Adjacent chain differentials have incompatible chain groups");
                 }
             }
@@ -174,6 +205,9 @@ public:
     }
 
     void push_differential(Matrix differential) {
+        const auto context = matrix_io::matrix_context(differential);
+        if (poset_context_is_set_ && context != poset_context_)
+            throw std::invalid_argument("New differential has the wrong parameter count");
         if (!differentials_.empty()) {
             const auto& previous = differentials_.back();
             if (previous.get_num_cols() != differential.get_num_rows()) {
@@ -182,9 +216,14 @@ public:
         }
         GRLINA_DEBUG_CHECK(differential.validate());
         GRLINA_DEBUG_CHECK(if (!differentials_.empty() &&
-            differentials_.back().col_degrees != differential.row_degrees)
+            !matrix_io::matching_chain_group(differentials_.back(), differential))
             throw std::invalid_argument("New differential has the wrong target degrees"));
         differentials_.push_back(std::move(differential));
+        matrix_io::normalize_complex(differentials_);
+        if (!poset_context_is_set_) {
+            poset_context_ = context;
+            poset_context_is_set_ = true;
+        }
         GRLINA_DEBUG_CHECK(if (!differentials_.back().compatible_sorting_is_verified())
             differentials_.back().refresh_compatible_sorted());
     }
@@ -196,19 +235,28 @@ public:
     }
 
     template <typename Compare>
-    void sort_compatibly(Compare compare) {
+    void sort_compatibly(Compare compare, ChainBasisMaps<Matrix>* basis_maps = nullptr) {
         GRLINA_DEBUG_CHECK(validate_structure());
         if (empty()) return;
         GRLINA_DEBUG_CHECK(for (const auto& d : differentials_) d.require_linear_extension(compare));
         // Each group is sorted ONCE; its basis permutation is shared by both
         // adjacent maps. This includes stable handling of repeated degrees.
         for (std::size_t group = 0; group <= size(); ++group) {
-            auto degrees = group == 0 ? differentials_[0].row_degrees
-                                      : differentials_[group - 1].col_degrees;
+            const auto& stored_degrees = group == 0 ? differentials_[0].row_degrees
+                                                   : differentials_[group - 1].col_degrees;
+            std::vector<degree_type> degrees(stored_degrees.begin(), stored_degrees.end());
             auto new_to_old = sort_and_get_permutation<degree_type, index_type>(degrees, compare);
             vec<index_type> old_to_new(new_to_old.size());
             for (index_type i = 0; i < static_cast<index_type>(new_to_old.size()); ++i)
                 old_to_new[new_to_old[i]] = i;
+            if (basis_maps) {
+                auto& inclusion = basis_maps->to_original.at(group);
+                inclusion.permute_columns(new_to_old);
+                inclusion.col_degrees = degrees;
+                inclusion.invalidate_cached_rows();
+                inclusion.refresh_compatible_sorted();
+                basis_maps->from_original.at(group).permute_rows_graded(old_to_new);
+            }
             if (group > 0) {
                 auto& outgoing = differentials_[group - 1];
                 outgoing.permute_columns(new_to_old);
@@ -227,10 +275,14 @@ public:
      * is transported to both neighbors. In particular, terminal cycles are
      * retained: deleting redundant terminal generators can change homology.
      */
-    void minimize(bool sort_if_needed = true) {
+    void minimize(bool sort_if_needed = true, ChainBasisMaps<Matrix>* basis_maps = nullptr) {
         if (empty()) return;
         ChainComplex working = *this;
-        if (sort_if_needed) working.sort_compatibly();
+        ChainBasisMaps<Matrix> tracked;
+        if (basis_maps) tracked = *basis_maps;
+        if (sort_if_needed) working.sort_compatibly(
+            TraitLinearOrder<degree_type>{Degree_traits<degree_type>::lex_lambda()},
+            basis_maps ? &tracked : nullptr);
         GRLINA_DEBUG_CHECK(for (auto& d : working.differentials_) d.require_compatibly_sorted("ChainComplex::minimize"));
         GRLINA_DEBUG_CHECK(if (!working.squares_to_zero()) throw std::invalid_argument("Chain complex does not square to zero"));
         auto& maps = working.differentials_;
@@ -248,6 +300,10 @@ public:
                 for (index_type j = 0; j < d.get_num_cols(); ++j) {
                     if (j != c && std::binary_search(d.data[j].begin(), d.data[j].end(), r)) {
                         d.col_op(c, j);
+                        if (basis_maps) {
+                            tracked.to_original.at(level + 1).col_op(c, j);
+                            tracked.from_original.at(level + 1).row_op_on_cols(j, c);
+                        }
                         if (level + 1 < maps.size()) maps[level + 1].row_op_on_cols(j, c);
                     }
                 }
@@ -255,11 +311,21 @@ public:
                 const auto pivot_column = d.get_col(c);
                 for (index_type i : pivot_column) if (i != r) {
                     d.row_op_on_cols(r, i);
+                    if (basis_maps) {
+                        tracked.to_original.at(level).col_op(i, r);
+                        tracked.from_original.at(level).row_op_on_cols(r, i);
+                    }
                     if (level > 0) maps[level - 1].col_op(i, r);
                 }
                 vec<index_type> columns{c}, rows{r};
                 d.delete_columns(columns);
                 d.delete_rows(rows);
+                if (basis_maps) {
+                    tracked.to_original.at(level).delete_columns(rows);
+                    tracked.from_original.at(level).delete_rows(rows);
+                    tracked.to_original.at(level + 1).delete_columns(columns);
+                    tracked.from_original.at(level + 1).delete_rows(columns);
+                }
                 if (level > 0) maps[level - 1].delete_columns(rows);
                 if (level + 1 < maps.size()) maps[level + 1].delete_rows(columns);
             }
@@ -267,13 +333,14 @@ public:
         for (auto& d : maps) d.invalidate_cached_rows();
         GRLINA_DEBUG_CHECK(if (!working.squares_to_zero()) throw std::logic_error("Chain cancellation broke d*d=0"));
         *this = std::move(working);
+        if (basis_maps) *basis_maps = std::move(tracked);
     }
 
     template <typename OutputStream>
     void to_stream(OutputStream& output) const {
         validate_structure();
-        output << std::setprecision(17);
-        output << "scc2020\n" << poset_identifier() << "\n";
+        output << std::setprecision(matrix_io::output_precision());
+        output << "scc2020\n" << runtime_poset_identifier() << "\n";
 
         if (differentials_.empty()) {
             output << "0 0 0\n";
@@ -289,14 +356,14 @@ public:
 
         for (auto it = differentials_.rbegin(); it != differentials_.rend(); ++it) {
             for (index_type column = 0; column < it->get_num_cols(); ++column) {
-                Degree_traits<degree_type>::write_degree(output, it->col_degrees[column]);
+                matrix_io::write_column_degree(output, *it, column);
                 output << " ;";
                 for (const auto row : it->data[column]) output << " " << row;
                 output << "\n";
             }
         }
-        for (const auto& degree : differentials_.front().row_degrees) {
-            Degree_traits<degree_type>::write_degree(output, degree);
+        for (index_type row = 0; row < differentials_.front().get_num_rows(); ++row) {
+            matrix_io::write_row_degree(output, differentials_.front(), row);
             output << " ;\n";
         }
     }
@@ -309,16 +376,20 @@ public:
 
     static ChainComplex from_stream(std::istream& input, bool sort_if_needed = false) {
         std::string line;
-        if (!std::getline(input, line) || trim(line) != "scc2020") {
-            throw std::runtime_error("Expected scc2020 header");
-        }
-
         std::string file_poset;
-        if (!std::getline(input, file_poset)) throw std::runtime_error("Missing SCC poset identifier");
+        if (!std::getline(input, line)) throw std::runtime_error("Missing matrix header");
+        if (trim(line) == "firep") {
+            // FIREP carries two axis labels instead of an SCC poset identifier.
+            if (!std::getline(input, line) || !std::getline(input, line))
+                throw std::runtime_error("Missing FIREP axis labels");
+            file_poset = "2";
+        } else if (trim(line) == "scc2020") {
+            if (!std::getline(input, file_poset)) throw std::runtime_error("Missing SCC poset identifier");
+        } else {
+            throw std::runtime_error("Expected scc2020 or firep header");
+        }
         file_poset = trim(file_poset);
-        if (file_poset != poset_identifier())
-            throw std::runtime_error("SCC poset identifier '" + file_poset +
-                                     "' does not match matrix poset '" + poset_identifier() + "'");
+        const auto poset_context = matrix_io::parse_poset_identifier(file_poset);
 
         if (!std::getline(input, line)) throw std::runtime_error("Missing SCC chain dimensions");
         std::istringstream dimensions_stream(line);
@@ -336,7 +407,7 @@ public:
         while (ranks.size() > 2 && ranks.back() == 0) ranks.pop_back();
 
         struct Group {
-            std::vector<degree_type> degrees;
+            std::vector<serialized_degree_type> degrees;
             typename Matrix::storage_type columns;
         };
         std::vector<Group> groups(ranks.size());
@@ -349,7 +420,7 @@ public:
 
             for (index_type element = 0; element < ranks[group_index]; ++element) {
                 if (!std::getline(input, line)) throw std::runtime_error("Unexpected end of SCC data");
-                auto parsed = parse_degree_line(line, with_entries, target_rank);
+                auto parsed = parse_degree_line(line, with_entries, target_rank, poset_context);
                 groups[group_index].degrees.push_back(std::move(parsed.first));
                 if (with_entries) groups[group_index].columns.push_back(std::move(parsed.second));
             }
@@ -358,9 +429,8 @@ public:
         std::vector<Matrix> high_to_low;
         high_to_low.reserve(groups.size() - 1);
         for (std::size_t i = 0; i + 1 < groups.size(); ++i) {
-            Matrix differential(ranks[i], ranks[i + 1]);
-            differential.col_degrees = groups[i].degrees;
-            differential.row_degrees = groups[i + 1].degrees;
+            Matrix differential = matrix_io::make_matrix(ranks[i], ranks[i + 1], poset_context);
+            matrix_io::assign_degrees(differential, groups[i].degrees, groups[i + 1].degrees);
             differential.assign_data(std::move(groups[i].columns));
             differential.refresh_compatible_sorted();
             high_to_low.push_back(std::move(differential));
@@ -368,6 +438,8 @@ public:
 
         std::reverse(high_to_low.begin(), high_to_low.end());
         ChainComplex result(std::move(high_to_low), false);
+        result.poset_context_ = poset_context;
+        result.poset_context_is_set_ = true;
         result.validate_structure(); // file input is checked in every build
         if (sort_if_needed) result.sort_compatibly();
         return result;

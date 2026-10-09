@@ -22,12 +22,12 @@ Biproduct<Matrix> direct_sum(std::shared_ptr<const Module<Matrix>> left,
     using index = typename Matrix::index_type;
     const auto& A = left->presentation();
     const auto& B = right->presentation();
-    Matrix P(A.get_num_cols() + B.get_num_cols(), A.get_num_rows() + B.get_num_rows());
-    P.data.resize(P.get_num_cols());
-    P.col_degrees = A.col_degrees;
-    P.col_degrees.insert(P.col_degrees.end(), B.col_degrees.begin(), B.col_degrees.end());
-    P.row_degrees = A.row_degrees;
-    P.row_degrees.insert(P.row_degrees.end(), B.row_degrees.begin(), B.row_degrees.end());
+    Matrix P = detail::empty_matrix_like(A, A.get_num_cols() + B.get_num_cols(), A.get_num_rows() + B.get_num_rows());
+    auto columns = detail::geometric_col_degrees(A), rows = detail::geometric_row_degrees(A);
+    const auto other_columns = detail::geometric_col_degrees(B), other_rows = detail::geometric_row_degrees(B);
+    columns.insert(columns.end(), other_columns.begin(), other_columns.end());
+    rows.insert(rows.end(), other_rows.begin(), other_rows.end());
+    detail::set_geometric_degrees(P, columns, rows);
     for (index j = 0; j < A.get_num_cols(); ++j) P.set_col(j, A.get_col(j));
     for (index j = 0; j < B.get_num_cols(); ++j) {
         auto column = B.get_col(j);
@@ -36,18 +36,16 @@ Biproduct<Matrix> direct_sum(std::shared_ptr<const Module<Matrix>> left,
     }
     auto sum = std::make_shared<const Module<Matrix>>(std::move(P));
     auto injection = [&](const auto& domain, index offset) {
-        Matrix I(domain->number_of_generators(), sum->number_of_generators());
-        I.data.resize(I.get_num_cols());
-        I.col_degrees = domain->presentation().row_degrees;
-        I.row_degrees = sum->presentation().row_degrees;
+        Matrix I = detail::empty_matrix_like(sum->presentation(), domain->number_of_generators(), sum->number_of_generators());
+        detail::set_geometric_degrees(I, detail::geometric_row_degrees(domain->presentation()),
+                                        detail::geometric_row_degrees(sum->presentation()));
         for (index j = 0; j < I.get_num_cols(); ++j) I.set_col(j, {offset + j});
         return Homomorphism<Matrix>(domain, sum, std::move(I));
     };
     auto projection = [&](const auto& target, index offset) {
-        Matrix Q(sum->number_of_generators(), target->number_of_generators());
-        Q.data.resize(Q.get_num_cols());
-        Q.col_degrees = sum->presentation().row_degrees;
-        Q.row_degrees = target->presentation().row_degrees;
+        Matrix Q = detail::empty_matrix_like(sum->presentation(), sum->number_of_generators(), target->number_of_generators());
+        detail::set_geometric_degrees(Q, detail::geometric_row_degrees(sum->presentation()),
+                                        detail::geometric_row_degrees(target->presentation()));
         for (index i = 0; i < Q.get_num_rows(); ++i) Q.set_col(offset + i, {i});
         return Homomorphism<Matrix>(sum, target, std::move(Q));
     };

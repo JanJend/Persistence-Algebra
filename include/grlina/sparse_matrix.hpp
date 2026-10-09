@@ -652,7 +652,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index, S
      * 
      */
     void compute_rows_forward(){
-        GRLINA_ASSERT(this->num_rows > 0);
+        GRLINA_ASSERT(this->num_rows >= 0);
         _rows.clear();
         _rows = vec<vec<index>>(this->num_rows, vec<index>());
         for(index i = 0; i < this->num_cols ; i++) {

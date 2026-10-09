@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 #include <grlina/chain_complex.hpp>
+#include <grlina/matrix_geometry.hpp>
 
 namespace graded_linalg::detail {
 
@@ -17,20 +18,20 @@ template <typename Matrix, typename Visitor>
 void visit_euler_degrees(const ChainComplex<Matrix>& resolution, Visitor visit) {
     using index = typename Matrix::index_type;
     if (resolution.empty()) throw std::logic_error("Euler characteristic requires a resolution");
-    for (const auto& degree : resolution[0].row_degrees) visit(degree, index{1});
+    for (const auto& degree : resolution[0].row_degrees) visit(geometric_degree(resolution[0], degree), index{1});
     index sign = -1;
     for (const auto& differential : resolution.differentials()) {
-        for (const auto& degree : differential.col_degrees) visit(degree, sign);
+        for (const auto& degree : differential.col_degrees) visit(geometric_degree(differential, degree), sign);
         sign = -sign;
     }
 }
 
 template <typename Matrix>
 typename Matrix::index_type euler_dimension_at(
-    const ChainComplex<Matrix>& resolution, const typename Matrix::degree_type& location) {
+    const ChainComplex<Matrix>& resolution, const matrix_geometry_degree_t<Matrix>& location) {
     typename Matrix::index_type result = 0;
     visit_euler_degrees(resolution, [&](const auto& degree, auto sign) {
-        if (Degree_traits<typename Matrix::degree_type>::smaller_equal(degree, location)) result += sign;
+        if (Degree_traits<matrix_geometry_degree_t<Matrix>>::smaller_equal(degree, location)) result += sign;
     });
     return result;
 }
@@ -67,9 +68,9 @@ std::vector<std::vector<typename Matrix::index_type>> euler_grid_r2(
 template <typename Matrix>
 std::vector<typename Matrix::index_type> euler_queries_r2(
     const ChainComplex<Matrix>& resolution,
-    const std::vector<typename Matrix::degree_type>& locations) {
+    const std::vector<matrix_geometry_degree_t<Matrix>>& locations) {
     using index = typename Matrix::index_type;
-    using degree_type = typename Matrix::degree_type;
+    using degree_type = matrix_geometry_degree_t<Matrix>;
     std::vector<index> result(locations.size(), 0);
     if (locations.empty()) return result;
     std::vector<std::pair<degree_type, index>> events;

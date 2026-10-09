@@ -1204,6 +1204,10 @@ public:
      * Clearing that syzygy row before deletion retains a generating kernel.
      */
     void remove_redundant_relations() {
+        remove_redundant_relations([](auto, const auto&) {});
+    }
+    template<class OnDelete>
+    void remove_redundant_relations(OnDelete on_delete) {
         GRLINA_DEBUG_CHECK(require_compatibly_sorted("remove_redundant_relations"));
         GRLINA_DEBUG_CHECK(validate());
         if constexpr (has_matrix_graded_kernel<DERIVED>::value) {
@@ -1220,6 +1224,7 @@ public:
                 for (index j = 0; j < syzygies.get_num_cols(); ++j)
                     if (j != c && std::binary_search(syzygies.data[j].begin(), syzygies.data[j].end(), r))
                         syzygies.col_op(c, j);
+                on_delete(r, syzygies.get_col(c));
                 vec<index> redundant{r}, syzygy{c};
                 delete_columns(redundant);
                 syzygies.delete_rows(redundant);

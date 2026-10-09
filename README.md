@@ -7,6 +7,16 @@ The compatibility-preserving persistence-module API is documented in
 matrix APIs remain available; new clients should start with
 `#include <grlina/modules.hpp>` and `R2Module<index>`.
 
+The **new runtime-dimensional coordinate matrix architecture** is opt-in through
+`#include <grlina/dynamic_coordinate_matrix.hpp>`. It stores degree coordinates in
+flat contiguous buffers and takes the number of parameters at runtime. See
+[`docs/dynamic-coordinate-matrices.md`](docs/dynamic-coordinate-matrices.md)
+for construction, storage choices, and module/chain-complex integration.
+`<grlina/dynamic_grid_matrix.hpp>` adds `DynamicGridGradedSparseMatrix` with
+contiguous index degrees and scalar-valued grids. Both runtime classes support
+graded kernels and repeated kernels for projective resolutions in arbitrary
+dimensions, reusing the two-parameter algorithm on slices.
+
 ### Optional CSC matrix storage
 
 Include `<grlina/csc_matrix.hpp>` to select contiguous compressed sparse columns:

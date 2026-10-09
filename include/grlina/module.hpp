@@ -14,6 +14,7 @@
 #include <grlina/chain_complex.hpp>
 #include <grlina/hilbert_euler.hpp>
 #include <grlina/r2graded_matrix.hpp>
+#include <grlina/matrix_geometry.hpp>
 
 namespace graded_linalg {
 
@@ -27,10 +28,10 @@ template <typename Matrix>
 class Module : public std::enable_shared_from_this<Module<Matrix>> {
 public:
     static_assert(is_graded_sparse_matrix_v<Matrix>,
-                  "Module<Matrix> requires Matrix to inherit "
-                  "GradedSparseMatrix<D, index, Matrix> via CRTP");
+                  "Module<Matrix> requires the graded sparse matrix interface");
     using matrix_type = Matrix;
-    using degree_type = typename Matrix::degree_type;
+    using degree_type = matrix_geometry_degree_t<Matrix>;
+    using stored_degree_type = typename Matrix::degree_type;
     using index_type = typename Matrix::index_type;
     using chain_complex_type = ChainComplex<Matrix>;
 
@@ -199,7 +200,7 @@ public:
      * Its cokernel is the module fibre; row coordinates are normalized locally.
      */
     auto local_presentation_at(const degree_type& degree) const {
-        return presentation().map_at_degree_pair(degree);
+        return presentation().map_at_degree_pair(detail::query_matrix_degree(presentation(), degree));
     }
 
     /** Relations available at degree, retaining ALL original generator rows.
@@ -208,7 +209,7 @@ public:
     auto relations_at(const degree_type& degree,
                                          vec<index_type>& relation_indices) const {
         relation_indices.clear();
-        return presentation().map_at_degree(degree, relation_indices);
+        return presentation().map_at_degree(detail::query_matrix_degree(presentation(), degree), relation_indices);
     }
 
     void print_presentation(bool suppress_description = false) const {
@@ -240,10 +241,16 @@ public:
     /** Add a homogeneous relation in the current generator coordinates. */
     void add_relation(const vec<index_type>& coefficients, const degree_type& degree) {
         GRLINA_DEBUG_CHECK(
-            Matrix relation(1, number_of_generators(), {coefficients}, {degree},
-                            presentation().row_degrees);
+            Matrix relation = detail::empty_matrix_like(presentation(), 1, number_of_generators());
+            detail::set_geometric_degrees(relation, std::vector<degree_type>{degree}, detail::geometric_row_degrees(presentation()));
+            relation.set_col(0, coefficients);
             relation.validate());
-        edit_presentation([&](Matrix& matrix) { matrix.append_column(coefficients, degree); });
+        edit_presentation([&](Matrix& matrix) {
+            if constexpr (matrix_grid_backed_v<Matrix>) {
+                matrix.include_real_degrees({degree});
+                matrix.append_column(coefficients, matrix.grid_degree(degree));
+            } else matrix.append_column(coefficients, degree);
+        });
     }
 
     /** Cancel local generator/relation pairs without requiring a graded kernel. */
@@ -367,7 +374,8 @@ public:
 
     /** Complete the stored (possibly truncated) resolution, preserving existing
      * bases. Repeated kernels stop at an injective terminal map. This requires
-     * a terminating graded-kernel implementation (currently supplied for R2).
+     * a terminating graded-kernel implementation (supplied for R2 and the
+     * runtime-dimensional coordinate/grid matrices).
      */
     void compute_projective_resolution() {
         if (!has_presentation()) compute_presentation();
@@ -393,9 +401,12 @@ public:
     }
 
     index_type dimension_at(const degree_type& degree) const {
+        const auto matrix_degree = detail::query_matrix_degree(presentation(), degree);
+        if constexpr (GradedMatrixIO<Matrix>::runtime_dimension && !matrix_grid_backed_v<Matrix>)
+            presentation().check_degree(degree);
         if (has_complete_projective_resolution())
             return detail::euler_dimension_at(projective_resolution_, degree);
-        auto local = presentation().map_at_degree_pair(degree, true).first;
+        auto local = presentation().map_at_degree_pair(matrix_degree, true).first;
         return static_cast<index_type>(local.coKernel_basis().size());
     }
     std::vector<HilbertValue> hilbert_function(const std::vector<degree_type>& locations) const {
@@ -412,8 +423,9 @@ public:
         return result;
     }
     std::vector<degree_type> support_degrees() const {
-        std::vector<degree_type> result = presentation().row_degrees;
-        result.insert(result.end(), presentation().col_degrees.begin(), presentation().col_degrees.end());
+        auto result = detail::geometric_row_degrees(presentation());
+        const auto columns = detail::geometric_col_degrees(presentation());
+        result.insert(result.end(), columns.begin(), columns.end());
         std::sort(result.begin(), result.end(), Degree_traits<degree_type>::lex_lambda());
         result.erase(std::unique(result.begin(), result.end(), [](const auto& lhs, const auto& rhs) {
             return Degree_traits<degree_type>::equals(lhs, rhs);
@@ -435,8 +447,10 @@ public:
 
     /** Hilbert function on the full presentation-induced Cartesian grid. */
     R2HilbertGrid hilbert_function_on_induced_grid() const {
-        static_assert(std::is_same<degree_type, r2degree>::value,
+        static_assert(std::is_same<degree_type, r2degree>::value || matrix_grid_backed_v<Matrix>,
                       "This helper is only available for R2 modules");
+        if constexpr (matrix_grid_backed_v<Matrix>)
+            if (presentation().parameter_count() != 2) throw std::invalid_argument("Hilbert grid requires two parameters");
         vec<double> xs, ys;
         for (const auto& degree : support_degrees()) {
             xs.push_back(degree[0]);
@@ -457,8 +471,10 @@ public:
     }
 
     R2HilbertGrid hilbert_function_on_grid(const vec<double>& xs, const vec<double>& ys) const {
-        static_assert(std::is_same_v<degree_type, r2degree>, "This grid helper is only available for R2 modules");
+        static_assert(std::is_same_v<degree_type, r2degree> || matrix_grid_backed_v<Matrix>, "This grid helper is only available for R2 modules");
         require_presentation();
+        if constexpr (matrix_grid_backed_v<Matrix>)
+            if (presentation().parameter_count() != 2) throw std::invalid_argument("Hilbert grid requires two parameters");
         GRLINA_DEBUG_CHECK(validate_hilbert_axes(xs, ys));
         if constexpr (has_matrix_graded_kernel<Matrix>::value) {
             if (!has_complete_projective_resolution()) {
@@ -480,7 +496,8 @@ public:
         result.values.assign(result.x_grid.size(), vec<index_type>(result.y_grid.size(), 0));
         for (std::size_t x = 0; x < result.x_grid.size(); ++x) {
             for (std::size_t y = 0; y < result.y_grid.size(); ++y) {
-                degree_type degree{result.x_grid[x], result.y_grid[y]};
+                degree_type degree{static_cast<typename degree_type::value_type>(result.x_grid[x]),
+                                   static_cast<typename degree_type::value_type>(result.y_grid[y])};
                 result.values[x][y] = dimension_at(degree);
                 result.maximum = std::max(result.maximum, result.values[x][y]);
             }
@@ -536,18 +553,26 @@ using R2Module = Module<R2GradedSparseMatrix<index, MatrixBase>>;
  * matrix at its own degree; those solution coordinates are the relations of
  * the homology presentation.
  */
+namespace detail {
 template <typename Matrix>
-Module<Matrix> homology_module(const ChainComplex<Matrix>& complex,
-                                          std::size_t homological_degree = 1,
-                                          bool minimize = true) {
+std::pair<Module<Matrix>, Matrix> homology_presentation_and_cycles(
+    const ChainComplex<Matrix>& complex, std::size_t homological_degree) {
+    if (homological_degree == 0) {
+        Matrix presentation = complex.empty()
+            ? GradedMatrixIO<Matrix>::make_matrix(0, 0,
+                GradedMatrixIO<Matrix>::parse_poset_identifier(complex.runtime_poset_identifier()))
+            : complex.differential(1);
+        Matrix cycles = identity_on_degrees(presentation, presentation.row_degrees);
+        return {Module<Matrix>(std::move(presentation)), std::move(cycles)};
+    }
     static_assert(is_graded_sparse_matrix_v<Matrix>,
-                  "homology_module requires the GradedSparseMatrix CRTP contract");
+                  "homology_module requires the graded sparse matrix interface");
     if constexpr (!has_matrix_graded_kernel<Matrix>::value) {
         throw std::logic_error("This graded matrix type does not implement a graded kernel");
     } else {
         GRLINA_DEBUG_CHECK(if (!complex.squares_to_zero())
             throw std::invalid_argument("homology_module requires d_k d_(k+1) = 0"));
-        if (homological_degree == 0 || homological_degree > complex.size())
+        if (homological_degree > complex.size())
             throw std::out_of_range("No outgoing differential at the requested homological degree");
 
         Matrix kernel_source = complex.differential(homological_degree);
@@ -560,12 +585,19 @@ Module<Matrix> homology_module(const ChainComplex<Matrix>& complex,
         vec<degree_type> relation_degrees;
 
         if (homological_degree < complex.size()) {
-            const Matrix& incoming = complex.differential(homological_degree + 1);
+            Matrix aligned_incoming;
+            const Matrix* incoming_ptr = &complex.differential(homological_degree + 1);
+            if constexpr (matrix_grid_backed_v<Matrix>) {
+                aligned_incoming = *incoming_ptr;
+                kernel_generators.merge_grids(aligned_incoming);
+                incoming_ptr = &aligned_incoming;
+            }
+            const Matrix& incoming = *incoming_ptr;
             relation_coordinates.reserve(static_cast<std::size_t>(incoming.get_num_cols()));
-            relation_degrees = incoming.col_degrees;
+            relation_degrees.assign(incoming.col_degrees.begin(), incoming.col_degrees.end());
 
             for (index_type column = 0; column < incoming.get_num_cols(); ++column) {
-                const degree_type& degree = incoming.col_degrees[column];
+                const degree_type degree = incoming.col_degrees[column];
                 auto local_pair = kernel_generators.map_at_degree_pair(degree, true);
                 auto local_kernel = std::move(local_pair.first);
                 const vec<index_type>& selected_rows = local_pair.second;
@@ -611,15 +643,32 @@ Module<Matrix> homology_module(const ChainComplex<Matrix>& complex,
             }
         }
 
-        Matrix presentation(
-            static_cast<index_type>(relation_coordinates.size()),
-            kernel_generators.get_num_cols(),
-            relation_degrees, kernel_generators.col_degrees);
+        // A graded kernel need not be free: include its own syzygies as well
+        // as lifts of incoming boundaries. Both use the aligned kernel basis.
+        Matrix kernel_copy = kernel_generators;
+        Matrix kernel_relations = kernel_copy.graded_kernel();
+        for (index_type column = 0; column < kernel_relations.get_num_cols(); ++column) {
+            const auto entries = kernel_relations.get_col(column);
+            relation_coordinates.push_back(vec<index_type>(entries.begin(), entries.end()));
+            relation_degrees.push_back(kernel_relations.col_degrees[column]);
+        }
+        Matrix presentation = detail::empty_matrix_like(kernel_generators,
+            static_cast<index_type>(relation_coordinates.size()), kernel_generators.get_num_cols());
+        presentation.col_degrees = relation_degrees;
+        presentation.row_degrees = kernel_generators.col_degrees;
         presentation.assign_data(std::move(relation_coordinates));
-        Module<Matrix> result(std::move(presentation));
-        if (minimize) result.minimize();
-        return result;
+        presentation.refresh_compatible_sorted();
+        return {Module<Matrix>(std::move(presentation)), std::move(kernel_generators)};
     }
+}
+} // namespace detail
+
+template <typename Matrix>
+Module<Matrix> homology_module(const ChainComplex<Matrix>& complex,
+                              std::size_t homological_degree = 1, bool minimize = true) {
+    auto result = detail::homology_presentation_and_cycles(complex, homological_degree);
+    if (minimize) result.first.minimize();
+    return std::move(result.first);
 }
 
 } // namespace graded_linalg

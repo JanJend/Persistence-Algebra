@@ -15,7 +15,7 @@ template <typename Matrix>
 class Submodule : public Module<Matrix> {
 public:
     static_assert(is_graded_sparse_matrix_v<Matrix>,
-                  "Submodule<Matrix> requires the GradedSparseMatrix CRTP contract");
+                  "Submodule<Matrix> requires the graded sparse matrix interface");
     using module_type = Module<Matrix>;
     using index_type = typename Matrix::index_type;
     using homomorphism_type = Homomorphism<Matrix>;
@@ -62,7 +62,7 @@ public:
         generator_matrix().validate();
         const Matrix& parent_presentation = parent()->presentation();
         if (generator_matrix().get_num_rows() != parent_presentation.get_num_rows() ||
-            generator_matrix().row_degrees != parent_presentation.row_degrees) {
+            !detail::same_geometric_rows(generator_matrix(), parent_presentation)) {
             throw std::invalid_argument(
                 "Submodule target degrees must equal the parent module's generator degrees");
         }
@@ -94,16 +94,43 @@ public:
      */
     const homomorphism_type& generator_map() const noexcept { return generator_map_; }
 
+    /** Own the source of the exported inclusion, without a member ownership
+     * cycle. Materialize the presentation while keeping its generator basis.
+     * A stack-allocated submodule supplies an owned copy of that source.
+     * Subsequent basis changes require a new inclusion.
+     */
+    homomorphism_type inclusion() {
+        if (!this->has_presentation()) compute_presentation(false);
+        auto source = this->weak_from_this().lock();
+        if (!source) source = std::make_shared<Submodule>(*this);
+        auto result = generator_map_;
+        result.domain_ = std::move(source);
+        return result;
+    }
+    homomorphism_type inclusion() const {
+        if (this->has_presentation()) {
+            if (auto source = this->weak_from_this().lock()) {
+                auto result = generator_map_;
+                result.domain_ = std::move(source);
+                return result;
+            }
+        }
+        Submodule copy = *this;
+        return copy.inclusion();
+    }
+
     /** Move generator degrees forward by a nonnegative amount, keeping the
      * parent fixed. This is multiplication by x^amount, not a module twist.
      */
-    void shift_generators(const typename Matrix::degree_type& amount) {
+    void shift_generators(const matrix_geometry_degree_t<Matrix>& amount) {
         using Degree = typename Matrix::degree_type;
-        if (!Degree_traits<Degree>::smaller_equal(Degree{}, amount))
-            throw std::invalid_argument("Submodule generator shift must be nonnegative");
+        detail::require_nonnegative_shift(parent()->presentation(), amount, "Submodule generator shift must be nonnegative");
         Matrix generators = generator_matrix();
-        for (auto& degree : generators.col_degrees)
-            Degree_traits<Degree>::add(amount, degree);
+        if constexpr (GradedMatrixIO<Matrix>::runtime_dimension) {
+            auto columns = detail::geometric_col_degrees(generators);
+            for (auto& degree : columns) Degree_traits<matrix_geometry_degree_t<Matrix>>::add(amount, degree);
+            detail::set_geometric_degrees(generators, columns, detail::geometric_row_degrees(generators));
+        } else for (auto& degree : generators.col_degrees) Degree_traits<Degree>::add(amount, degree);
         replace_generator_map(std::move(generators), generator_map_.id_matrix());
         this->clear_injective_resolution(); // This changes the represented submodule.
     }
@@ -119,7 +146,7 @@ public:
     static Submodule zero(std::shared_ptr<const module_type> parent) {
         if (!parent) throw std::invalid_argument("A submodule requires a parent module");
         const Matrix& presentation = parent->presentation();
-        Matrix generators(0, presentation.get_num_rows());
+        Matrix generators = detail::empty_matrix_like(presentation, 0, presentation.get_num_rows());
         generators.row_degrees = presentation.row_degrees;
         generators.inherit_compatible_sorting(presentation);
         return Submodule(std::move(parent), std::move(generators));
@@ -128,7 +155,8 @@ public:
     static Submodule whole(std::shared_ptr<const module_type> parent) {
         if (!parent) throw std::invalid_argument("A submodule requires a parent module");
         const Matrix& presentation = parent->presentation();
-        Matrix identity(presentation.get_num_rows(), presentation.get_num_rows(), "Identity");
+        Matrix identity = detail::empty_matrix_like(presentation, presentation.get_num_rows(), presentation.get_num_rows());
+        for (index_type j = 0; j < identity.get_num_cols(); ++j) identity.set_col(j, {j});
         identity.row_degrees = presentation.row_degrees;
         identity.col_degrees = presentation.row_degrees;
         identity.inherit_compatible_sorting(presentation);
@@ -161,8 +189,9 @@ public:
             while (pivot != -1) {
                 index_type reducer = -1;
                 for (auto relation : relations_by_pivot[pivot])
-                    if (Degree_traits<typename Matrix::degree_type>::smaller_equal(
-                            presentation.col_degrees[relation], generators.col_degrees[g])) {
+                    if (Degree_traits<matrix_geometry_degree_t<Matrix>>::smaller_equal(
+                            detail::geometric_degree(presentation, presentation.col_degrees[relation]),
+                            detail::geometric_degree(generators, generators.col_degrees[g]))) {
                         reducer = relation;
                         break;
                     }
@@ -271,9 +300,9 @@ public:
             minimize_generators();
         Matrix presentation;
         if (generator_matrix().get_num_cols() == 0) {
-            presentation = Matrix(0, 0, {}, {}, {});
+            presentation = detail::empty_matrix_like(generator_matrix(), 0, 0);
         } else if (generator_map_.id_matrix() &&
-                   generator_matrix().col_degrees == parent()->presentation().row_degrees) {
+                   detail::geometric_col_degrees(generator_matrix()) == detail::geometric_row_degrees(parent()->presentation())) {
             presentation = parent()->presentation();
         } else if constexpr (has_matrix_graded_kernel<Matrix>::value) {
             presentation = parent()->presentation().submodule_generated_by(generator_matrix());
@@ -372,13 +401,15 @@ Submodule<Matrix> Module<Matrix>::zero_submodule() const {
  */
 template <typename Matrix>
 Submodule<Matrix> submodule_generated_at(std::shared_ptr<const Module<Matrix>> parent,
-                                       const typename Matrix::degree_type& degree) {
+                                       const matrix_geometry_degree_t<Matrix>& degree) {
     if (!parent) throw std::invalid_argument("A generated submodule requires a parent");
     const Matrix& presentation = parent->presentation();
-    auto basis = presentation.basislift_at(degree);
-    Matrix generators(presentation.get_num_rows(), basis);
-    generators.row_degrees = presentation.row_degrees;
-    generators.col_degrees.assign(basis.size(), degree);
+    auto basis = presentation.basislift_at(detail::query_matrix_degree(presentation, degree));
+    Matrix generators = detail::empty_matrix_like(presentation, static_cast<typename Matrix::index_type>(basis.size()), presentation.get_num_rows());
+    for (typename Matrix::index_type j = 0; j < generators.get_num_cols(); ++j)
+        generators.set_col(j, {basis[j]});
+    detail::set_geometric_degrees(generators, std::vector<matrix_geometry_degree_t<Matrix>>(generators.get_num_cols(), degree),
+                                             detail::geometric_row_degrees(presentation));
     return Submodule<Matrix>(std::move(parent), std::move(generators));
 }
 

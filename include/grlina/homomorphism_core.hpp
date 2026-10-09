@@ -15,7 +15,7 @@ template <typename Matrix>
 class Homomorphism {
 public:
     static_assert(is_graded_sparse_matrix_v<Matrix>,
-                  "Homomorphism<Matrix> requires the GradedSparseMatrix CRTP contract");
+                  "Homomorphism<Matrix> requires the graded sparse matrix interface");
     using module_type = Module<Matrix>;
     using submodule_type = Submodule<Matrix>;
     using chain_complex_type = ChainComplex<Matrix>;
@@ -33,13 +33,20 @@ private:
     std::size_t identity_lift_count_ = 0;
 
 
-    static const std::vector<typename Matrix::degree_type>& chain_group_degrees(
+    static const auto& chain_group_degrees(
         const module_type& module, std::size_t degree) {
         const auto& resolution = module.projective_resolution();
         if (resolution.empty()) throw std::invalid_argument("A module map requires projective resolutions");
         if (degree == 0) return resolution[0].row_degrees;
         if (degree <= resolution.size()) return resolution[degree - 1].col_degrees;
         throw std::invalid_argument("Lift exceeds the available projective resolution");
+    }
+
+    static std::vector<matrix_geometry_degree_t<Matrix>> geometric_chain_group_degrees(
+        const module_type& module, std::size_t degree) {
+        const auto& resolution = module.projective_resolution();
+        if (degree == 0) return detail::geometric_row_degrees(resolution[0]);
+        return detail::geometric_col_degrees(resolution[degree - 1]);
     }
 
 public:
@@ -54,15 +61,21 @@ public:
         for (std::size_t i = 0; i < lifts_.size(); ++i) {
             const auto& lift = lifts_[i];
             lift.validate();
+            if constexpr (GradedMatrixIO<Matrix>::runtime_dimension) {
+                const auto context = GradedMatrixIO<Matrix>::matrix_context(lift);
+                if ((domain_->has_presentation() && context != GradedMatrixIO<Matrix>::matrix_context(domain_->presentation())) ||
+                    (target_->has_presentation() && context != GradedMatrixIO<Matrix>::matrix_context(target_->presentation())))
+                    throw std::invalid_argument("A lift has incompatible parameter count");
+            }
             if (domain_->has_presentation()) {
                 const auto& source = chain_group_degrees(*domain_, i);
-                if (lift.col_degrees != source ||
+                if (detail::geometric_col_degrees(lift) != geometric_chain_group_degrees(*domain_, i) ||
                     lift.get_num_cols() != static_cast<typename Matrix::index_type>(source.size()))
                     throw std::invalid_argument("A lift has incompatible source generators");
             }
             if (target_->has_presentation()) {
                 const auto& destination = chain_group_degrees(*target_, i);
-                if (lift.row_degrees != destination ||
+                if (detail::geometric_row_degrees(lift) != geometric_chain_group_degrees(*target_, i) ||
                     lift.get_num_rows() != static_cast<typename Matrix::index_type>(destination.size()))
                     throw std::invalid_argument("A lift has incompatible target generators");
             }
@@ -145,7 +158,9 @@ public:
         std::vector<Matrix> lifts;
         for (std::size_t i = 0; i <= module->projective_resolution().size(); ++i) {
             const auto& degrees = chain_group_degrees(*module, i);
-            Matrix identity(degrees.size(), degrees.size(), "Identity");
+            Matrix identity = detail::empty_matrix_like(module->projective_resolution()[i == 0 ? 0 : i - 1],
+                static_cast<typename Matrix::index_type>(degrees.size()), static_cast<typename Matrix::index_type>(degrees.size()));
+            for (typename Matrix::index_type j = 0; j < identity.get_num_cols(); ++j) identity.set_col(j, {j});
             identity.row_degrees = identity.col_degrees = degrees;
             identity.inherit_compatible_sorting(module->projective_resolution()[i == 0 ? 0 : i - 1]);
             lifts.push_back(std::move(identity));
@@ -159,7 +174,8 @@ public:
     static Homomorphism quotient_projection(const submodule_type& K) {
         auto quotient = std::make_shared<const module_type>(K.quotient_module(false));
         const auto& parent = K.parent();
-        Matrix lift(parent->number_of_generators(), parent->number_of_generators(), "Identity");
+        Matrix lift = detail::empty_matrix_like(parent->presentation(), parent->number_of_generators(), parent->number_of_generators());
+        for (typename Matrix::index_type j = 0; j < lift.get_num_cols(); ++j) lift.set_col(j, {j});
         lift.col_degrees = lift.row_degrees = parent->presentation().row_degrees;
         lift.inherit_compatible_sorting(parent->presentation());
         return Homomorphism(parent, std::move(quotient), std::move(lift), true);
@@ -168,17 +184,16 @@ public:
     static Homomorphism zero(std::shared_ptr<const module_type> domain,
                              std::shared_ptr<const module_type> target) {
         if (!domain || !target) throw std::invalid_argument("Zero homomorphism requires modules");
-        Matrix zero(domain->number_of_generators(), target->number_of_generators());
-        zero.data.resize(domain->number_of_generators());
-        zero.col_degrees = domain->presentation().row_degrees;
-        zero.row_degrees = target->presentation().row_degrees;
+        Matrix zero = detail::empty_matrix_like(domain->presentation(), domain->number_of_generators(), target->number_of_generators());
+        detail::set_geometric_degrees(zero, detail::geometric_row_degrees(domain->presentation()),
+                                           detail::geometric_row_degrees(target->presentation()));
         return Homomorphism(std::move(domain), std::move(target), std::move(zero));
     }
 
     /** Translate both modules and every stored lift, preserving resolutions.
      * Matrix::shift uses M(amount)_a = M_(a+amount), hence subtracts degrees.
      */
-    Homomorphism shifted(const typename Matrix::degree_type& amount) const {
+    Homomorphism shifted(const matrix_geometry_degree_t<Matrix>& amount) const {
         auto source = std::make_shared<module_type>(*domain());
         source->shift(amount);
         auto destination = source;
@@ -201,11 +216,9 @@ public:
      * preserves degree order; grading follows from the sign of the shift.
      */
     static Homomorphism canonical_shift(std::shared_ptr<const module_type> module,
-                                       const typename Matrix::degree_type& amount) {
+                                       const matrix_geometry_degree_t<Matrix>& amount) {
         if (!module) throw std::invalid_argument("Canonical shift requires a module");
-        using Degree = typename Matrix::degree_type;
-        if (!Degree_traits<Degree>::smaller_equal(Degree{}, amount))
-            throw std::invalid_argument("Canonical shift requires a nonnegative amount");
+        detail::require_nonnegative_shift(module->presentation(), amount, "Canonical shift requires a nonnegative amount");
         auto shifted_module = std::make_shared<module_type>(*module);
         shifted_module->shift(amount);
         auto result = identity(module);
@@ -213,7 +226,8 @@ public:
         auto lifts = result.lifts();
         for (std::size_t i = 0; i < lifts.size(); ++i) {
             auto& lift = lifts[i];
-            lift.row_degrees = chain_group_degrees(*shifted_module, i);
+            detail::set_geometric_degrees(lift, geometric_chain_group_degrees(*module, i),
+                                               geometric_chain_group_degrees(*shifted_module, i));
         }
         result.lifts_ = std::move(lifts);
         return result;
@@ -224,7 +238,7 @@ public:
      * shared_ptr; otherwise shared_from_this() throws std::bad_weak_ptr.
      */
     static Homomorphism canonical_shift(const module_type& module,
-                                       const typename Matrix::degree_type& amount) {
+                                       const matrix_geometry_degree_t<Matrix>& amount) {
         return canonical_shift(module.shared_from_this(), amount);
     }
 
@@ -266,7 +280,8 @@ public:
         if (id_matrix_) {
             // Factory-built identity lifts only preserve or translate degrees;
             // the copied ordering certificate remains valid.
-            generators.row_degrees = generator_lift().row_degrees;
+            detail::set_geometric_degrees(generators, detail::geometric_col_degrees(generators),
+                                                    detail::geometric_row_degrees(generator_lift()));
         }
         submodule_type result(target_, std::move(generators));
         if (minimize) result.minimize_generators();
@@ -300,11 +315,13 @@ public:
         for (std::size_t i = 0; i < std::min(lifts_.size(), after_this.lifts_.size()); ++i) {
             if (i < after_this.identity_lift_count_) {
                 Matrix lift = lifts_[i];
-                lift.row_degrees = after_this.lifts_[i].row_degrees;
+                detail::set_geometric_degrees(lift, detail::geometric_col_degrees(lift),
+                                                   detail::geometric_row_degrees(after_this.lifts_[i]));
                 composite.push_back(std::move(lift));
             } else if (i < identity_lift_count_) {
                 Matrix lift = after_this.lifts_[i];
-                lift.col_degrees = lifts_[i].col_degrees;
+                detail::set_geometric_degrees(lift, detail::geometric_col_degrees(lifts_[i]),
+                                                   detail::geometric_row_degrees(lift));
                 composite.push_back(std::move(lift));
             } else {
                 composite.push_back(after_this.lifts_[i] * lifts_[i]);

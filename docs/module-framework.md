@@ -280,10 +280,13 @@ in `grlina/progress.hpp`; `general.hpp` retains its historical global name.
 
 ## Deliberate current limits
 
-- The verified graded-kernel/projective-resolution computation remains R²-only.
-  R³, Z², Z³, R⁴, and Z⁴ provide degree arithmetic, product order, lex/colex sort,
-  graded matrix operations that do not require syzygies, and SCC I/O. No
-  unverified higher-dimensional kernel algorithm was added.
+- The new runtime direct-coordinate and grid matrices support graded kernels
+  and projective resolutions in arbitrary dimensions, using slices of the
+  existing two-parameter routine. Higher-dimensional kernels need not be free;
+  repeated kernels compute their relations. See
+  [runtime coordinate matrices](dynamic-coordinate-matrices.md) for storage
+  choices and slice costs. The legacy fixed-dimension R³, Z², Z³, R⁴, and Z⁴
+  classes still provide only operations that do not require syzygies.
 - Injective resolutions can be stored, read, written, sorted, and replaced, but
   no injective-resolution algorithm existed to wrap.
 - Exactness of supplied resolutions is trusted. Homomorphism constructors trust
@@ -457,6 +460,11 @@ changes. They no longer preserve snapshots across submodule destruction or mutat
 Ordinary homomorphisms still retain the shared endpoint owners supplied by callers.
 Lift matrices are stored directly in a vector with ordinary value semantics.
 
+Use `I.inclusion()` when exporting an inclusion that must outlive `I`. It
+materializes a presentation without changing the inclusion's generator basis.
+For a shared, presented submodule it retains that same endpoint; for a stack
+object it owns a copy. The internal `generator_map()` remains a borrowed accessor.
+
 Explicit minimization updates the inclusion generators and presentation together.
 Sorting a Submodule directly, or invoking default sorting through a Module reference,
 also permutes its inclusion columns. Arbitrary inherited edits that change the
@@ -487,3 +495,32 @@ Submodule parent minimization copies that resolution to the new parent as well.
 Recomputing a submodule's presentation preserves its own injective model.
 Arbitrary presentation edits and operations that change the module still invalidate
 it; a quotient does not inherit the original module's injective resolution.
+
+### Basis transformations and cycle representatives (NEW)
+
+`module_transformations.hpp` provides `sort_module_with_maps(M)` and
+`minimize_module_with_maps(M)`. Each returns `original`, `transformed`,
+`forward` (original to transformed), and `backward` (transformed to original),
+including lifts on every stored projective group. `M` is unchanged. Passing a
+shared owner preserves its endpoint identity; a stack reference supplies an
+owned snapshot. The two maps are inverse on the module, though cancelled
+generators mean their matrices need not be inverses on the old free groups.
+Independently stored injective resolutions are retained in their existing bases.
+
+For `f: M -> N`, transport to transformed presentations with
+`change_M.backward.compose(f).compose(change_N.forward)`; `compose` applies
+its receiver first. Keep the endpoint modules unchanged while these maps exist.
+
+`homology_with_cycles(C, q, minimize)` returns an owning `module` and `cycles`:
+the latter maps its actual generator basis into the original `C_q` coordinates.
+It tracks representatives through minimization. Both this helper and
+`homology_module` include relations among kernel generators, which are essential
+when a kernel is not free, and support `q = 0`. For an empty complex, `H_0` is
+the zero module with the stored runtime parameter count. A chain map can act
+on these representatives; solve against the target representatives modulo
+boundaries to obtain its induced homology map.
+
+`module_storage.hpp` provides `convert_module_storage<Storage>(M)`. It converts
+all stored projective and injective differentials together and retains grids,
+empty runtime contexts, and resolution completeness. Runtime CSC transformations
+use this helper to compute with editable columns, then return packed maps.

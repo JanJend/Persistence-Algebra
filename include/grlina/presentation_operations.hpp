@@ -42,7 +42,7 @@ Matrix reduce_submodule(const Matrix& presentation, const Matrix& generators,
 /** Sum in the free target, with the ambient basis unchanged. */
 template <typename Matrix>
 Matrix submodule_sum(const Matrix& A, const Matrix& B) {
-    Matrix free_presentation(0, A.get_num_rows());
+    Matrix free_presentation = detail::empty_matrix_like(A, 0, A.get_num_rows());
     free_presentation.row_degrees = A.row_degrees;
     auto parent = std::make_shared<const Module<Matrix>>(std::move(free_presentation));
     return Submodule<Matrix>(parent, A).sum(Submodule<Matrix>(parent, B)).generator_map().generator_lift();
