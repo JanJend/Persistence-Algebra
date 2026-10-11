@@ -1,4 +1,5 @@
-#include <grlina/modules.hpp>
+#include "test_degree_matrices.hpp"
+#include <grlina/mod_modules.hpp>
 #include <cassert>
 
 using namespace graded_linalg;
@@ -17,7 +18,7 @@ struct TrackedMatrix : GradedSparseMatrix<r2degree, int, TrackedMatrix> {
         auto K = source.graded_kernel();
         return TrackedMatrix(K.get_num_cols(), K.get_num_rows(), K.data, K.col_degrees, K.row_degrees);
     }
-    bool refresh_compatible_sorted() { ++sorting_refreshes; return Base::refresh_compatible_sorted(); }
+
     void delete_rows(vec<int>& rows) { ++row_deletions; Base::delete_rows(rows); }
     void delete_columns(vec<int>& columns) { ++column_deletions; Base::delete_columns(columns); }
     static void reset_counts() { kernel_input_sizes.clear(); row_deletions = column_deletions = sorting_refreshes = 0; }
@@ -110,21 +111,23 @@ void test_preprocessing_and_deferred_deletion() {
 }
 
 void test_no_kernel_required_for_lazy() {
-    using Higher = R4GradedSparseMatrix<int>;
-    Higher P(1, 1, {{0}}, {r4degree(1,0,0,0)}, {r4degree(0,0,0,0)});
+    using Higher = NoKernelMatrix<4>;
+    Higher P(1, 1, {{0}}, {CoordinateDegree<double, 4>{1,0,0,0}}, {CoordinateDegree<double, 4>{0,0,0,0}});
     auto parent = std::make_shared<Module<Higher>>(P);
-    Higher G(2, 1, {{0}, {0}}, {r4degree(0,0,0,0), r4degree(1,0,0,0)}, P.row_degrees);
+    Higher G(2, 1, {{0}, {0}}, {CoordinateDegree<double, 4>{0,0,0,0}, CoordinateDegree<double, 4>{1,0,0,0}}, P.row_degrees);
     Submodule<Higher> S(parent, G);
     S.reduce_generators_lazy();
     assert(S.generator_map().generator_lift().data == array<int>({{0}}));
-    assert(S.generator_map().generator_lift().col_degrees == vec<r4degree>({r4degree(0,0,0,0)}));
+    assert((S.generator_map().generator_lift().col_degrees == vec<CoordinateDegree<double, 4>>({CoordinateDegree<double, 4>{0,0,0,0}})));
 }
 
 void test_identity_paths_do_not_refresh_sorting() {
     using T = TrackedMatrix;
     using M = Module<T>;
     using H = Homomorphism<T>;
-    auto parent = std::make_shared<const M>(T(0, 2, {}, {}, {{0,0}, {1,1}}));
+    T presentation(0, 2, {}, {}, {{0,0}, {1,1}});
+    presentation.sort_compatibly();
+    auto parent = std::make_shared<const M>(std::move(presentation));
     auto eta = H::canonical_shift(parent, {1,1});
     auto next = H::canonical_shift(eta.target(), {1,1});
     H ordinary(eta.domain(), eta.target(), eta.lifts());

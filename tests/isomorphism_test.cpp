@@ -1,5 +1,5 @@
 #include "isomorphism_examples.hpp"
-#include <grlina/modules.hpp>
+#include <grlina/mod_modules.hpp>
 #include <iostream>
 #include <set>
 
@@ -93,10 +93,10 @@ void local_block_tests() {
         bool expected=false;
         for (unsigned v=1;v<16;++v) if (members&(1u<<v)) {
             vec<int> c; for (int i=0;i<4;++i) if (v&(1u<<i)) c.push_back(i);
-            isomorphism_detail::extend_span(basis,c);
+            extend_span(basis,c);
             expected|=(((v&1)*((v>>3)&1)) ^ (((v>>1)&1)*((v>>2)&1)))!=0;
         }
-        require(isomorphism_detail::contains_invertible(basis,2)==expected,"Wrong GL(2) block answer");
+        require(contains_invertible(basis,2)==expected,"Wrong GL(2) block answer");
     }
     // k >= 3: only the nonidentity cyclic permutation is invertible in its
     // one-dimensional span; also test a nonzero all-singular block space.
@@ -104,10 +104,10 @@ void local_block_tests() {
         SparseMatrix<int> unit(0,k*k), singular(0,k*k);
         vec<int> cycle;
         for (int c=0;c<k;++c) cycle.push_back(c*k+(c+1)%k);
-        isomorphism_detail::extend_span(unit,cycle);
-        for (int c=0;c<k;++c) isomorphism_detail::extend_span(singular,vec<int>{c*k});
-        require(isomorphism_detail::contains_invertible(unit,k),"Missed nonidentity invertible block");
-        require(!isomorphism_detail::contains_invertible(singular,k),"Singular space accepted");
+        extend_span(unit,cycle);
+        for (int c=0;c<k;++c) extend_span(singular,vec<int>{c*k});
+        require(contains_invertible(unit,k),"Missed nonidentity invertible block");
+        require(!contains_invertible(singular,k),"Singular space accepted");
     }
 }
 

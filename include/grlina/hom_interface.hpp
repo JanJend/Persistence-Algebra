@@ -4,9 +4,9 @@
 #include <memory>
 #include <vector>
 
-#include <grlina/homomorphisms.hpp>
-#include <grlina/submodule.hpp>
-#include <grlina/matrix_family.hpp>
+#include <grlina/hom_algorithms.hpp>
+#include <grlina/mod_submodule.hpp>
+#include <grlina/mat_base.hpp>
 
 namespace graded_linalg {
 
@@ -15,8 +15,8 @@ std::vector<Homomorphism<Matrix>> module_hom_space_basis(
     std::shared_ptr<const Module<Matrix>> domain,
     std::shared_ptr<const Module<Matrix>> target,
     bool use_hom_exactness = false, bool info = false) {
-    if (!domain || !target)
-        throw std::invalid_argument("Hom basis requires non-null domain and target modules");
+    GRLINA_DEBUG_CHECK(if (!domain || !target)
+        throw std::invalid_argument("Hom basis requires non-null domain and target modules"));
     Matrix source = domain->presentation();
     Matrix destination = target->presentation();
     source.compute_rows_forward();
@@ -37,7 +37,7 @@ std::vector<Homomorphism<Matrix>> module_endomorphism_basis(
 }
 
 template <typename Matrix>
-Matrix canonical_shift_lift(const Matrix& presentation, const typename Matrix::degree_type& amount) {
+Matrix canonical_shift_lift(const Matrix& presentation, const matrix_geometry_degree_t<Matrix>& amount) {
     return Homomorphism<Matrix>::canonical_shift(
         std::make_shared<const Module<Matrix>>(presentation), amount).generator_lift();
 }
@@ -59,9 +59,8 @@ std::vector<Matrix> homomorphism_lift_basis(const Matrix& domain, const Matrix& 
  */
 template <typename Matrix>
 std::vector<Matrix> End_2d_0(
-    const Matrix& presentation, const typename Matrix::degree_type& amount,
+    const Matrix& presentation, const matrix_geometry_degree_t<Matrix>& amount,
     bool info = false) {
-    (void)canonical_shift_lift(presentation, amount); // degree-admissibility
     Matrix shifted = presentation;
     shifted.shift(amount);
     auto additional = homomorphism_lift_basis(presentation, shifted);
@@ -89,8 +88,8 @@ std::vector<Homomorphism<Matrix>> End_2d_0(
     const Homomorphism<Matrix>& canonical_shift, bool info = false) {
     const auto& domain = canonical_shift.domain();
     const auto& target = canonical_shift.target();
-    if (!domain || !target)
-        throw std::invalid_argument("End_2d_0 requires domain and target modules");
+    GRLINA_DEBUG_CHECK(if (!domain || !target)
+        throw std::invalid_argument("End_2d_0 requires domain and target modules"));
     const Matrix& presentation = domain->presentation();
     if (presentation.get_num_rows() == 0) {
         if (info)
@@ -125,14 +124,11 @@ std::vector<Homomorphism<Matrix>> End_2d_0(
 template <typename Matrix>
 std::vector<Homomorphism<Matrix>> End_2d_0(
     std::shared_ptr<const Module<Matrix>> domain,
-    const typename Matrix::degree_type& amount, bool info = false) {
-    if (!domain) throw std::invalid_argument("End_2d_0 requires a module");
+    const matrix_geometry_degree_t<Matrix>& amount, bool info = false) {
+    GRLINA_DEBUG_CHECK(if (!domain) throw std::invalid_argument("End_2d_0 requires a module"));
     const Matrix& presentation = domain->presentation();
     Matrix shifted = presentation;
     shifted.shift(amount);
-    using Degree = typename Matrix::degree_type;
-    if (!Degree_traits<Degree>::smaller_equal(Degree{}, amount))
-        throw std::invalid_argument("Canonical shift requires a nonnegative amount");
     if (presentation.get_num_rows() == 0) {
         if (info)
             std::cout << "dim End_0 = 0, dim End_2eps = 0, dim End_2eps/0 = 0" << std::endl;
@@ -169,7 +165,7 @@ std::vector<Homomorphism<Matrix>> End_2d_0(
 template <typename Matrix>
 std::vector<Homomorphism<Matrix>> End_2d_0(
     std::shared_ptr<Module<Matrix>> domain,
-    const typename Matrix::degree_type& amount, bool info = false) {
+    const matrix_geometry_degree_t<Matrix>& amount, bool info = false) {
     return End_2d_0<Matrix>(std::shared_ptr<const Module<Matrix>>(std::move(domain)), amount, info);
 }
 

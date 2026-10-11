@@ -1,4 +1,4 @@
-#include "grlina/r2graded_matrix.hpp"
+#include "grlina/mat_r2.hpp"
 #include <grlina/graded_linalg.hpp>
 #include <iostream>
 #include <filesystem>
@@ -17,7 +17,7 @@ void  compute_submodule_at(std::filesystem::path input_path, std::filesystem::pa
     } else {
         generated_module.to_stream(output_file);
         output_file.close();
-        std::cout << "Submodule at degree (" << degree.first << ", " << degree.second << ") computed and saved to: " << output_path << std::endl;
+        std::cout << "Submodule at degree (" << degree[0] << ", " << degree[1] << ") computed and saved to: " << output_path << std::endl;
     }
 }
 
@@ -34,7 +34,7 @@ r2degree string_to_r2degree(const std::string& str) {
 int main(int argc, char** argv) {
     
     std::string filepath;
-    r2degree degree;
+    r2degree degree{};
     if (argc != 3) {
         std::cerr << "Usage: " << argv[0] << " <file_path>" << " x,y" << std::endl;
     } else {

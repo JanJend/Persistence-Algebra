@@ -1,10 +1,10 @@
 #pragma once
-#include <grlina/checks.hpp>
+#include <grlina/general_checks.hpp>
 
-#ifndef BITSET_ALGEBRA_HPP
-#define BITSET_ALGEBRA_HPP
+#ifndef GRLINA_MAT_BITSET_HPP
+#define GRLINA_MAT_BITSET_HPP
 
-#include "grlina/matrix_base.hpp"
+#include "grlina/mat_base.hpp"
 #include <fstream>
 
 namespace graded_linalg {
@@ -20,9 +20,9 @@ struct BitsetHash {
  * @brief asks if a < b in order of the entries (reverse of standard comparison)
  */
 inline bool compareBitsets(const boost::dynamic_bitset<>& a, const boost::dynamic_bitset<>& b) {
-    if (a.size() != b.size()) {
+    GRLINA_DEBUG_CHECK(if (a.size() != b.size()) {
         throw std::invalid_argument("Bitsets must be of the same size for comparison.");
-    }
+    });
 
     for (std::size_t i = 0; i < a.size(); ++i) {
         if (a.test(i) != b.test(i)) {
@@ -219,9 +219,9 @@ inline std::vector<boost::dynamic_bitset<>> generateAllBitsetsWithKOnes(int n, i
  */
 inline std::vector<boost::dynamic_bitset<>> generateHalfBitsets(int n) {
     // Check if n is even
-    if (n % 2 != 0 || n <= 0) {
+    GRLINA_DEBUG_CHECK(if (n % 2 != 0 || n <= 0) {
         throw std::invalid_argument("n must be a positive even number.");
-    }
+    });
 
     // Generate all bitsets of length n-1 with n/2 - 1 bits set
     std::vector<boost::dynamic_bitset<>> bitsets = generateAllBitsetsWithKOnes(n - 1, n / 2 - 1);
@@ -254,4 +254,4 @@ inline std::vector<boost::dynamic_bitset<>> generateBitsets(int n) {
 } // graded_linalg
 
 
-#endif // BITSET_ALGEBRA_HPP
+#endif // GRLINA_MAT_BITSET_HPP

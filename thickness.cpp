@@ -1,5 +1,5 @@
-#include "grlina/r2graded_matrix.hpp"
-#include "grlina/modules.hpp"
+#include "grlina/mat_r2.hpp"
+#include "grlina/mod_modules.hpp"
 #include <iostream>
 #include <filesystem>
 

@@ -1,5 +1,5 @@
 #pragma once
-#include <grlina/isomorphism_test.hpp>
+#include <grlina/mod_isomorphism.hpp>
 #include <cmath>
 #include <map>
 #include <numeric>
@@ -46,7 +46,7 @@ inline Mat sparse_random(int n, int k, RNG& rng) {
         candidates.push_back(anchor);
         std::sort(candidates.begin(),candidates.end());
         data.push_back(std::move(candidates));
-        cols.push_back({rows[anchor].first+1+double(rng()%3), rows[anchor].second+1+double(rng()%3)});
+        cols.push_back({rows[anchor][0]+1+double(rng()%3), rows[anchor][1]+1+double(rng()%3)});
     }
     Mat a(2*n,n,data,cols,rows);
     minimize(a);
@@ -127,7 +127,7 @@ inline Changes scramble(Mat& a, RNG& rng, int operations) {
     auto data=a.data; auto degrees=a.col_degrees;
     for (int j=0;j<a.get_num_cols();++j) { data[j]=a.data[permutation[j]]; degrees[j]=a.col_degrees[permutation[j]]; }
     a=Mat(a.get_num_cols(),a.get_num_rows(),data,degrees,a.row_degrees);
-    a.validate();
+
     return count;
 }
 } // namespace iso_test

@@ -55,8 +55,8 @@ static void require_contains(const std::string& output, const std::string& expec
 
 int main(int argc, char** argv) {
     // fixture directory followed by every module-aware CLI in CMake order.
-    if (argc != 17) {
-        std::cerr << "Expected fixture directory and 15 executable paths\n";
+    if (argc != 16) {
+        std::cerr << "Expected fixture directory and 14 executable paths\n";
         return 2;
     }
 
@@ -120,22 +120,17 @@ int main(int argc, char** argv) {
                              (temporary / "bounded.scc").string()}, temporary, "cut_module");
         require_equal(temporary / "bounded.scc", fixtures / "interval_bound_expected.scc");
 
-        fs::copy_file(fixtures / "interval.scc", temporary / "birth_death.scc");
-        run(executable[11], {(temporary / "birth_death.scc").string()}, temporary, "birth_death");
-        require_equal(temporary / "birth_death_birth.scc", fixtures / "interval_birth_expected.scc");
-        require_equal(temporary / "birth_death_death.scc", fixtures / "interval_death_expected.scc");
-
-        run(executable[12], {(fixtures / "interval.scc").string(), "0.5", "0.5",
+        run(executable[11], {(fixtures / "interval.scc").string(), "0.5", "0.5",
                              (temporary / "deleted.scc").string()}, temporary,
             "delete_gens_and_rels");
         require_equal(temporary / "deleted.scc", fixtures / "free_origin_expected.scc");
 
         fs::copy_file(fixtures / "cancellation.scc", temporary / "minimize_pres.scc");
-        run(executable[13], {(temporary / "minimize_pres.scc").string()},
+        run(executable[12], {(temporary / "minimize_pres.scc").string()},
             temporary, "minimize_pres");
         require_equal(temporary / "minimize_pres_min.scc", fixtures / "cancellation_min_expected.scc");
 
-        run(executable[14], {(fixtures / "interval_resolution_expected.scc").string(),
+        run(executable[13], {(fixtures / "interval_resolution_expected.scc").string(),
                              (temporary / "homology.scc").string()}, temporary, "mpfree_clone");
         require_equal(temporary / "homology.scc", fixtures / "zero_module_expected.scc");
 

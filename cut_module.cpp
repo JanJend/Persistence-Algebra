@@ -8,7 +8,7 @@ using namespace graded_linalg;
 void cut_presentation(std::filesystem::path input_path, std::filesystem::path output_path, double x_cutoff = 1.0, double y_cutoff = 1.0) {
     
     R2Module<int> module(input_path.string());
-    module.bound_support(std::make_pair(x_cutoff, y_cutoff));
+    module.bound_support(r2degree{x_cutoff, y_cutoff});
 
     std::ofstream output_file(output_path);
     if (!output_file.is_open()) {
