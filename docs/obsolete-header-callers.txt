@@ -1,0 +1,31 @@
+Obsolete callers of removed matrix APIs
+
+Renamed headers have been updated. The references below depend on removed
+APIs, rather than equivalent renamed headers. Runtime classes remain removed.
+AIDA, Skyscraper-Invariant and Stable-Decomposition have been migrated to
+the current fixed-dimension coordinate/grid and R2 CSC types.
+Persistence-Algebra runtime tests and documentation are archived; the active
+tests use the fixed-dimension classes in mat_coord.hpp and mat_grid.hpp.
+The r3/z2 references are historical review probes for removed legacy classes.
+
+grlina/r3graded_matrix.hpp
+  grlina-method-review-evidence/graded/graded_quality_probe.cpp:2
+
+grlina/runtime_matrices/class_coord_graded_sparse_matrix.hpp
+  Persistence-Algebra/docs/dynamic-coordinate-matrices.md:28
+  Persistence-Algebra/docs/dynamic-coordinate-matrices.md:89
+  Persistence-Algebra/tests/dynamic_coordinate_matrix_test.cpp:6
+  Persistence-Algebra/tests/general_coordinate_kernel_test.cpp:6
+  Persistence-Algebra/tests/library_interop_test.cpp:6
+
+grlina/runtime_matrices/class_grid_graded_sparse_matrix.hpp
+  Persistence-Algebra/docs/dynamic-coordinate-matrices.md:119
+  Persistence-Algebra/tests/dynamic_grid_matrix_test.cpp:4
+  Persistence-Algebra/tests/general_coordinate_kernel_test.cpp:5
+
+grlina/runtime_matrices/packed_csc.hpp
+  Persistence-Algebra/tests/library_interop_test.cpp:4
+
+grlina/z2graded_matrix.hpp
+  grlina-method-review-evidence/graded/graded_quality_probe.cpp:3
+  grlina-method-review-evidence/graded/graded_quality_probe_extra.cpp:2

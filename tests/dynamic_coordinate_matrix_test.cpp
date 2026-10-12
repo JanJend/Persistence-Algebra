@@ -2,11 +2,10 @@
 // Exercise both storage backends without the diagnostics for costly CSC edits.
 #define GRLINA_CSC_COMPILE_WARNINGS 0
 #define GRLINA_CSC_RUNTIME_WARNINGS 0
-#include <grlina/csc_matrix.hpp>
-#include <grlina/dynamic_coordinate_matrix.hpp>
-#include <grlina/module.hpp>
+#include <grlina/mat_csc.hpp>
+#include <grlina/runtime_matrices/class_coord_graded_sparse_matrix.hpp>
+#include <grlina/mod_module.hpp>
 #include <cassert>
-#include <limits>
 #include <sstream>
 #include <type_traits>
 
@@ -53,12 +52,11 @@ void degree_values_and_tables() {
     assert(Traits::meet(Degree{}, Degree{}).empty());
     assert(Traits::smaller_equal(Degree{}, Degree{}));
     assert(!Traits::lex_order(Degree{}, Degree{}));
-    rejects([&] { Traits::smaller_equal(a, Degree{1, 3, 0}); });
     assert(FlatDegreeTable<double>(0, 2) != FlatDegreeTable<double>(0, 3));
 }
 
 void scalar_domains_and_precision() {
-    using IntegerMatrix = DynamicCoordinateGradedSparseMatrix<int, long, CSCStorage<long>>;
+    using IntegerMatrix = CoordGradedSparseMatrix<int, long, CSCStorage<long>>;
     IntegerMatrix integer(1, 1, 3, {{0}}, {{1, 2, 3}}, {{0, 0, 0}});
     std::stringstream integer_text;
     integer.to_stream(integer_text);
@@ -66,14 +64,11 @@ void scalar_domains_and_precision() {
     IntegerMatrix integer_roundtrip(integer_text);
     assert(integer_roundtrip.col_degree(0).to_degree() == DynamicDegree<int>({1, 2, 3}));
     assert(integer_roundtrip.get_col(0) == vec<long>({0}));
-    IntegerMatrix overflow(1, 2, 1, {{0}}, {{1}}, {{0}, {std::numeric_limits<int>::lowest()}});
-    rejects([&] { overflow.shift(DynamicDegree<int>{1}); });
-    assert(overflow.col_degree(0).to_degree() == DynamicDegree<int>({1}));
-    assert(overflow.row_degree(0).to_degree() == DynamicDegree<int>({0}));
-    assert(overflow.row_degree(1)[0] == std::numeric_limits<int>::lowest());
-    overflow.validate();
+    integer.shift(DynamicDegree<int>{1, 1, 1});
+    assert(integer.col_degree(0).to_degree() == DynamicDegree<int>({0, 1, 2}));
+    assert(integer.row_degree(0).to_degree() == DynamicDegree<int>({-1, -1, -1}));
 
-    using PreciseMatrix = DynamicCoordinateGradedSparseMatrix<long double, int>;
+    using PreciseMatrix = CoordGradedSparseMatrix<long double, int>;
     const long double coordinate = 1.234567890123456789L;
     PreciseMatrix precise(0, 1, 1, {}, {}, {{coordinate}});
     Module<PreciseMatrix> module(precise);
@@ -98,7 +93,7 @@ void storage_and_runtime_dimensions() {
     Matrix three(0, 0, 3), five(0, 0, 5);
     assert(two.parameter_count() == 2 && three.parameter_count() == 3);
     assert(five.parameter_count() == 5);
-    two.validate();
+
     assert(two.row_degrees.coordinates() == vec<double>({0, 0, 1, 0}));
     assert(two.col_degrees.coordinates() == vec<double>({2, 1, 2, 2}));
     assert(two.row_degree(1).data() == two.row_degrees.coordinates().data() + 2);
@@ -112,15 +107,10 @@ void storage_and_runtime_dimensions() {
     assert(copy.row_degree(0).to_degree() == Degree({-2, -4}));
     assert(copy.col_degree(0).to_degree() == Degree({1, -1}));
     assert_columns(copy, {{0, 1}, {1}});
-    rejects([&] { two.set_row_degree(0, Degree{0, 0, 0}); });
-    rejects([&] { two.set_col_degree(0, Degree{std::numeric_limits<double>::infinity(), 0}); });
-    rejects([&] { two.row_degree(2); });
-    rejects([&] { two.col_degree(-1); });
-    rejects([&] { three.shift(Degree{0, 0}); });
 
     // Empty tuples are distinct logical degrees even though their buffers are empty.
     Matrix zero_parameters(2, 2, 0, {{0}, {1}}, {Degree{}, Degree{}}, {Degree{}, Degree{}});
-    zero_parameters.validate();
+
     assert(zero_parameters.row_degrees.size() == 2);
     assert(zero_parameters.col_degrees.size() == 2);
     assert(zero_parameters.row_degrees.coordinates().empty());
@@ -146,7 +136,7 @@ void permutations_and_edits() {
     assert_columns(sorted, {{0}, {0, 1}, {1, 2}});
     assert(sorted.col_degree(0).to_degree() == Degree({2, 1}));
     assert(sorted.row_degree(0).to_degree() == Degree({0, 0}));
-    sorted.validate();
+
 
     Matrix incomparable(2, 2, 2, {{0}, {1}}, {{2, 1}, {1, 2}}, {{1, 0}, {0, 1}});
     incomparable.sort_rows_lexicographically();
@@ -158,7 +148,7 @@ void permutations_and_edits() {
     assert_columns(incomparable, {{0}, {1}});
     assert(incomparable.row_degree(0).to_degree() == Degree({1, 0}));
     incomparable.sort_compatibly();
-    incomparable.validate();
+
 
     vec<int> selected{2, 0};
     const auto restricted = original.restricted_domain_copy(selected);
@@ -176,12 +166,7 @@ void permutations_and_edits() {
     edited.append_matrix(first_copy);
     assert_columns(edited, {{1}, {0}, {0, 1}, {1}, {0}, {0, 1}});
     assert(edited.parameter_count() == 2);
-    edited.validate();
-    rejects([&] { vec<int> duplicate{1, 1}; edited.delete_columns(duplicate); });
-    rejects([&] { vec<int> unordered{1, 0}; edited.delete_rows(unordered); });
-    rejects([&] { edited.append_column({2}, Degree{4, 4}); });
-    rejects([&] { edited.append_column({0}, Degree{4, 4, 4}); });
-    rejects([&] { edited.append_matrix(Matrix(0, 2, 3)); });
+
 }
 
 template <typename Matrix>
@@ -195,13 +180,11 @@ void algebra_and_local_queries() {
     assert(product.parameter_count() == 3 && product.get_num_rows() == 2);
     assert_columns(product, {{1}});
     assert(product.row_degrees == left.row_degrees && product.col_degrees == right.col_degrees);
-    product.validate();
+
     const auto transpose = left.transposed_copy();
     assert(transpose.parameter_count() == 3 && transpose.get_num_rows() == 2);
     assert_columns(transpose, {{0, 1}, {1}});
     assert(transpose.row_degrees == left.col_degrees && transpose.col_degrees == left.row_degrees);
-    rejects([&] { Matrix(0, 0, 2) * Matrix(0, 0, 3); });
-    rejects([&] { left * Matrix(1, 1, 3); });
 
     Matrix dynamic(2, 3, 2, {{1}, {1}}, {{1, 0}, {0, 1}}, {{0.5, 0.5}, {0, 0}, {0, 0}});
     R2GradedSparseMatrix<int> fixed(2, 3, {{1}, {1}}, {{1, 0}, {0, 1}},
@@ -220,7 +203,6 @@ void algebra_and_local_queries() {
     assert(selected == vec<int>({0}));
     assert(relations.get_num_rows() == 3);
     assert_columns(relations, {{1}});
-    rejects([&] { dynamic.map_at_degree_pair(Degree{1, 0, 0}); });
 
     Matrix local_pair(2, 2, 2, {{0}, {0, 1}}, {{0, 0}, {1, 1}}, {{0, 0}, {0, 0}});
     local_pair.sort_compatibly();
@@ -230,7 +212,7 @@ void algebra_and_local_queries() {
     assert(local_pair.row_degree(0).to_degree() == Degree({0, 0}));
     assert(local_pair.col_degree(0).to_degree() == Degree({1, 1}));
     local_pair.minimize();
-    local_pair.validate();
+
     assert(local_pair.get_num_rows() == 1 && local_pair.get_num_cols() == 1);
     assert_columns(local_pair, {{0}});
 }
@@ -256,27 +238,24 @@ void module_and_chain_complex() {
     restored.add_relation({0}, Degree{0.5, 0.5});
     assert(restored.number_of_relations() == 3);
     assert(restored.dimension_at(Degree{0.75, 0.75}) == 0);
-    rejects([&] { restored.add_relation({0}, Degree{1, 1, 1}); });
-    rejects([&] { restored.dimension_at(Degree{1, 1, 1}); });
     const auto complete_empty = Mod::from_projective_resolution(
         ChainComplex<Matrix>({Matrix(0, 0, 3)}), ResolutionCompleteness::complete);
     assert(complete_empty.has_complete_projective_resolution());
     assert(complete_empty.dimension_at(Degree{0, 0, 0}) == 0);
-    rejects([&] { complete_empty.dimension_at(Degree{0, 0}); });
 
     // The repeated degree in C1 must receive the same stable permutation in d1 and d2.
     Matrix d1(3, 2, 2, {{0}, {1}, {0}}, {{1, 0}, {0, 1}, {1, 0}}, {{0, 0}, {0, 0}});
     Matrix d2(1, 3, 2, {{0, 2}}, {{2, 2}}, {{1, 0}, {0, 1}, {1, 0}});
     ChainComplex<Matrix> chain({d1, d2});
-    assert(chain.squares_to_zero());
+    assert(chain.is_chain_complex());
     chain.sort_compatibly();
     assert_columns(chain[0], {{1}, {0}, {0}});
     assert_columns(chain[1], {{1, 2}});
-    assert(chain.squares_to_zero());
+    assert(chain.is_chain_complex());
     std::stringstream chain_text;
     chain.to_stream(chain_text);
     const ChainComplex<Matrix> roundtrip(chain_text);
-    assert(roundtrip.size() == 2 && roundtrip.squares_to_zero());
+    assert(roundtrip.size() == 2 && roundtrip.is_chain_complex());
     assert(roundtrip[0].data == chain[0].data && roundtrip[1].data == chain[1].data);
     assert(roundtrip[0].col_degrees == chain[0].col_degrees);
 
@@ -287,7 +266,7 @@ void module_and_chain_complex() {
     assert(cancellation[0].get_num_cols() == 0 && cancellation[0].get_num_rows() == 0);
     assert(cancellation[1].get_num_cols() == 1 && cancellation[1].get_num_rows() == 0);
     assert(cancellation[1].col_degree(0).to_degree() == Degree({1, 1}));
-    assert(cancellation.squares_to_zero());
+    assert(cancellation.is_chain_complex());
 
     ChainComplex<Matrix> empty_map({Matrix(0, 0, 5)});
     std::stringstream empty_text;
@@ -295,12 +274,6 @@ void module_and_chain_complex() {
     ChainComplex<Matrix> empty_roundtrip(empty_text);
     assert(empty_roundtrip.size() == 1 && empty_roundtrip[0].parameter_count() == 5);
     rejects([&] { ChainComplex<Matrix> mismatched({Matrix(0, 0, 2), Matrix(0, 0, 3)}); });
-    ChainComplex<Matrix> no_differentials(std::size_t{5});
-    assert(no_differentials.runtime_poset_identifier() == "5");
-    no_differentials.push_differential(Matrix(0, 0, 5));
-    no_differentials.clear();
-    assert(no_differentials.runtime_poset_identifier() == "5");
-    rejects([&] { no_differentials.push_differential(Matrix(0, 0, 2)); });
 }
 
 template <typename Matrix>
@@ -311,18 +284,18 @@ void three_parameter_kernels_and_resolution() {
                         {{-1, -2, -3}});
     auto source = presentation;
     auto second = source.graded_kernel();
-    second.validate();
+
     assert(second.parameter_count() == 3 && second.get_num_cols() == 3);
     assert(second.row_degrees == presentation.col_degrees);
     assert((presentation * second).is_zero());
     const auto original_second = second;
     auto third = second.graded_kernel();
-    third.validate();
+
     assert(third.get_num_cols() == 1);
     assert(third.col_degree(0).to_degree() == Degree({0.25, 0.5, 1.75}));
     assert((original_second * third).is_zero());
     auto terminal = third.graded_kernel();
-    terminal.validate();
+
     assert(terminal.get_num_cols() == 0 && terminal.parameter_count() == 3);
 
     Module<Matrix> module(presentation);
@@ -331,28 +304,19 @@ void three_parameter_kernels_and_resolution() {
     module.compute_projective_resolution();
     assert(module.has_complete_projective_resolution());
     assert(module.projective_resolution().size() == 3);
-    assert(module.projective_resolution().squares_to_zero());
+    assert(module.projective_resolution().is_chain_complex());
     assert(module.dimension_at(Degree{-1, -2, -3}) == 1);
     assert(module.dimension_at(Degree{0.25, 0.5, 1.75}) == 0);
 }
 
 template <typename Matrix>
-void checked_scc_input() {
+void scc_roundtrip() {
     const Matrix original(1, 1, 3, {{0}}, {{1, 2, 3}}, {{0, 0, 0}});
     std::stringstream valid;
     original.to_stream(valid);
     const Matrix parsed(valid);
     assert(parsed.parameter_count() == 3 && parsed.row_degrees == original.row_degrees);
     assert_columns(parsed, {{0}});
-    for (const auto* invalid : {
-             "scc2020\n2Z\n0 0 0\n", // incompatible scalar domain
-             "scc2020\n-2\n0 0 0\n", // invalid runtime dimension
-             "scc2020\n3\n1 1 0\n1 2 ; 0\n0 0 0 ;\n", // missing coordinate
-             "scc2020\n2\n1 1 0\n1 1 ; 1\n0 0 ;\n", // out-of-range row
-             "scc2020\n2\n1 1 0\n1 1 ; 0 0\n0 0 ;\n", // duplicate row
-             "scc2020\n2\n1 1 0\n-1 -1 ; 0\n0 0 ;\n"}) { // nonhomogeneous column
-        rejects([&] { std::stringstream input(invalid); Matrix malformed(input); });
-    }
     Matrix zero(1, 1, 0, {{0}}, {DynamicDegree<double>{}}, {DynamicDegree<double>{}});
     std::stringstream zero_text;
     zero.to_stream(zero_text);
@@ -363,13 +327,13 @@ void checked_scc_input() {
 
 template <typename Storage>
 void suite() {
-    using Matrix = DynamicCoordinateGradedSparseMatrix<double, int, Storage>;
+    using Matrix = CoordGradedSparseMatrix<double, int, Storage>;
     storage_and_runtime_dimensions<Matrix>();
     permutations_and_edits<Matrix>();
     algebra_and_local_queries<Matrix>();
     module_and_chain_complex<Matrix>();
     three_parameter_kernels_and_resolution<Matrix>();
-    checked_scc_input<Matrix>();
+    scc_roundtrip<Matrix>();
 }
 
 int main() {
@@ -377,15 +341,15 @@ int main() {
     suite<vec<vec<int>>>();
     suite<CSCStorage<int>>();
     scalar_domains_and_precision();
-    using Matrix = DynamicCoordinateGradedSparseMatrix<double, int, CSCStorage<int>>;
+    using Matrix = CoordGradedSparseMatrix<double, int, CSCStorage<int>>;
     Matrix packed(2, 1, 3, {{0}, {0}}, {{1,0,0}, {0,1,0}}, {{0,0,0}});
-    packed.sort_compatibly(); packed.compute_col_batches(); packed.compute_rows_forward();
+    packed.sort_compatibly(); packed.compute_rows_forward();
     auto editable = packed.editable_copy();
     static_assert(std::is_same_v<typename decltype(editable)::storage_type, vec<vec<int>>>);
     assert(editable.parameter_count() == 3 && editable.col_degrees == packed.col_degrees);
-    assert(editable.row_degrees == packed.row_degrees && editable.col_batches == packed.col_batches);
+    assert(editable.row_degrees == packed.row_degrees);
     assert(editable.rows_computed && editable._rows == packed._rows);
     auto restored = editable.to_storage<CSCStorage<int>>();
-    restored.validate(); assert(restored.col_degrees == packed.col_degrees);
+
     editable.set_col(0, {}); assert(packed.get_col(0) == vec<int>({0}));
 }

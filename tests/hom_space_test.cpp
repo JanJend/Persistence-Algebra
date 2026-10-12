@@ -1,7 +1,7 @@
 #include "grlina/graded_linalg.hpp"
-#include "grlina/matrix_base.hpp"
-#include "grlina/r2graded_matrix.hpp"
-#include "grlina/sparse_matrix.hpp"
+#include "grlina/mat_base.hpp"
+#include "grlina/mat_r2.hpp"
+#include "grlina/mat_sparse.hpp"
 #include <iostream>
 #include <cassert>
 #include <filesystem>

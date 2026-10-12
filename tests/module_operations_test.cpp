@@ -1,5 +1,11 @@
-#include <grlina/modules.hpp>
+#define GRLINA_CSC_COMPILE_WARNINGS 0
+#define GRLINA_CSC_RUNTIME_WARNINGS 0
+#include "test_degree_matrices.hpp"
+#include <grlina/mat_csc.hpp>
+#include <grlina/mod_modules.hpp>
 #include <cassert>
+#include <cstdint>
+#include <random>
 #include <sstream>
 #include <type_traits>
 
@@ -10,6 +16,21 @@ using Hom = Homomorphism<Mat>;
 using Ptr = std::shared_ptr<const Mod>;
 static_assert(std::is_same_v<Mod, PersistenceModule<Mat>>);
 static_assert(std::is_same_v<Hom, ModuleMorphism<Mat>>);
+
+struct CopyCountingMatrix : GradedSparseMatrix<CoordinateDegree<double, 2>, int, CopyCountingMatrix> {
+    using Base = GradedSparseMatrix<CoordinateDegree<double, 2>, int, CopyCountingMatrix>;
+    using Base::Base;
+    inline static int copies = 0;
+    CopyCountingMatrix() = default;
+    CopyCountingMatrix(const CopyCountingMatrix& other) : Base(other) { ++copies; }
+    CopyCountingMatrix(CopyCountingMatrix&&) = default;
+    CopyCountingMatrix& operator=(const CopyCountingMatrix& other) {
+        Base::assign(other);
+        ++copies;
+        return *this;
+    }
+    CopyCountingMatrix& operator=(CopyCountingMatrix&&) = default;
+};
 
 template <typename F> void rejects(F action) {
     bool threw = false;
@@ -28,24 +49,22 @@ void test_homomorphisms() {
     Ptr free = std::make_shared<Mod>(Mat(0, 1, {}, {}, {{0, 0}}));
     Ptr interval = std::make_shared<Mod>(Mat(1, 1, {{0}}, {{1, 1}}, {{0, 0}}));
     Hom quotient(free, interval, identity_lift(*free, *interval));
-    quotient.validate();
+
     assert(quotient.check_lifts());
     assert(!quotient.generator_lift().compatibly_sorted); // no implicit sorting certification
     Submodule<Mat> zero_from_relations(interval, interval->presentation());
     assert(zero_from_relations.number_of_generators() == 1 && zero_from_relations.is_zero());
-    assert(zero_from_relations.generator_map().generator_lift().compatibly_sorted);
+    assert(!zero_from_relations.generator_map().generator_lift().compatibly_sorted);
     assert(!Submodule<Mat>::whole(interval).is_zero());
     auto relation_lift = lift_to_relations(free->presentation(), interval->presentation(), quotient.generator_lift());
     assert(relation_lift && relation_lift->get_num_cols() == 0);
     Hom manual(interval, free, identity_lift(*interval, *free)); // intentionally trusted, invalid input
-    manual.validate(); // structure is valid, but the homomorphism equation is not
+
     assert(!manual.check_lifts());
     assert(!lift_to_relations(interval->presentation(), free->presentation(), manual.generator_lift()));
     rejects([&] { manual.lift_to_resolution(); });
-    const Hom incompatible(free, interval, Mat(0, 0, {}, {}, {}));
-    rejects([&] { incompatible.validate(); });
-    const Hom missing_lifts(free, interval, std::vector<Mat>{});
-    rejects([&] { missing_lifts.validate(); });
+
+
     rejects([&] { module_hom_space_basis<Mat>(nullptr, interval); });
     rejects([&] { module_endomorphism_basis<Mat>(nullptr); });
 
@@ -117,6 +136,7 @@ void test_kernel_minimization() {
     // a,b have the same pivot and incomparable degrees; c has a smaller pivot.
     Mat P(3, 3, {{0, 2}, {1, 2}, {0, 1}}, {{0, 1}, {1, 0}, {1, 1}},
           {{-1, -1}, {-1, -1}, {-1, -1}});
+    P.sort_compatibly();
     Mat cheap = P;
     cheap.column_reduction_graded_w_deletion();
     assert(cheap.get_num_cols() == 3);
@@ -151,10 +171,10 @@ void test_resolution_minimization_and_sorting() {
     Mat d2 = d1;
     Mat d3(1, 2, {{0, 1}}, {{0, 0}}, d2.col_degrees);
     ChainComplex<Mat> resolution({d1, d2, d3});
-    assert(resolution.squares_to_zero());
+    assert(resolution.is_chain_complex());
     Mod M(resolution);
     M.minimize();
-    assert(M.projective_resolution().size() == 3 && M.projective_resolution().squares_to_zero());
+    assert(M.projective_resolution().size() == 3 && M.projective_resolution().is_chain_complex());
     assert(M.number_of_generators() == 1 && M.number_of_relations() == 0);
     assert(M.projective_resolution()[1].get_num_cols() == 0);
     assert(M.projective_resolution()[2].get_num_cols() == 0);
@@ -171,31 +191,27 @@ void test_resolution_minimization_and_sorting() {
     Mod T(ChainComplex<Mat>({triangle, syzygy}));
     T.minimize();
     assert(T.number_of_relations() == 2 && T.projective_resolution()[1].get_num_cols() == 0);
-    assert(T.projective_resolution().squares_to_zero());
+    assert(T.projective_resolution().is_chain_complex());
 
     // Repeated grades with distinct basis elements must be permuted identically.
     Mat fold(3, 1, {{0}, {0}, {0}}, {{2,2}, {0,0}, {0,0}}, {{0,0}});
     Mat boundary(2, 3, {{0,1}, {1,2}}, {{2,2}, {0,0}}, fold.col_degrees);
     ChainComplex<Mat> C({fold, boundary});
     C.sort_compatibly();
-    assert(C.squares_to_zero());
+    assert(C.is_chain_complex());
     assert(C[1].row_degrees == C[0].col_degrees);
     assert(C[1].data == array<int>({{0,1}, {0,2}}));
     C.sort_compatibly(Degree_traits<r2degree>::colex_lambda());
-    assert(C.squares_to_zero());
+    assert(C.is_chain_complex());
     Mat stale(2, 1, {{0}, {0}}, {{1,1}, {2,2}}, {{0,0}});
+    stale.sort_compatibly();
     stale.col_degrees[0] = {3,3};
-    assert(!stale.compatibly_sorted);
-    rejects([&] { stale.minimize(); });
-    rejects([&] { stale.sort_compatibly([](auto a, auto b) { return a > b; }); });
-    Mat antichain(3, 0, {{}, {}, {}}, {{0,2}, {1,1}, {2,0}}, {});
-    rejects([&] { antichain.sort_compatibly([](auto a, auto b) {
-        return (static_cast<int>(a[0]) + 1) % 3 == static_cast<int>(b[0]);
-    }); });
+    assert(stale.compatibly_sorted); // no hidden scans after direct degree edits
+    stale.get_column_graph(); // trusts the flag
+    stale.compatibly_sorted = false;
+    rejects([&] { stale.get_column_graph(); });
     stale.sort_compatibly();
     Mat copied = stale;
-    stale.col_degrees[0] = {4,4};
-    assert(copied.compatibly_sorted && !stale.compatibly_sorted);
     Mat moved = std::move(copied);
     assert(moved.compatibly_sorted);
     Mat permutation_input(3, 3, {{0}, {1}, {2}}, {{2,2}, {0,0}, {1,1}},
@@ -210,11 +226,12 @@ void test_resolution_minimization_and_sorting() {
     auto row_permutation = historical.sort_rows_with_permutation();
     assert(row_permutation.old_to_new == vec<int>({1,2,0}));
     assert(historical.data == permutation_input.data);
-    R4GradedSparseMatrix<int> higher(1, 1, {{0}}, {r4degree{1,1,1,1}}, {r4degree{0,0,0,0}});
+    NoKernelMatrix<4> higher(1, 1, {{0}}, {CoordinateDegree<double, 4>{1,1,1,1}}, {CoordinateDegree<double, 4>{0,0,0,0}});
     rejects([&] { higher.minimize(); }); // deliberate kernel implementation frame
+    higher.sort_compatibly();
     higher.semi_minimize();
     assert(higher.get_num_cols() == 1);
-    Module<R4GradedSparseMatrix<int>> injective(ChainComplex<R4GradedSparseMatrix<int>>({higher}),
+    Module<NoKernelMatrix<4>> injective(ChainComplex<NoKernelMatrix<4>>({higher}),
                                                ResolutionKind::injective);
     rejects([&] { injective.minimize(); });
 }
@@ -245,7 +262,7 @@ void test_chain_vs_resolution_minimization() {
     M.minimize(); // dispatches to module resolution minimization
     assert(M.projective_resolution().size() == 2);
     assert(M.projective_resolution()[1].data == array<int>({{0,1}}));
-    assert(M.projective_resolution().squares_to_zero());
+    assert(M.projective_resolution().is_chain_complex());
     assert(homology_module(M.projective_resolution(), 2).dimension_at({1,1}) == 0);
     assert(M.dimension_at({0,0}) == 1 && M.dimension_at({1,0}) == 0);
 
@@ -255,17 +272,17 @@ void test_chain_vs_resolution_minimization() {
     ChainComplex<Mat> complete({square, syzygies, dependency});
     complete.minimize();
     assert(complete[1].data == array<int>({{0,1}}));
-    assert(complete[2].get_num_cols() == 0 && complete.squares_to_zero());
+    assert(complete[2].get_num_cols() == 0 && complete.is_chain_complex());
 
-    // A zero differential is homology, not a contractible summand. The R4
+    // A zero differential is homology, not a contractible summand. The custom
     // example also proves that chain minimization needs no graded_kernel.
-    using Higher = R4GradedSparseMatrix<int>;
-    Higher local(2, 2, {{0}, {}}, {r4degree{0,0,0,0}, r4degree{1,1,1,1}},
-                                {r4degree{0,0,0,0}, r4degree{0,0,0,0}});
+    using Higher = NoKernelMatrix<4>;
+    Higher local(2, 2, {{0}, {}}, {CoordinateDegree<double, 4>{0,0,0,0}, CoordinateDegree<double, 4>{1,1,1,1}},
+                                {CoordinateDegree<double, 4>{0,0,0,0}, CoordinateDegree<double, 4>{0,0,0,0}});
     ChainComplex<Higher> general({local});
     general.minimize();
     assert(general[0].get_num_rows() == 1 && general[0].data == array<int>({{}}));
-    assert(general[0].col_degrees == vec<r4degree>({r4degree{1,1,1,1}}));
+    assert((general[0].col_degrees == vec<CoordinateDegree<double, 4>>({CoordinateDegree<double, 4>{1,1,1,1}})));
     Module<Higher> unsupported(ChainComplex<Higher>({local}));
     rejects([&] { unsupported.minimize_resolution(); });
     assert(unsupported.presentation().data == local.data); // strong exception guarantee
@@ -275,12 +292,149 @@ void test_chain_vs_resolution_minimization() {
     assert(empty.empty());
     Mat unit(1, 1, {{0}}, {{0,0}}, {{0,0}});
     ChainComplex<Mat> invalid({unit, unit});
-    rejects([&] { invalid.minimize(); });
+    assert(!invalid.is_chain_complex());
     assert(invalid[0].data == unit.data && invalid[1].data == unit.data);
     duplicate.col_degrees = {{2,0}, {1,0}};
     ChainComplex<Mat> unsorted({duplicate});
-    rejects([&] { unsorted.minimize(false); });
+    unsorted.minimize(false); // chain cancellation does not require degree ordering
     assert(unsorted[0].col_degrees == duplicate.col_degrees);
+}
+
+void test_chain_minimization_does_not_copy() {
+    using Matrix = CopyCountingMatrix;
+    for (bool sort : {false, true}) for (bool track : {false, true}) {
+        Matrix lower(2, 1, {{0}, {}}, {{0,0}, {1,1}}, {{0,0}});
+        Matrix upper(1, 2, {{1}}, {{1,1}}, lower.col_degrees);
+        ChainComplex<Matrix> complex({lower, upper});
+        auto maps = identity_basis_maps(complex);
+        Matrix::copies = 0;
+        complex.minimize(sort, track ? &maps : nullptr);
+        assert(Matrix::copies == 0);
+        assert(complex[0].get_num_rows() == 0 && complex[0].get_num_cols() == 0);
+        assert(complex[1].get_num_rows() == 0 && complex[1].get_num_cols() == 0);
+    }
+}
+
+template<class Matrix>
+void test_batched_chain_minimization() {
+    using D = typename Matrix::degree_type;
+    using Complex = ChainComplex<Matrix>;
+    auto check = [](const Complex& original, bool sort) {
+        std::stringstream before, after;
+        original.to_stream(before);
+        auto reduced = original;
+        for (auto& d : reduced.differentials()) d.compute_rows_forward();
+        auto maps = identity_basis_maps(original);
+        reduced.minimize(sort, &maps);
+        assert(reduced.is_chain_complex());
+        for (std::size_t level = 0; level < reduced.size(); ++level) {
+            const auto& d = reduced[level];
+            assert(d.is_graded_matrix() && !d.rows_computed);
+            for (int c = 0; c < d.get_num_cols(); ++c)
+                for (int r : d.data[c]) assert(!Degree_traits<D>::equals(d.col_degrees[c], d.row_degrees[r]));
+            if (level) assert(d.row_degrees == reduced[level - 1].col_degrees);
+            auto inclusion_left = original[level] * maps.to_original[level + 1];
+            auto inclusion_right = maps.to_original[level] * d;
+            assert(inclusion_left.data == inclusion_right.data);
+            auto projection_left = d * maps.from_original[level + 1];
+            auto projection_right = maps.from_original[level] * original[level];
+            assert(projection_left.data == projection_right.data);
+        }
+        for (std::size_t group = 0; group <= reduced.size(); ++group) {
+            const auto& degrees = group ? reduced[group - 1].col_degrees : reduced[0].row_degrees;
+            const auto& old_degrees = group ? original[group - 1].col_degrees : original[0].row_degrees;
+            const auto& inclusion = maps.to_original[group];
+            const auto& projection = maps.from_original[group];
+            assert(inclusion.is_graded_matrix() && projection.is_graded_matrix());
+            assert(inclusion.col_degrees == degrees && inclusion.row_degrees == old_degrees);
+            assert(projection.col_degrees == old_degrees && projection.row_degrees == degrees);
+            auto identity = projection * inclusion;
+            assert(identity.get_num_cols() == degrees.size() && identity.get_num_rows() == degrees.size());
+            for (int c = 0; c < identity.get_num_cols(); ++c) assert(identity.get_col(c) == vec<int>{c});
+        }
+        // Independent binary elimination checks homology at every grid point.
+        auto rank_at = [](const Matrix& d, D point) {
+            std::uint64_t pivots[8]{};
+            int rank = 0;
+            for (int c = 0; c < d.get_num_cols(); ++c) {
+                if (!Degree_traits<D>::smaller_equal(d.col_degrees[c], point)) continue;
+                std::uint64_t column = 0;
+                for (int r : d.data[c]) column ^= std::uint64_t{1} << r;
+                for (int r = 7; r >= 0; --r) if (column & (std::uint64_t{1} << r)) {
+                    if (pivots[r]) column ^= pivots[r];
+                    else { pivots[r] = column; ++rank; break; }
+                }
+            }
+            return rank;
+        };
+        auto betti_at = [&](const Complex& complex, std::size_t group, D point) {
+            const auto& degrees = group ? complex[group - 1].col_degrees : complex[0].row_degrees;
+            int dimension = 0;
+            for (const auto& degree : degrees) dimension += Degree_traits<D>::smaller_equal(degree, point);
+            if (group) dimension -= rank_at(complex[group - 1], point);
+            if (group < complex.size()) dimension -= rank_at(complex[group], point);
+            return dimension;
+        };
+        for (int x = -1; x <= 3; ++x) for (int y = -1; y <= 3; ++y)
+            for (std::size_t group = 0; group <= reduced.size(); ++group)
+                assert(betti_at(original, group, D{double(x), double(y)}) ==
+                       betti_at(reduced, group, D{double(x), double(y)}));
+        auto untracked = original;
+        untracked.minimize(sort);
+        auto once = reduced;
+        auto once_maps = maps;
+        reduced.minimize(false, &maps);
+        for (std::size_t level = 0; level < reduced.size(); ++level) {
+            assert(reduced[level].data == untracked[level].data && reduced[level].data == once[level].data);
+            assert(reduced[level].col_degrees == once[level].col_degrees);
+            assert(reduced[level].row_degrees == once[level].row_degrees);
+        }
+        for (std::size_t group = 0; group <= reduced.size(); ++group) {
+            assert(maps.to_original[group].data == once_maps.to_original[group].data);
+            assert(maps.from_original[group].data == once_maps.from_original[group].data);
+        }
+        original.to_stream(after);
+        assert(before.str() == after.str());
+        return maps;
+    };
+    // The second reducer uses the first, while the third column reduces to a
+    // surviving cycle. Its inclusion must be computed once, not twice.
+    Matrix lower(4, 3, {{0,2}, {1,2}, {0,1}, {0}},
+                 {D{1,1}, D{1,1}, D{1,1}, D{2,2}}, {D{0,0}, D{1,1}, D{1,1}});
+    Matrix upper(1, 4, {{0,1,2}}, {D{2,2}}, lower.col_degrees);
+    Complex dependency({lower, upper});
+    const auto maps = check(dependency, false);
+    assert(maps.to_original[1].get_col(0) == vec<int>({0,1,2}));
+
+    vec<D> degrees[] = {
+        {D{0,0}, D{1,0}, D{0,0}, D{0,1}, D{1,1}, D{0,1}, D{2,2}, D{1,0}},
+        {D{0,0}, D{1,0}, D{1,1}, D{0,1}, D{1,1}, D{0,1}, D{1,1}, D{1,0}},
+        {D{1,1}, D{0,1}, D{2,2}, D{1,0}, D{0,0}, D{1,0}, D{0,0}, D{1,1}},
+        {D{0,0}, D{1,0}, D{0,1}, D{1,1}, D{1,1}, D{0,1}, D{2,2}, D{1,0}}
+    };
+    std::mt19937 random(4719);
+    for (int trial = 0; trial < 80; ++trial) {
+        std::vector<Matrix> differentials;
+        for (int level = 0; level < 3; ++level) {
+            array<int> columns(8);
+            for (int c = 0; c < 4; ++c) columns[c] = {c + (level ? 4 : 0)};
+            differentials.emplace_back(8, 8, columns, degrees[level + 1], degrees[level]);
+        }
+        Complex complex(std::move(differentials));
+        // Admissible basis changes mix contractible pairs with strict
+        // differentials and zero cycles, updating both adjacent maps.
+        for (int change = 0; change < 100; ++change) {
+            int group = random() % 4, source = random() % 8, target = random() % 8;
+            if (source == target || !Degree_traits<D>::smaller_equal(degrees[group][source], degrees[group][target])) continue;
+            if (group) complex[group - 1].col_op(source, target);
+            if (group < 3) complex[group].row_op_on_cols(target, source);
+        }
+        assert(complex.is_chain_complex());
+        check(complex, false);
+        check(complex, true);
+        complex.sort_compatibly(Degree_traits<D>::colex_lambda());
+        check(complex, false);
+    }
 }
 
 void test_scc() {
@@ -291,13 +445,10 @@ void test_scc() {
     Z.to_stream(encoded);
     Mod round_trip(encoded);
     assert(round_trip.has_presentation() && round_trip.number_of_relations() == 0);
-    rejects([] { std::stringstream s("scc2020\n2\n1 1 0\n1 1 1 ; 0\n0 0 0 ;\n");
-        ChainComplex<R3GradedSparseMatrix<int>> wrong(s); });
-    rejects([] { std::stringstream s("scc2020\n2\n0 0 0\n"); R3GradedSparseMatrix<int> wrong(s); });
     rejects([] { std::stringstream s("scc2020\n2\n1 1 rubbish\n"); Mod wrong(s); });
     rejects([] { std::stringstream s("scc2020\n2\n1 1 0\n1 1 ; 0 garbage\n0 0 ;\n"); Mod wrong(s); });
     rejects([] { std::stringstream s("scc2020\n3\n1 1 0\n1 1 ; 0\n0 0 ;\n");
-        ChainComplex<R3GradedSparseMatrix<int>> wrong(s); });
+        ChainComplex<NoKernelMatrix<3>> wrong(s); });
 }
 
 void test_presentation_adapters() {
@@ -332,9 +483,6 @@ void test_presentation_adapters() {
     module.add_relation({1, 2}, {2, 2});
     assert(!module.has_complete_projective_resolution());
     assert(module.dimension_at({2,2}) == 1);
-    rejects([&] { module.add_relation({0}, {0,0}); }); // Before generator birth.
-    rejects([&] { module.add_relation({3}, {5,5}); });
-    rejects([&] { module.add_relation({2,1}, {5,5}); });
     rejects([&] { module.remove_relations({-1}); });
     rejects([&] { module.quotient_by_generators({3}); });
     assert(module.number_of_relations() == 1);
@@ -357,8 +505,8 @@ void test_presentation_adapters() {
     nonminimal.semi_minimize_presentation();
     assert(nonminimal.number_of_generators() == 0 && nonminimal.is_presentation_minimal());
     // Partial cancellation is also available without a graded-kernel implementation.
-    Module<R3GradedSparseMatrix<int>> three(
-        R3GradedSparseMatrix<int>(1, 1, {{0}}, {{1,1,1}}, {{1,1,1}}));
+    Module<NoKernelMatrix<3>> three(
+        NoKernelMatrix<3>(1, 1, {{0}}, {{1,1,1}}, {{1,1,1}}));
     three.semi_minimize_presentation();
     assert(three.number_of_generators() == 0);
 
@@ -465,5 +613,8 @@ int main() {
     test_kernel_minimization();
     test_resolution_minimization_and_sorting();
     test_chain_vs_resolution_minimization();
+    test_chain_minimization_does_not_copy();
+    test_batched_chain_minimization<Mat>();
+    test_batched_chain_minimization<R2GradedSparseMatrix<int, CSCStorage<int>>>();
     test_scc();
 }

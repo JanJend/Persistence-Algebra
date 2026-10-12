@@ -1,3 +1,7 @@
+> Historical review: the October 11 simplification removed the structural
+> validators, comparator validation and degree-order scans described below.
+> The current API is documented in [module-framework.md](module-framework.md).
+
 # Follow-up corrections and code-review map
 
 Read this alongside [the API overview](module-framework.md). This guide records
@@ -6,8 +10,8 @@ of every older library routine. Arithmetic and categorical formulas are over F2.
 
 ## 1. Types, ownership and homomorphisms
 
-- Actual classes: `Module` in `module.hpp`, `Homomorphism` in `homomorphism_core.hpp`,
-  and `Submodule` in `submodule.hpp`. Earlier type names remain aliases.
+- Actual classes: `Module` in `mod_module.hpp`, `Homomorphism` in `hom_core_class.hpp`,
+  and `Submodule` in `mod_submodule.hpp`. Earlier type names remain aliases.
 - CRTP enforcement requires `GradedSparseMatrix<D, index, Matrix>`. Generic
   constructions call the concrete `graded_kernel`, not a poset-blind substitute.
   The index type must be signed integral, with -1 available as a sentinel.
@@ -25,11 +29,11 @@ of every older library routine. Arithmetic and categorical formulas are over F2.
   Library constructions guarantee
   the equations algebraically; regression tests independently check their maps.
 
-`graded_linear_system.hpp` adds `solve_graded_linear_system(A, B)` for A X = B.
+`mat_linear_system.hpp` adds `solve_graded_linear_system(A, B)` for A X = B.
 Each right-hand column uses only A columns born at or below its degree.
 Containment uses `graded_linear_system_is_solvable(A, B)`, which groups columns
 by degree and reuses one reduction per group without computing coefficients.
-`homomorphisms.hpp` adds `lift_to_relations(sourceP, targetP, f0)`, returning
+`hom_algorithms.hpp` adds `lift_to_relations(sourceP, targetP, f0)`, returning
 an optional f1 with `targetP * f1 = f0 * sourceP`; no graded solution gives
 `nullopt`. `is_homomorphism` is its boolean form. These are optional checks for
 untrusted input, not extra work imposed on every trusted constructor.
@@ -41,7 +45,7 @@ preserve every common available lift level.
 
 ## 2. Sorting and basis coordinates
 
-`graded_matrix.hpp` keeps public degree vectors for compatibility. Consequently,
+`mat_graded.hpp` keeps public degree vectors for compatibility. Consequently,
 `compatibly_sorted` is a boolean-compatible checked proxy rather than a literal
 bool: diagnostic-build reads recheck the stored comparator and invalidate a stale certificate.
 Ordinary boolean uses/assignments work; binding a bool reference does not.
@@ -139,7 +143,7 @@ acts on the projective one.
 
 ### Euler Hilbert-query follow-up
 
-`module.hpp` now tracks completeness separately from the presence of resolution
+`mod_module.hpp` now tracks completeness separately from the presence of resolution
 maps. Supplied resolutions default to truncated/unknown unless explicitly marked
 `ResolutionCompleteness::complete` (or terminated by a zero free group). Exactness
 and an explicit completeness assertion remain the caller's guarantees. This is
@@ -149,7 +153,7 @@ incorrect even though the represented module is unchanged.
 `compute_projective_resolution()` extends the stored maps without rebasing them
 and computes kernels until the terminal map is injective. It then records
 completeness. `dimension_at()` uses signed chain-group counts for complete
-resolutions and local presentation evaluation otherwise. `hilbert_euler.hpp`
+resolutions and local presentation evaluation otherwise. `mod_module.hpp`
 contains the degree-only routines: generic point evaluation, incremental R2
 query sweeps, and R2 Cartesian-grid prefix sums. Full-grid queries compute a
 resolution by default when the concrete matrix offers a graded kernel. Mutable
@@ -198,14 +202,14 @@ cache invalidation and the legacy copy-returning API.
 The Stable-Decomposition extraction adds exact parent-aware Submodule
 containment/equality, canonical and translated Homomorphism shifts retaining
 all stored lifts, and images of submodules. New presentation adapters are in
-`presentation_operations.hpp`; matrix-family quotient reduction is in
-`matrix_family.hpp`. The latter uses coefficient spaces, not Hom classes modulo
+`mod_presentations.hpp`; matrix-family quotient reduction is in
+`mat_base.hpp`. The latter uses coefficient spaces, not Hom classes modulo
 relations. Tests cover this distinction, incomparable degrees, rectangular
 families and preservation of ambient row bases. The old kernel-degree-multiset
 containment heuristic is not carried over: membership is solved directly by
 degree-admissible linear systems. See `module-framework.md` for the public APIs.
 
-`module_operations.hpp` returns objects together with their canonical maps:
+`mod_constructions.hpp` returns objects together with their canonical maps:
 
 | Operation | Construction / returned maps |
 | --- | --- |
@@ -293,26 +297,26 @@ in the submodule minimizer and redundant grading checks after homomorphism shift
 Remaining candidates, identified rather than removed:
 
 - `hom_interface.hpp`: duplicated shifted-Hom computations across overloads.
-- `presentation_operations.hpp`: shared-module allocations for trivial matrices.
-- `graded_linalg.hpp` / `modules.hpp`: broad includes for otherwise optional features.
-- `module.hpp`: convenience forwarding methods, aliases, and arbitrary edits that
+- `mod_presentations.hpp`: shared-module allocations for trivial matrices.
+- `graded_linalg.hpp` / `mod_modules.hpp`: broad includes for otherwise optional features.
+- `mod_module.hpp`: convenience forwarding methods, aliases, and arbitrary edits that
   require care when applied to a Submodule with an inclusion.
 - `r4graded_matrix.hpp`, `z2graded_matrix.hpp`, `z3graded_matrix.hpp`,
   `z4graded_matrix.hpp`: four thin wrappers around generic coordinate matrices.
-- `graded_matrix.hpp`: sorting-certificate machinery and repeated validation scans.
-- `progress.hpp`: application-style threaded progress reporting in the library.
+- `mat_graded.hpp`: sorting-certificate machinery and repeated validation scans.
+- `general.hpp`: application-style threaded progress reporting in the library.
 
 Header origins (Git records creation, not user authorization):
 
 | First commit | Added headers |
 | --- | --- |
-| `f2322c6` | `chain_complex.hpp`, `module.hpp`, `submodule.hpp`, `coordinate_degree.hpp`, `r4graded_matrix.hpp`, `z2graded_matrix.hpp`, `z3graded_matrix.hpp`, `z4graded_matrix.hpp` |
-| `d82d073` | `graded_linear_system.hpp`, `module_operations.hpp` |
-| `2060662` | `hilbert_euler.hpp` |
-| `99034a6` | `matrix_family.hpp`, `presentation_operations.hpp`, `progress.hpp` |
-| `da01012` | `checks.hpp`, `epsilon_functors.hpp`, `hom_interface.hpp`, `homomorphism_core.hpp`, `hom_operations.hpp` (now removed) |
+| `f2322c6` | `chain_complex.hpp`, `mod_module.hpp`, `mod_submodule.hpp`, `deg_coordinate.hpp`, `r4graded_matrix.hpp`, `z2graded_matrix.hpp`, `z3graded_matrix.hpp`, `z4graded_matrix.hpp` |
+| `d82d073` | `mat_linear_system.hpp`, `mod_constructions.hpp` |
+| `2060662` | `mod_module.hpp` |
+| `99034a6` | `mat_base.hpp`, `mod_presentations.hpp`, `general.hpp` |
+| `da01012` | `general_checks.hpp`, `mod_epsilon.hpp`, `hom_interface.hpp`, `hom_core_class.hpp`, `hom_operations.hpp` (now removed) |
 
-`modules.hpp` predates this framework (`350d7f1`). The former `homomorphism.hpp`,
+`mod_modules.hpp` predates this framework (`350d7f1`). The former `homomorphism.hpp`,
 `module_morphism.hpp`, and `module_homomorphisms.hpp` were already absent before
 this cleanup. Solver, kernel, and Euler-query headers contain actual algorithms;
 their small size alone does not make them redundant.

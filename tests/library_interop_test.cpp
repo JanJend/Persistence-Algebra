@@ -1,9 +1,9 @@
 // NEW: packed exchange, ownership, basis transport and nonfree homology.
 #define GRLINA_CSC_COMPILE_WARNINGS 0
 #define GRLINA_CSC_RUNTIME_WARNINGS 0
-#include <grlina/packed_matrix.hpp>
-#include <grlina/module_transformations.hpp>
-#include <grlina/dynamic_coordinate_matrix.hpp>
+#include <grlina/runtime_matrices/packed_csc.hpp>
+#include <grlina/mod_transformations.hpp>
+#include <grlina/runtime_matrices/class_coord_graded_sparse_matrix.hpp>
 #include <cassert>
 
 using namespace graded_linalg;
@@ -12,19 +12,19 @@ using Degree = DynamicDegree<double>;
 template<class Matrix>
 Matrix matrix(int columns, int rows, array<int> entries,
               vec<Degree> column_degrees, vec<Degree> row_degrees, std::size_t parameters = 3) {
-    Matrix result = GradedMatrixIO<Matrix>::make_matrix(columns, rows, parameters);
+    Matrix result(columns, rows, parameters);
     GradedMatrixIO<Matrix>::assign_degrees(result, column_degrees, row_degrees);
     typename Matrix::storage_type storage;
     for (auto& column : entries) storage.push_back(std::move(column));
     result.assign_data(std::move(storage));
-    result.refresh_compatible_sorted();
+    result.compatibly_sorted = false;
     return result;
 }
 
 template<class Matrix>
 void check_change(const ModuleTransformation<Matrix>& change) {
-    change.forward.validate();
-    change.backward.validate();
+
+
     assert(change.forward.check_lifts());
     assert(change.backward.check_lifts());
     auto identity = change.backward.compose(change.forward);
@@ -63,8 +63,8 @@ void runtime_interop() {
             else return vec<vec<double>>{};
         }());
     assert(restored.data == d1.data);
-    assert(detail::geometric_row_degrees(restored) == detail::geometric_row_degrees(d1));
-    assert(detail::geometric_col_degrees(restored) == detail::geometric_col_degrees(d1));
+    assert(geometric_row_degrees(restored) == geometric_row_degrees(d1));
+    assert(geometric_col_degrees(restored) == geometric_col_degrees(d1));
     if constexpr (matrix_grid_backed_v<Matrix>) assert(restored.grids == d1.grids);
 
     // Export an inclusion from a stack object, then destroy that object.
@@ -72,7 +72,7 @@ void runtime_interop() {
         auto submodule = Submodule<Matrix>::whole(original);
         return submodule.inclusion();
     }();
-    inclusion.validate();
+
     assert(inclusion.check_lifts());
     auto shared_submodule = std::make_shared<Submodule<Matrix>>(Submodule<Matrix>::whole(original));
     auto shared_inclusion = shared_submodule->inclusion();
@@ -151,23 +151,20 @@ void runtime_interop() {
 }
 
 int main() {
-    runtime_interop<DynamicCoordinateGradedSparseMatrix<double,int>>();
-    runtime_interop<DynamicCoordinateGradedSparseMatrix<double,int,CSCStorage<int>>>();
-    runtime_interop<DynamicGridGradedSparseMatrix<double,int>>();
-    runtime_interop<DynamicGridGradedSparseMatrix<double,int,CSCStorage<int>>>();
+    runtime_interop<CoordGradedSparseMatrix<double,int>>();
+    runtime_interop<CoordGradedSparseMatrix<double,int,CSCStorage<int>>>();
+    runtime_interop<GridGradedSparseMatrix<double,int>>();
+    runtime_interop<GridGradedSparseMatrix<double,int,CSCStorage<int>>>();
     using Legacy = R2GradedSparseMatrix<int>;
     Module<Legacy> legacy(Legacy(3,3,{{0,1},{0,1,2},{0,1,2}},
         {{1,1},{2,2},{2,2}}, {{0,0},{1,1},{0,0}}));
     check_change(sort_module_with_maps(legacy));
     check_change(minimize_module_with_maps(legacy));
-    using Direct = DynamicCoordinateGradedSparseMatrix<double,int>;
+    using Direct = CoordGradedSparseMatrix<double,int>;
     auto empty = from_packed_csc<Direct>(0,0,3,{0},{},{},{});
     assert(empty.parameter_count() == 3);
     empty.compute_rows_forward();
     assert(empty.rows_computed);
-    assert(homology_module(ChainComplex<Direct>(3),0).presentation().parameter_count() == 3);
-    auto empty_module = convert_module_storage<CSCStorage<int>>(Module<Direct>(ChainComplex<Direct>(3)));
-    assert(empty_module.projective_resolution().runtime_poset_identifier() == "3");
     auto mutable_owner = std::make_shared<Module<Direct>>(empty);
     assert(sort_module_with_maps(mutable_owner).original.get() == mutable_owner.get());
     assert(minimize_module_with_maps(mutable_owner).original.get() == mutable_owner.get());

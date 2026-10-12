@@ -2,7 +2,7 @@
 // tested separately so this differential suite can run without diagnostic noise.
 #define GRLINA_CSC_COMPILE_WARNINGS 0
 #define GRLINA_CSC_RUNTIME_WARNINGS 0
-#include <grlina/csc_matrix.hpp>
+#include <grlina/mat_csc.hpp>
 #include <cassert>
 #include <random>
 #include <type_traits>
@@ -32,6 +32,63 @@ void assert_same(const Left& left, const CSCMatrix<Index>& right) {
     for (Index i = 0; i < right.get_num_cols(); ++i)
         assert(left.get_col(i) == right.get_col(i));
     assert_csc_invariants(right);
+}
+
+template<class Storage>
+void test_identity_shortcuts() {
+    using Matrix = SparseMatrix<int, Storage>;
+    auto check = [](Matrix left, Matrix right) {
+        const auto actual = left * right;
+        left.is_identity = right.is_identity = false;
+        const auto expected = left * right;
+        assert(actual.get_num_rows() == expected.get_num_rows());
+        assert(actual.get_num_cols() == expected.get_num_cols());
+        for (int i = 0; i < actual.get_num_cols(); ++i)
+            assert(actual.get_col(i) == expected.get_col(i));
+    };
+    Matrix A(3, 2, {{0}, {1}, {0, 1}});
+    Matrix I2(2, 2, "Identity"), I3(3, 3, "Identity");
+    assert(I2.is_identity && I3.is_identity);
+    check(I2, A);
+    check(A, I3);
+    if constexpr (std::is_same_v<Storage, CSCStorage<int>>) {
+        assert((I2 * A).data.shares_storage_with(A.data));
+        assert((A * I3).data.shares_storage_with(A.data));
+    }
+    Matrix inclusion(5, vec<int>{1, 3});
+    assert(inclusion.is_identity);
+    A.compute_rows_forward();
+    const auto embedded = inclusion * A;
+    assert(!embedded.rows_computed && embedded.get_num_rows() == 5);
+    assert((embedded.get_col(2) == vec<int>{1, 3}));
+    check(inclusion, A);
+    vec<int> removed{1};
+    I3.delete_columns(removed);
+    assert(I3.is_identity); // The retained unit columns are an ordered inclusion.
+    check(A, I3);
+    Matrix outer(7, vec<int>{0, 2, 3, 5, 6});
+    const auto composite = outer * inclusion;
+    assert(composite.is_identity);
+    assert((composite.get_col(0) == vec<int>{2}) && (composite.get_col(1) == vec<int>{5}));
+    check(outer, inclusion);
+    Matrix empty_inclusion(3, vec<int>{});
+    check(A, empty_inclusion);
+    check(Matrix(0, 0, "Identity"), Matrix(2, 0, array<int>{{}, {}}));
+    check(Matrix(3, vec<int>{2, 0}), Matrix(1, 2, array<int>{{0, 1}})); // Unordered: ordinary product.
+    check(Matrix(3, vec<int>{1, 1}), Matrix(1, 2, array<int>{{0, 1}})); // Repeated images cancel over F2.
+    Matrix changed = I2;
+    changed.col_op(0, 1);
+    assert(!changed.is_identity);
+    check(changed, A);
+    changed = I2;
+    assert(changed.is_identity);
+    changed.set_col(0, vec<int>{1});
+    assert(!changed.is_identity);
+    changed = I2;
+    changed.assign_data(I2.data);
+    assert(!changed.is_identity);
+    Matrix moved(std::move(I2));
+    assert(moved.is_identity && !I2.is_identity);
 }
 
 void test_shared_algorithms() {
@@ -143,6 +200,74 @@ void test_shared_algorithms() {
     }
 }
 
+void test_dense_index_transformation() {
+    const vec<int> row_map{-1,0,-1,1,2,-1};
+    vec<int> mapped{4,0,3,5,1,2};
+    apply_transformation(mapped, row_map);
+    assert(mapped == (vec<int>{2,-1,1,-1,0,-1}));
+    vec<int> filtered{4,0,3,5,1,2};
+    apply_transformation(filtered, row_map, false);
+    assert(filtered == (vec<int>{2,1,0}));
+}
+
+void test_row_index_maps() {
+    for (const vec<int>& removed : array<int>{{}, {0,2,5}, {0,1,2,3,4,5}}) {
+        vec<int> kept(6);
+        std::iota(kept.begin(), kept.end(), 0);
+        const auto buffer = kept.data();
+        remove_intersection(kept, removed);
+        const auto sparse_map = shiftIndicesMap(kept);
+        const auto dense_map = shiftIndicesMap(std::move(kept), 6);
+        assert(dense_map.data() == buffer);
+        for (int row = 0; row < 6; ++row) {
+            const auto it = sparse_map.find(row);
+            assert(dense_map[row] == (it == sparse_map.end() ? -1 : it->second));
+        }
+        vec<int> sparse_result{4,0,3,5,1,2}, dense_result = sparse_result;
+        apply_transformation(sparse_result, sparse_map);
+        apply_transformation(dense_result, dense_map, false);
+        assert(sparse_result == dense_result);
+    }
+    assert(shiftIndicesMap(vec<int>{}, 0).empty());
+    assert(shiftIndicesMap(vec<int>{1,3}, 5) == (vec<int>{-1,0,-1,1,-1}));
+    const std::unordered_map<int,int> sparse_map{{1000000,7}, {3,-1}};
+    vec<int> filtered{3,2,1000000,3};
+    apply_transformation(filtered, sparse_map);
+    assert(filtered == (vec<int>{-1,7,-1}));
+    vec<int> mapped{1000000,3};
+    apply_transformation(mapped, sparse_map, true);
+    assert(mapped == (vec<int>{7,-1}));
+}
+
+void test_batch_row_deletion() {
+    const array<int> columns{{0,2,5}, {}, {1,3,4,5}, {0,1,2,3,4,5}};
+    for (const vec<int>& removed : array<int>{{}, {0,2,5}, {0,1,2,3,4,5}}) {
+        array<int> expected(columns.size());
+        for (std::size_t c = 0; c < columns.size(); ++c)
+            for (int row : columns[c]) {
+                auto it = std::lower_bound(removed.begin(), removed.end(), row);
+                if (it == removed.end() || *it != row)
+                    expected[c].push_back(row - static_cast<int>(it - removed.begin()));
+            }
+        SparseMatrix<int> ordinary(columns.size(), 6, columns);
+        CSCMatrix<int> packed(columns.size(), 6, columns);
+        ordinary.compute_rows_forward();
+        packed.compute_rows_forward();
+        ordinary.delete_rows(removed);
+        packed.delete_rows(removed);
+        const SparseMatrix<int> reference(columns.size(), 6 - removed.size(), expected);
+        assert_same(reference, packed);
+        assert(ordinary.data == expected && ordinary.get_num_rows() == reference.get_num_rows());
+        if (!removed.empty()) assert(!ordinary.rows_computed && !packed.rows_computed);
+    }
+    SparseMatrix<int> empty(0, 6);
+    CSCMatrix<int> packed_empty(0, 6);
+    empty.delete_rows(vec<int>{0,2,5});
+    packed_empty.delete_rows(vec<int>{0,2,5});
+    assert(empty.get_num_rows() == 3);
+    assert_same(empty, packed_empty);
+}
+
 void test_copy_on_write_and_boundaries() {
     const array<int> columns{{0, 3}, {}, {1, 2, 4}, {}};
     CSCMatrix<int> original(4, 5, columns);
@@ -199,16 +324,42 @@ void test_copy_on_write_and_boundaries() {
         assert_csc_invariants(transposed);
         assert_same(empty, transposed.transposed_copy());
     }
+}
 
-    for (const auto& invalid : vec<vec<std::size_t>>{{}, {1}, {0, 2, 1}, {0, 3}}) {
-        bool rejected = false;
-        try { CSCStorage<int> storage(invalid, vec<int>{0}); }
-        catch (const std::invalid_argument&) { rejected = true; }
-        assert(rejected);
+void test_borrowed_column_sorting() {
+    const CSCMatrix<int> empty(0, 0);
+    assert(empty.is_sorted_sparse());
+    CSCMatrix<int> matrix(4, 6, array<int>{{}, {3}, {1, 4}, {0, 2, 5}});
+    const auto& read_only = matrix;
+    const auto column = read_only.column(3);
+    assert(&*column.begin() == &read_only.data.entries()[read_only.data.offsets()[3]]);
+    assert(read_only.is_sorted_sparse()); // A descent across column boundaries is valid.
+    assert(graded_linalg::is_sorted(column));
+    matrix.set_col(3, vec<int>{0, 5, 2});
+    assert(!read_only.is_sorted_sparse());
+    matrix.set_col(3, vec<int>{0, 2, 2});
+    assert(!read_only.is_sorted_sparse());
+}
+
+void test_offset_check_policy() {
+    bool rejected = false;
+    try {
+        // Invalid buffers are only constructed here, never accessed.
+        CSCStorage<int> invalid(vec<std::size_t>{1, 1}, vec<int>{});
+    } catch (const std::invalid_argument&) {
+        rejected = true;
     }
+    assert(rejected == (GRLINA_ENABLE_CHECKS != 0));
 }
 
 int main() {
+    test_identity_shortcuts<vec<vec<int>>>();
+    test_identity_shortcuts<CSCStorage<int>>();
     test_shared_algorithms();
+    test_dense_index_transformation();
+    test_row_index_maps();
+    test_batch_row_deletion();
     test_copy_on_write_and_boundaries();
+    test_borrowed_column_sorting();
+    test_offset_check_policy();
 }

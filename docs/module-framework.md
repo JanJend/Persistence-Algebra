@@ -9,13 +9,15 @@ and cross the matrix boundary only when calling a legacy algorithm.
 
 All types live in `graded_linalg`.
 
-- `ChainComplex<Matrix>` stores `d1, d2, ...` in that order. Structural checks
-  run automatically in diagnostic builds and explicitly via `validate_structure()`
-  in every build. `is_chain_complex()` checks `d_i d_{i+1} = 0`.
+- `ChainComplex<Matrix>` stores `d1, d2, ...` in that order and trusts supplied
+  matrices and adjacent bases. `is_chain_complex()` explicitly computes
+  `d_i d_{i+1}` and tests that each product is zero.
 - `Module<Matrix>` (`PersistenceModule` is a compatibility alias) owns optional projective
   and injective chain complexes. `R2Module<index>` is the standard alias.
-  The aggregate header also provides `R3Module`, `Z2Module`, `Z3Module`,
-  `R4Module`, and `Z4Module` aliases.
+  For other parameter counts and coordinate domains, use
+  `Module<CoordGradedSparseMatrix<Scalar, Index>>` or
+  `Module<GridGradedSparseMatrix<Scalar, Index>>` with the corresponding runtime
+  matrix header.
 - `Submodule<Matrix>` publicly inherits `Module<Matrix>` and stores its embedding
   as a `Homomorphism<Matrix>` named `generator_map_`. `generator_map()` exposes
   the inclusion and `parent()` returns its target. The generator lift's row
@@ -25,9 +27,9 @@ All types live in `graded_linalg`.
 - `module_hom_space_basis` and `module_endomorphism_basis` adapt the established
   Hom algorithms and return typed module homomorphisms.
 
-The implementation is split across `chain_complex.hpp`, `module.hpp`,
-`submodule.hpp`, `homomorphism_core.hpp`, and `hom_interface.hpp`.
-Including `grlina/modules.hpp` loads the whole public layer.
+The implementation is split across `chain_complex.hpp`, `mod_module.hpp`,
+`mod_submodule.hpp`, `hom_core_class.hpp`, and `hom_interface.hpp`.
+Including `grlina/mod_modules.hpp` loads the whole public layer.
 See [the correction/review guide](module-framework-review.md) for the latest
 algorithm contracts, categorical operations and a suggested walkthrough.
 
@@ -44,8 +46,8 @@ poset-specific steps through it (for example, `graded_kernel()`).
 degrees are module generators. Higher differentials follow the same convention.
 
 A module created from a presentation has a one-differential projective
-resolution. A module created from a chain complex trusts the caller's exactness,
-with structural compatibility checked automatically only in diagnostic builds. Calling
+resolution. A module created from a chain complex trusts its structure and the
+caller's exactness. Calling
 `mutable_presentation()` discards higher projective differentials first, because
 an arbitrary edit would make them stale. `minimize_presentation()` also discards
 higher projective maps; standard `minimize()` instead minimizes the stored
@@ -56,29 +58,25 @@ bases are preserved. A uniform `shift()` is
 applied to every stored projective and injective differential and therefore
 preserves the resolutions.
 
-`GradedSparseMatrix` has `compatibly_sorted`, false when no ordering has been
-certified. Calling `sort_compatibly()` sorts rows and columns with the mandatory
-linear extension from `Degree_traits`; the comparator overload supports any
-other compatible linear extension. The matrix retains the certifying
-comparator. Diagnostic builds re-check actual degree vectors and detect stale
-flags caused by legacy direct writes. Optimized builds read cached flags in
-constant time: callers that directly edit public degree vectors must call
-`invalidate_compatible_sorting()` (or explicitly refresh/sort). Uniform shifts
-assume a translation-invariant degree order, as supplied by the coordinate
-lex/colex orders. Explicit-degree constructors and SCC readers establish initial
-sorting metadata. Appending and arbitrary permutation invalidate it.
-Sorted-input algorithms diagnose missing/stale certificates in diagnostic builds;
-in optimized builds, sorted input is a caller precondition. A module's
-`minimize()` still sorts by default; `minimize(false)` trusts the supplied order
-in optimized builds.
+`GradedSparseMatrix` retains the boolean `compatibly_sorted` flag.
+`sort_compatibly()` sorts both degree lists by the linear extension supplied by
+`Degree_traits` and sets the flag. No comparator or sortedness validator runs.
+Explicit-degree constructors and unsorted readers leave the flag false.
+Partial sorts conservatively leave it false unless the untouched axis has at
+most one degree. Appends and arbitrary permutations invalidate it; copies,
+transposes, deletions and uniform coordinate shifts preserve known ordering.
+Callers who directly edit public degrees must maintain the flag themselves.
+Set `compatibly_sorted = true` to record a caller guarantee without scanning.
+Algorithms requiring sorted input check only the flag in diagnostic builds.
+Module `minimize()` sorts by default; `minimize(false)` uses the supplied order.
 
-`checks.hpp` selects diagnostic checks automatically: enabled without optimization,
+`general_checks.hpp` selects diagnostic checks automatically: enabled without optimization,
 disabled when GCC/Clang define `__OPTIMIZE__` (including `-Og`) or when `NDEBUG`
 is defined. `-DGRLINA_ENABLE_CHECKS=1` or `=0` overrides this. Keep the setting
 consistent across translation units. On compilers without `__OPTIMIZE__`, use
-`NDEBUG` or the explicit setting. Explicit validators and file-input checks
-remain active in every mode. See [the validation audit](validation-audit.md)
-for the decisions by subsystem and the retained sorting scans.
+`NDEBUG` or the explicit setting. File-token parsing and I/O errors remain active
+in every mode. Matrix, chain, Hom, submodule and grid validation methods have
+been removed. See [the validation audit](validation-audit.md).
 
 Minimization first cancels equal-degree generator/relation pairs, clearing the
 entire pivot row by column operations before deletion. It then uses the concrete
@@ -151,11 +149,8 @@ are:
 | Degree/matrix | Poset ID |
 | --- | --- |
 | `r2degree`, `R2GradedSparseMatrix` | `2` |
-| `triple`, `R3GradedSparseMatrix` | `3` |
-| `z2degree`, `Z2GradedSparseMatrix` | `2Z` |
-| `z3degree`, `Z3GradedSparseMatrix` | `3Z` |
-| `r4degree`, `R4GradedSparseMatrix` | `4` |
-| `z4degree`, `Z4GradedSparseMatrix` | `4Z` |
+| `CoordinateDegree<double, N>` / runtime matrices with real scalar coordinates | `N` |
+| `CoordinateDegree<Integer, N>` / runtime matrices with integer scalar coordinates | `NZ` |
 
 Custom degree traits may use any stable string. The chain dimensions on line
 three determine the number of differentials. A one-matrix presentation keeps
@@ -203,7 +198,7 @@ Module image_as_module = image.presented_module();
 submodules with that exact module as their shared parent. Both methods are const,
 require a stored presentation, and require the module to be owned by a
 `std::shared_ptr`; calling them on a stack-allocated module throws
-`std::bad_weak_ptr`. Include `grlina/submodule.hpp` or `grlina/modules.hpp` to use
+`std::bad_weak_ptr`. Include `grlina/mod_submodule.hpp` or `grlina/mod_modules.hpp` to use
 them. The returned submodules keep their parent alive.
 
 No separate module object is needed for a submodule's own presentation/resolution:
@@ -246,8 +241,8 @@ same module's representations, not automatic transport of embeddings under such 
 ## Migrated clients
 
 Stable-Decomposition's reusable helpers are exposed in
-`grlina/presentation_operations.hpp` (included by `modules.hpp`) and
-`grlina/hom_interface.hpp` and `grlina/matrix_family.hpp`. In particular:
+`grlina/mod_presentations.hpp` (included by `mod_modules.hpp`) and
+`grlina/hom_interface.hpp` and `grlina/mat_base.hpp`. In particular:
 
 - `S.contains(T)`, `S.is_contained_in(T)`, and `S.equals(T)` test exact submodule
   membership modulo their common parent's relations, without requiring a kernel.
@@ -265,7 +260,7 @@ Stable-Decomposition's reusable helpers are exposed in
 
 These additions are tested with handmade examples in
 `tests/presentation_operations_test.cpp`. The generic timing utility now lives
-in `grlina/progress.hpp`; `general.hpp` retains its historical global name.
+in `grlina/general.hpp`, which also retains its historical global name.
 
 - Persistence-Algebra command-line targets now construct modules for file I/O,
   minimization, resolutions, Hilbert/thickness calculations, Hom calculations,
@@ -281,9 +276,10 @@ in `grlina/progress.hpp`; `general.hpp` retains its historical global name.
 ## Deliberate current limits
 
 - The new runtime direct-coordinate and grid matrices support graded kernels
-  and projective resolutions in arbitrary dimensions, using slices of the
-  existing two-parameter routine. Higher-dimensional kernels need not be free;
-  repeated kernels compute their relations. See
+  and projective resolutions in arbitrary dimensions. Three parameters use
+  muphasa's signature-based Groebner reduction; dimensions above three use
+  slices of the existing two-parameter routine. Higher-dimensional kernels need
+  not be free; repeated kernels compute their relations. See
   [runtime coordinate matrices](dynamic-coordinate-matrices.md) for storage
   choices and slice costs. The legacy fixed-dimension R³, Z², Z³, R⁴, and Z⁴
   classes still provide only operations that do not require syzygies.
@@ -291,18 +287,18 @@ in `grlina/progress.hpp`; `general.hpp` retains its historical global name.
   no injective-resolution algorithm existed to wrap.
 - Exactness of supplied resolutions is trusted. Homomorphism constructors trust
   endpoints, lift dimensions, degrees, gradedness and equations without scanning
-  or refreshing sorting flags. For untrusted input, explicitly call
-  `Homomorphism::validate()` to check structure, then `check_lifts()` to check
-  equations. `lift_to_relations` can also check a supplied generator lift.
+  or refreshing sorting flags. `check_lifts()` remains an explicit equation
+  query and is never called automatically. `lift_to_relations` can also check
+  a supplied generator lift.
 - Hom adapters provide generator lifts; `lift_to_resolution()` can extend them
   through the common available projective resolution using graded linear systems.
 
 ## Verification
 
-`tests/modules_test.cpp` exercises CRTP enforcement, sorting certificates and
-stale-flag detection, correct unit cancellation and redundant-relation
+`tests/modules_test.cpp` exercises CRTP enforcement, sorting flags and
+caller-managed invalidation, correct unit cancellation and redundant-relation
 deletion, strict SCC round trips, real fixture loading, chain
-validation, module Hilbert functions, resolution invalidation/recomputation,
+equations, module Hilbert functions, resolution invalidation/recomputation,
 submodule reduction/presentation/quotients/intersections, morphism
 image/kernel/Hom adapters, homology presentations, R³ colex sorting, and
 R⁴/Z⁴ I/O.
@@ -314,7 +310,7 @@ their SCC/quiver output or exact mathematical invariants. The fixture with a
 three-parameter header but two-coordinate degrees is now explicitly rejected;
 its round-trip test corrects only an in-memory copy. The additional
 `module_operations_test` covers categorical maps, exact syzygy minimization,
-resolution cancellation, sorting and optional homomorphism validation.
+resolution cancellation, sorting and explicit homomorphism-equation queries.
 
 ## Presentation operations on modules
 
@@ -382,7 +378,7 @@ module generators; the endpoints and their degrees can still differ. Ordinary
 constructors always leave it `false`; there is no public flag override.
 `identity`, `canonical_shift`, the whole-submodule embedding and
 `quotient_projection` (used by `as_quotient`) set it by construction.
-No coefficient scan checks or discovers identity, including in `validate()`.
+No coefficient scan checks or discovers identity.
 Shifting preserves the flag; addition conservatively clears it.
 
 `f.compose(g)` means **apply f, then g**, so its matrix is normally `g * f`.
@@ -448,9 +444,9 @@ assert(inclusion.domain()->has_presentation());
 
 The homomorphism's domain is the submodule's own Module base, not a separately
 materialized module. Accessing either endpoint or its lift never computes a
-presentation. `presentation()` throws if none was supplied/computed. Homomorphism
-`validate()` checks available endpoint bases without constructing missing ones;
-`check_lifts()` needs presentations and throws if they are missing.
+presentation. `presentation()` requires a supplied/computed presentation.
+`check_lifts()` needs presentations; callers must provide them before querying
+its equations.
 
 The member inclusion holds a non-owning alias to its containing object, avoiding
 an ownership cycle. Copy/move construction and assignment of a Submodule rebind
@@ -477,8 +473,8 @@ presentation, and returns that same object with an owning inclusion. This keeps
 categorical results such as `kernel(f)` valid after local temporaries disappear;
 it does not add a hidden domain object to I.
 
-`homomorphism_core.hpp` defines the map class before Submodule is complete;
-`submodule.hpp` then defines Submodule with its member map. Include the latter when
+`hom_core_class.hpp` defines the map class before Submodule is complete;
+`mod_submodule.hpp` then defines Submodule with its member map. Include the latter when
 using both types. The empty `hom_operations.hpp` forwarding header was removed.
 
 
@@ -498,7 +494,7 @@ it; a quotient does not inherit the original module's injective resolution.
 
 ### Basis transformations and cycle representatives (NEW)
 
-`module_transformations.hpp` provides `sort_module_with_maps(M)` and
+`grlina/mod_transformations.hpp` provides `sort_module_with_maps(M)` and
 `minimize_module_with_maps(M)`. Each returns `original`, `transformed`,
 `forward` (original to transformed), and `backward` (transformed to original),
 including lifts on every stored projective group. `M` is unchanged. Passing a
@@ -516,11 +512,11 @@ the latter maps its actual generator basis into the original `C_q` coordinates.
 It tracks representatives through minimization. Both this helper and
 `homology_module` include relations among kernel generators, which are essential
 when a kernel is not free, and support `q = 0`. For an empty complex, `H_0` is
-the zero module with the stored runtime parameter count. A chain map can act
+the zero module for the matrix's degree type. A chain map can act
 on these representatives; solve against the target representatives modulo
 boundaries to obtain its induced homology map.
 
-`module_storage.hpp` provides `convert_module_storage<Storage>(M)`. It converts
-all stored projective and injective differentials together and retains grids,
-empty runtime contexts, and resolution completeness. Runtime CSC transformations
-use this helper to compute with editable columns, then return packed maps.
+The removed runtime storage-conversion API is no longer available. Current grid
+matrices use vector columns; R2 matrices can use `CSCStorage<Index>`.
+Stable-Decomposition converts R2 CSC modules to editable columns at its pruning
+boundary and packs the results back, preserving stored resolutions and completeness.

@@ -1,4 +1,4 @@
-#include <grlina/csc_matrix.hpp>
+#include <grlina/mat_csc.hpp>
 
 // Compiled in several modes by csc_warnings.cmake. Read-only code must remain
 // warning-free even when deprecated declarations are treated as errors.

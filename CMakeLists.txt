@@ -57,6 +57,7 @@ write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/grlinaConfigVersion
 install(TARGETS grlina EXPORT grlinaTargets)
 install(EXPORT grlinaTargets NAMESPACE grlina:: DESTINATION lib/cmake/grlina)
 install(DIRECTORY include/grlina DESTINATION include)
+install(DIRECTORY include/multicritical DESTINATION include)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/grlinaConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/grlinaConfigVersion.cmake DESTINATION lib/cmake/grlina)
 
@@ -158,6 +159,37 @@ if(GRLINA_BUILD_TESTS)
     target_link_libraries(module_framework_test grlina::grlina)
     add_test(NAME module_framework_test COMMAND module_framework_test)
     set_tests_properties(module_framework_test PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    add_executable(upset_degree_test tests/upset_degree_test.cpp)
+    target_link_libraries(upset_degree_test grlina::grlina)
+    add_test(NAME upset_degree_test COMMAND upset_degree_test)
+    add_executable(upset_matrix_test tests/upset_matrix_test.cpp)
+    target_link_libraries(upset_matrix_test grlina::grlina)
+    add_test(NAME upset_matrix_test COMMAND upset_matrix_test)
+    # Cross-check against multicritical's actual parser when its checkout is available.
+    set(_multicritical_source "${CMAKE_CURRENT_SOURCE_DIR}/../multicritical")
+    if(EXISTS "${_multicritical_source}/scc_mod/include/scc/Scc.h")
+        target_include_directories(upset_matrix_test PRIVATE "${_multicritical_source}/scc_mod/include"
+                                                            "${_multicritical_source}/mpp_utils_mod/include"
+                                                            "${_multicritical_source}/phat_mod/include"
+                                                            "${_multicritical_source}/include")
+        target_compile_definitions(upset_matrix_test PRIVATE GRLINA_MULTICRITICAL_SOURCE_DIR="${_multicritical_source}")
+    endif()
+    add_executable(upset_chain_complex_test tests/upset_chain_complex_test.cpp)
+    target_link_libraries(upset_chain_complex_test grlina::grlina)
+    if(EXISTS "${_multicritical_source}/sample_files/compressed_deg_rips_100_points.scc")
+        add_test(NAME upset_chain_complex_test COMMAND upset_chain_complex_test
+            "${_multicritical_source}/sample_files/compressed_deg_rips_100_points.scc")
+        set_tests_properties(upset_chain_complex_test PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    endif()
+    add_executable(multicritical_copy_test tests/multicritical_copy_test.cpp)
+    target_link_libraries(multicritical_copy_test grlina::grlina)
+    add_test(NAME multicritical_copy_test COMMAND multicritical_copy_test)
+    foreach(_sample compressed_deg_rips_100_points full_deg_rips_20_points wheel)
+        if(EXISTS "${_multicritical_source}/sample_files/${_sample}.scc")
+            add_test(NAME multicritical_copy_${_sample} COMMAND multicritical_copy_test
+                "${_multicritical_source}/sample_files/${_sample}.scc")
+        endif()
+    endforeach()
 
     if(GRLINA_BUILD_PROGRAMS)
     add_executable(cli_programs_test tests/cli_programs_test.cpp)
@@ -180,27 +212,17 @@ if(GRLINA_BUILD_TESTS)
     target_link_libraries(cli_programs_test grlina::grlina)
     endif()
 
+    add_executable(new_coord_graded_sparse_matrix_test tests/new_coord_graded_sparse_matrix_test.cpp)
+    target_link_libraries(new_coord_graded_sparse_matrix_test grlina::grlina)
+    add_test(NAME new_coord_graded_sparse_matrix_test COMMAND new_coord_graded_sparse_matrix_test)
+    add_executable(new_grid_graded_sparse_matrix_test tests/new_grid_graded_sparse_matrix_test.cpp)
+    target_link_libraries(new_grid_graded_sparse_matrix_test grlina::grlina)
+    add_test(NAME new_grid_graded_sparse_matrix_test COMMAND new_grid_graded_sparse_matrix_test)
     foreach(_csc_test csc_matrix_test csc_graded_test)
         add_executable(${_csc_test} tests/${_csc_test}.cpp)
         target_link_libraries(${_csc_test} grlina::grlina)
         add_test(NAME ${_csc_test} COMMAND ${_csc_test})
     endforeach()
-    add_executable(r2grid_gs_matrix_test tests/r2grid_gs_matrix_test.cpp)
-    target_link_libraries(r2grid_gs_matrix_test grlina::grlina)
-    add_test(NAME r2grid_gs_matrix_test COMMAND r2grid_gs_matrix_test)
-    # NEW: opt-in runtime-dimensional coordinate matrix architecture.
-    add_executable(dynamic_coordinate_matrix_test tests/dynamic_coordinate_matrix_test.cpp)
-    target_link_libraries(dynamic_coordinate_matrix_test grlina::grlina)
-    add_test(NAME dynamic_coordinate_matrix_test COMMAND dynamic_coordinate_matrix_test)
-    add_executable(dynamic_grid_matrix_test tests/dynamic_grid_matrix_test.cpp)
-    target_link_libraries(dynamic_grid_matrix_test grlina::grlina)
-    add_test(NAME dynamic_grid_matrix_test COMMAND dynamic_grid_matrix_test)
-    add_executable(general_coordinate_kernel_test tests/general_coordinate_kernel_test.cpp)
-    target_link_libraries(general_coordinate_kernel_test grlina::grlina)
-    add_test(NAME general_coordinate_kernel_test COMMAND general_coordinate_kernel_test)
-    add_executable(library_interop_test tests/library_interop_test.cpp)
-    target_link_libraries(library_interop_test grlina::grlina)
-    add_test(NAME library_interop_test COMMAND library_interop_test)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         set(_csc_cxx20_supported OFF)
         if("cxx_std_20" IN_LIST CMAKE_CXX_COMPILE_FEATURES)
@@ -214,18 +236,60 @@ if(GRLINA_BUILD_TESTS)
             "-DCXX20_SUPPORTED=${_csc_cxx20_supported}"
             -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/csc_warnings.cmake)
     endif()
+    # Runtime-dimensional suites still require the removed runtime_matrices classes.
+    add_executable(graded_linear_system_benchmark tests/graded_linear_system_benchmark.cpp)
+    target_link_libraries(graded_linear_system_benchmark grlina::grlina)
+    # Measure production reduction costs even in a diagnostic build. The
+    # benchmark explicitly validates every result outside its timed region.
+    target_compile_definitions(graded_linear_system_benchmark PRIVATE GRLINA_ENABLE_CHECKS=0)
+    if(MSVC)
+        target_compile_options(graded_linear_system_benchmark PRIVATE /O2)
+    else()
+        target_compile_options(graded_linear_system_benchmark PRIVATE -O2)
+    endif()
+    add_test(NAME graded_linear_system_benchmark COMMAND graded_linear_system_benchmark 64 1 all)
+    set_tests_properties(graded_linear_system_benchmark PROPERTIES TIMEOUT 120)
+
+    # Optional comparison with the external multi-chunk checkout; no download
+    # or dependency on it is introduced for library clients or other tests.
+    set(GRLINA_MULTI_CHUNK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../multi-chunk" CACHE PATH
+        "multi-chunk checkout used by the chain-complex minimization benchmark")
+    if(EXISTS "${GRLINA_MULTI_CHUNK_ROOT}/include/multi_chunk/multi_chunk.h")
+        add_executable(chain_complex_minimization_benchmark tests/chain_complex_minimization_benchmark.cpp)
+        target_link_libraries(chain_complex_minimization_benchmark PRIVATE grlina::grlina)
+        target_include_directories(chain_complex_minimization_benchmark SYSTEM PRIVATE
+            "${GRLINA_MULTI_CHUNK_ROOT}/include" "${GRLINA_MULTI_CHUNK_ROOT}/mpp_utils_mod/include"
+            "${GRLINA_MULTI_CHUNK_ROOT}/phat_mod/include" "${GRLINA_MULTI_CHUNK_ROOT}/scc_mod/include")
+        target_compile_definitions(chain_complex_minimization_benchmark PRIVATE
+            GRLINA_ENABLE_CHECKS=0 MULTI_CHUNK_TIMERS=0 NDEBUG)
+        if(MSVC)
+            target_compile_options(chain_complex_minimization_benchmark PRIVATE /O2)
+        else()
+            target_compile_options(chain_complex_minimization_benchmark PRIVATE -O3)
+        endif()
+        add_test(NAME chain_complex_minimization_benchmark COMMAND chain_complex_minimization_benchmark 64 1 all)
+        add_test(NAME chain_complex_minimization_benchmark_scc COMMAND chain_complex_minimization_benchmark
+            file "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/cancellation.scc" 1)
+        add_test(NAME chain_complex_minimization_benchmark_nonzero_terminal COMMAND chain_complex_minimization_benchmark
+            file "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/interval_resolution_expected.scc" 1)
+        add_test(NAME chain_complex_minimization_benchmark_unsorted_scc COMMAND chain_complex_minimization_benchmark
+            file "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/chain_minimization_unsorted.scc" 1)
+        set_tests_properties(chain_complex_minimization_benchmark chain_complex_minimization_benchmark_scc
+            chain_complex_minimization_benchmark_nonzero_terminal chain_complex_minimization_benchmark_unsorted_scc
+            PROPERTIES TIMEOUT 120)
+    endif()
 
     # Keep the established matrix-level API under test while the module API is
     # introduced alongside it.
-    foreach(_legacy_test dense_matrix_test sparse_matrix_test graded_matrix_test hom_space_test)
+    foreach(_legacy_test dense_matrix_test sparse_matrix_test matrix_solver_test graded_matrix_test hom_space_test graded_linear_system_test)
         add_executable(${_legacy_test} tests/${_legacy_test}.cpp)
         target_link_libraries(${_legacy_test} grlina::grlina)
         add_test(NAME ${_legacy_test} COMMAND ${_legacy_test})
         set_tests_properties(${_legacy_test} PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     endforeach()
     # These tests use assert; keep checks active in Release builds as well.
-    foreach(_test epsilon_functors_test presentation_operations_test submodule_module_test submodule_reduction_test module_hilbert_test module_operations_test module_framework_test cli_programs_test
-                  dense_matrix_test sparse_matrix_test graded_matrix_test hom_space_test csc_matrix_test csc_graded_test r2grid_gs_matrix_test dynamic_coordinate_matrix_test dynamic_grid_matrix_test general_coordinate_kernel_test library_interop_test)
+    foreach(_test epsilon_functors_test presentation_operations_test submodule_module_test submodule_reduction_test module_hilbert_test module_operations_test module_framework_test upset_degree_test upset_matrix_test upset_chain_complex_test multicritical_copy_test cli_programs_test
+                  dense_matrix_test sparse_matrix_test matrix_solver_test graded_matrix_test hom_space_test graded_linear_system_test new_coord_graded_sparse_matrix_test new_grid_graded_sparse_matrix_test csc_matrix_test csc_graded_test)
         if(NOT TARGET ${_test})
             continue()
         endif()

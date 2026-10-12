@@ -2,8 +2,8 @@
 // Run directly with the same C++17 include flags as dynamic_grid_matrix_test.
 #define GRLINA_CSC_COMPILE_WARNINGS 0
 #define GRLINA_CSC_RUNTIME_WARNINGS 0
-#include <grlina/dynamic_grid_matrix.hpp>
-#include <grlina/dynamic_coordinate_matrix.hpp>
+#include <grlina/runtime_matrices/class_grid_graded_sparse_matrix.hpp>
+#include <grlina/runtime_matrices/class_coord_graded_sparse_matrix.hpp>
 #include <cassert>
 #include <cstdint>
 #include <random>
@@ -16,22 +16,22 @@ using Bits = std::uint64_t;
 using Degree = DynamicDegree<double>;
 
 template<class Scalar, class Index, class Storage>
-Degree column_degree(const DynamicGridGradedSparseMatrix<Scalar, Index, Storage>& matrix, int column) {
+Degree column_degree(const GridGradedSparseMatrix<Scalar, Index, Storage>& matrix, int column) {
     return matrix.real_col_degree(column);
 }
 
 template<class Scalar, class Index, class Storage>
-Degree column_degree(const DynamicCoordinateGradedSparseMatrix<Scalar, Index, Storage>& matrix, int column) {
+Degree column_degree(const CoordGradedSparseMatrix<Scalar, Index, Storage>& matrix, int column) {
     return Degree(matrix.col_degree(column));
 }
 
 template<class Scalar, class Index, class Storage>
-vec<double> axis_values(const DynamicGridGradedSparseMatrix<Scalar, Index, Storage>& matrix, std::size_t axis) {
+vec<double> axis_values(const GridGradedSparseMatrix<Scalar, Index, Storage>& matrix, std::size_t axis) {
     return matrix.grid(axis);
 }
 
 template<class Scalar, class Index, class Storage>
-vec<double> axis_values(const DynamicCoordinateGradedSparseMatrix<Scalar, Index, Storage>& matrix, std::size_t axis) {
+vec<double> axis_values(const CoordGradedSparseMatrix<Scalar, Index, Storage>& matrix, std::size_t axis) {
     vec<double> values;
     for (const auto& degree : matrix.col_degrees) values.push_back(degree[axis]);
     for (const auto& degree : matrix.row_degrees) values.push_back(degree[axis]);
@@ -41,25 +41,25 @@ vec<double> axis_values(const DynamicCoordinateGradedSparseMatrix<Scalar, Index,
 }
 
 template<class Scalar, class Index, class Storage>
-void check_embedding(const DynamicGridGradedSparseMatrix<Scalar, Index, Storage>& source,
-                     const DynamicGridGradedSparseMatrix<Scalar, Index, Storage>& kernel) {
+void check_embedding(const GridGradedSparseMatrix<Scalar, Index, Storage>& source,
+                     const GridGradedSparseMatrix<Scalar, Index, Storage>& kernel) {
     assert(kernel.grids == source.grids);
     assert(kernel.real_row_degrees() == source.real_col_degrees());
 }
 
 template<class Scalar, class Index, class Storage>
-void check_embedding(const DynamicCoordinateGradedSparseMatrix<Scalar, Index, Storage>& source,
-                     const DynamicCoordinateGradedSparseMatrix<Scalar, Index, Storage>& kernel) {
+void check_embedding(const CoordGradedSparseMatrix<Scalar, Index, Storage>& source,
+                     const CoordGradedSparseMatrix<Scalar, Index, Storage>& kernel) {
     assert(kernel.row_degrees == source.col_degrees);
 }
 
 template<class Scalar, class Index, class Storage>
-void include_unused(DynamicGridGradedSparseMatrix<Scalar, Index, Storage>& matrix, const Degree& degree) {
+void include_unused(GridGradedSparseMatrix<Scalar, Index, Storage>& matrix, const Degree& degree) {
     matrix.include_real_degrees({degree});
 }
 
 template<class Scalar, class Index, class Storage>
-void include_unused(DynamicCoordinateGradedSparseMatrix<Scalar, Index, Storage>&, const Degree&) {}
+void include_unused(CoordGradedSparseMatrix<Scalar, Index, Storage>&, const Degree&) {}
 
 int binary_rank(const vec<Bits>& columns) {
     Bits pivots[64]{};
@@ -126,7 +126,7 @@ void check_minimal_generators(const Matrix& kernel) {
 
 template<class Matrix>
 void check_kernel(const Matrix& source, const Matrix& kernel) {
-    kernel.validate();
+
     assert(kernel.parameter_count() == source.parameter_count());
     assert(kernel.get_num_rows() == source.get_num_cols());
     check_embedding(source, kernel);
@@ -221,12 +221,12 @@ void pair_completion_and_koszul() {
 } // namespace
 
 int main() {
-    randomized_fibres<DynamicGridGradedSparseMatrix, vec<vec<int>>>();
-    randomized_fibres<DynamicGridGradedSparseMatrix, CSCStorage<int>>();
-    pair_completion_and_koszul<DynamicGridGradedSparseMatrix, vec<vec<int>>>();
-    pair_completion_and_koszul<DynamicGridGradedSparseMatrix, CSCStorage<int>>();
-    randomized_fibres<DynamicCoordinateGradedSparseMatrix, vec<vec<int>>>();
-    randomized_fibres<DynamicCoordinateGradedSparseMatrix, CSCStorage<int>>();
-    pair_completion_and_koszul<DynamicCoordinateGradedSparseMatrix, vec<vec<int>>>();
-    pair_completion_and_koszul<DynamicCoordinateGradedSparseMatrix, CSCStorage<int>>();
+    randomized_fibres<GridGradedSparseMatrix, vec<vec<int>>>();
+    randomized_fibres<GridGradedSparseMatrix, CSCStorage<int>>();
+    pair_completion_and_koszul<GridGradedSparseMatrix, vec<vec<int>>>();
+    pair_completion_and_koszul<GridGradedSparseMatrix, CSCStorage<int>>();
+    randomized_fibres<CoordGradedSparseMatrix, vec<vec<int>>>();
+    randomized_fibres<CoordGradedSparseMatrix, CSCStorage<int>>();
+    pair_completion_and_koszul<CoordGradedSparseMatrix, vec<vec<int>>>();
+    pair_completion_and_koszul<CoordGradedSparseMatrix, CSCStorage<int>>();
 }

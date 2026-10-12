@@ -1,5 +1,5 @@
 #include "isomorphism_examples.hpp"
-#include <grlina/modules.hpp>
+#include <grlina/mod_modules.hpp>
 #include <chrono>
 #include <iomanip>
 #include <iostream>
@@ -17,9 +17,9 @@ int main(int argc,char** argv) {
             int k=std::stoi(argv[2]); require(k>=2 && k<=16,"Block size must be 2..16");
             SparseMatrix<int> singular(0,k*k);
             for (int c=0;c<k;++c) for (int r=0;r<k-1;++r)
-                isomorphism_detail::extend_span(singular,vec<int>{c*k+r});
+                extend_span(singular,vec<int>{c*k+r});
             auto start=Clock::now();
-            bool result=isomorphism_detail::contains_invertible(singular,k);
+            bool result=contains_invertible(singular,k);
             require(!result,"All-singular block returned true");
             std::cout << "{\"k\":" << k << ",\"span_dimension\":" << k*(k-1)
                       << ",\"iso_seconds\":" << seconds(start) << "}\n";

@@ -2,29 +2,21 @@
 // checked separately; acknowledge their cost here to keep algebra tests quiet.
 #define GRLINA_CSC_COMPILE_WARNINGS 0
 #define GRLINA_CSC_RUNTIME_WARNINGS 0
-#include <grlina/csc_matrix.hpp>
-#include <grlina/modules.hpp>
+#include <grlina/mat_csc.hpp>
+#include <grlina/mod_modules.hpp>
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
 using namespace graded_linalg;
 using Base = CSCMatrix<int>;
-using Mat = R2GradedSparseMatrix<int, Base>;
-using Mod = R2Module<int, Base>;
+using Mat = R2GradedSparseMatrix<int, CSCStorage<int>>;
+using Mod = R2Module<int, CSCStorage<int>>;
 
 static_assert(is_graded_sparse_matrix_v<Mat>);
-static_assert(is_graded_sparse_matrix_v<R3GradedSparseMatrix<int, Base>>);
-static_assert(is_graded_sparse_matrix_v<R4GradedSparseMatrix<int, Base>>);
-static_assert(is_graded_sparse_matrix_v<Z2GradedSparseMatrix<int, Base>>);
-static_assert(is_graded_sparse_matrix_v<Z3GradedSparseMatrix<int, Base>>);
-static_assert(is_graded_sparse_matrix_v<Z4GradedSparseMatrix<int, Base>>);
-static_assert(std::is_same_v<Mod::matrix_type, Mat>);
-static_assert(std::is_same_v<R3Module<int, Base>::matrix_type, R3GradedSparseMatrix<int, Base>>);
-static_assert(std::is_same_v<R4Module<int, Base>::matrix_type, R4GradedSparseMatrix<int, Base>>);
-static_assert(std::is_same_v<Z2Module<int, Base>::matrix_type, Z2GradedSparseMatrix<int, Base>>);
-static_assert(std::is_same_v<Z3Module<int, Base>::matrix_type, Z3GradedSparseMatrix<int, Base>>);
-static_assert(std::is_same_v<Z4Module<int, Base>::matrix_type, Z4GradedSparseMatrix<int, Base>>);
+static_assert(std::is_base_of_v<Base, Mat>);
+static_assert(std::is_base_of_v<SparseMatrix<int>, R2GradedSparseMatrix<int>>);
+static_assert(std::is_same_v<decltype(std::declval<const Mod&>().presentation()), const Mat&>);
 static_assert(std::is_same_v<decltype(std::declval<Mat>().graded_kernel()), Mat>);
 
 void storage_and_const_io() {
@@ -35,13 +27,17 @@ void storage_and_const_io() {
     native.assign_data(CSCStorage<int>(std::move(offsets), std::move(entries)));
     assert(native.data.entries().data() == original_entries);
     Mat graded(std::move(native));
-    graded.validate();
+    const Base& coefficients = graded;
+    assert(&coefficients.data == &graded.data);
+    assert(coefficients.get_col(0) == vec<int>({0, 2}));
+
     auto shifted = graded;
     assert(shifted.data.shares_storage_with(graded.data));
     shifted.shift({1, 2});
     assert(shifted.data.shares_storage_with(graded.data));
     assert((graded.row_degrees[0] == r2degree{0, 0}));
     assert(shifted.row_degrees[0] != graded.row_degrees[0]);
+    assert((Compare_by_degrees<r2degree, int, Mat>::compare_three_way(graded, shifted) == 1));
     shifted.col_op(0, 1);
     assert(!shifted.data.shares_storage_with(graded.data));
     assert(graded.get_col(1).empty());
@@ -68,6 +64,12 @@ void storage_and_const_io() {
 
 void shared_graded_algorithms() {
     Mat original(2, 1, {{0}, {0}}, {{1, 0}, {0, 1}}, {{0, 0}});
+    Mat identity(2, 2, "Identity");
+    identity.row_degrees = identity.col_degrees = original.col_degrees;
+    const auto product = original * identity;
+    assert(product.data == original.data);
+    assert(product.row_degrees == original.row_degrees);
+    assert(product.col_degrees == original.col_degrees);
     auto source = original;
     source.sort_compatibly();
     auto kernel = source.graded_kernel();
@@ -108,6 +110,18 @@ void shared_graded_algorithms() {
     ChainComplex<Mat> chain(std::vector<Mat>{contractible});
     chain.minimize();
     assert(chain[0].get_num_cols() == 0);
+    Mat cancellable(3, 3, {{0, 1}, {1, 2}, {0, 1, 2}},
+                    {{1, 1}, {1, 1}, {2, 2}}, {{0, 0}, {1, 1}, {1, 1}});
+    cancellable.sort_compatibly();
+    const auto unchanged = cancellable;
+    Mat elements(2, 3, {{2}, {1, 2}}, {{3, 3}, {2, 2}}, cancellable.row_degrees);
+    const auto degrees = elements.col_degrees;
+    cancellable.cancel_local_pairs(&elements);
+    assert((cancellable.get_col(0) == vec<int>{0}));
+    assert(cancellable.get_num_cols() == 1 && cancellable.get_num_rows() == 1);
+    assert((elements.get_col(0) == vec<int>{0}) && elements.get_col(1).empty());
+    assert(elements.col_degrees == degrees && elements.row_degrees == cancellable.row_degrees);
+    assert(unchanged.get_num_rows() == 3 && (unchanged.get_col(0) == vec<int>{0, 1}));
     auto quiver = original.induced_quiver_rep({{0, 0}, {1, 1}});
     std::stringstream quiver_text;
     quiver.to_stream_simple(quiver_text);

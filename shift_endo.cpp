@@ -1,5 +1,5 @@
-#include "grlina/homomorphisms.hpp"
-#include "grlina/r2graded_matrix.hpp"
+#include "grlina/hom_algorithms.hpp"
+#include "grlina/mat_r2.hpp"
 #include <grlina/graded_linalg.hpp>
 #include <iostream>
 #include <filesystem>

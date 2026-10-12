@@ -1,4 +1,5 @@
-#include <grlina/modules.hpp>
+#include "test_degree_matrices.hpp"
+#include <grlina/mod_modules.hpp>
 #include <cassert>
 #include <sstream>
 
@@ -159,13 +160,13 @@ void test_no_kernel_and_explicit_completeness() {
     assert(loaded.dimension_at({1,1}) == 0);
     Matrix::forbid_local = false;
 
-    using R4 = R4GradedSparseMatrix<int>;
-    R4 injection(1, 1, {{0}}, {r4degree{1,0,0,0}}, {r4degree{0,0,0,0}});
+    using R4 = NoKernelMatrix<4>;
+    R4 injection(1, 1, {{0}}, {CoordinateDegree<double, 4>{1,0,0,0}}, {CoordinateDegree<double, 4>{0,0,0,0}});
     auto higher = Module<R4>::from_projective_resolution(ChainComplex<R4>({injection}),
                                                         ResolutionCompleteness::complete);
-    assert(higher.dimension_at(r4degree{0,0,0,0}) == 1);
-    assert(higher.dimension_at(r4degree{1,0,0,0}) == 0);
-    assert(higher.hilbert_function({r4degree{0,0,0,0}})[0].dimension == 1);
+    assert((higher.dimension_at(CoordinateDegree<double, 4>{0,0,0,0}) == 1));
+    assert((higher.dimension_at(CoordinateDegree<double, 4>{1,0,0,0}) == 0));
+    assert((higher.hilbert_function({CoordinateDegree<double, 4>{0,0,0,0}})[0].dimension == 1));
 }
 
 void test_mixed_handcrafted_summands() {

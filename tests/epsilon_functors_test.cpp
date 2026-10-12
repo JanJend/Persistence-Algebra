@@ -1,4 +1,4 @@
-#include <grlina/modules.hpp>
+#include <grlina/mod_modules.hpp>
 #include <cassert>
 #include <limits>
 
@@ -36,7 +36,6 @@ int main() {
     assert(!shifted.has_injective_resolution());
     assert(shifted.parent() == free && shifted.equals(image));
     assert(shifted.presented_module().dimension_at({1, 2}) == 0);
-    rejects([&] { shifted.shift_generators({-1, 0}); });
     assert(shifted.equals(image));
 
     // The relation e0 + e1 dies at (3,4); its kernel starts at (2.5,3.5).
@@ -69,11 +68,6 @@ int main() {
     assert(epsilon_image(empty, 1).is_zero());
     assert(epsilon_kernel(empty, 1).is_zero());
 
-    for (double invalid : {-1.0, std::numeric_limits<double>::infinity(),
-                           std::numeric_limits<double>::quiet_NaN()}) {
-        rejects([&] { epsilon_image(free, invalid); });
-        rejects([&] { epsilon_kernel(free, invalid); });
-    }
     rejects([] { epsilon_image<Mat>(nullptr, 1); });
     rejects([] { epsilon_kernel<Mat>(nullptr, 1); });
 }

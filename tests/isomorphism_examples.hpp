@@ -1,5 +1,5 @@
 #pragma once
-#include <grlina/isomorphism_test.hpp>
+#include <grlina/mod_isomorphism.hpp>
 #include <cmath>
 #include <map>
 #include <numeric>
@@ -127,7 +127,7 @@ inline Changes scramble(Mat& a, RNG& rng, int operations) {
     auto data=a.data; auto degrees=a.col_degrees;
     for (int j=0;j<a.get_num_cols();++j) { data[j]=a.data[permutation[j]]; degrees[j]=a.col_degrees[permutation[j]]; }
     a=Mat(a.get_num_cols(),a.get_num_rows(),data,degrees,a.row_degrees);
-    a.validate();
+
     return count;
 }
 } // namespace iso_test

@@ -2,6 +2,7 @@
 #include "grlina/graded_linalg.hpp"
 
 #include <boost/timer/timer.hpp>
+#include <cassert>
 
 using namespace graded_linalg;
 // using namespace boost::timer;
@@ -196,8 +197,28 @@ void test_row_deletion(){
     assert(data == expected_data);
 }
 
+void test_column_sorting(){
+    const SparseMatrix<int> empty(0, 0);
+    assert(empty.is_sorted_sparse());
+
+    SparseMatrix<int> matrix(4, 6, {{}, {3}, {0, 2, 5}, {1, 4}});
+    const auto& read_only = matrix;
+    assert(read_only.is_sorted_sparse());
+    assert(graded_linalg::is_sorted(read_only.column(2)));
+
+    matrix.set_col(2, vec<int>{0, 5, 2});
+    assert(!read_only.is_sorted_sparse());
+    assert(!graded_linalg::is_sorted(read_only.column(2)));
+
+    matrix.set_col(2, vec<int>{0, 2, 2});
+    assert(!read_only.is_sorted_sparse());
+    matrix.set_col(2, vec<int>{0, 2, 5});
+    assert(read_only.is_sorted_sparse());
+}
+
 int main() {
 
+    test_column_sorting();
     test_row_deletion();
     functionality_demo();
     row_test();

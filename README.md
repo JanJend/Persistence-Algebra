@@ -5,29 +5,26 @@ Current version: **2.0.0**
 The compatibility-preserving persistence-module API is documented in
 [`docs/module-framework.md`](docs/module-framework.md). Existing presentation
 matrix APIs remain available; new clients should start with
-`#include <grlina/modules.hpp>` and `R2Module<index>`.
+`#include <grlina/mod_modules.hpp>` and `R2Module<index>`.
 
-The **new runtime-dimensional coordinate matrix architecture** is opt-in through
-`#include <grlina/dynamic_coordinate_matrix.hpp>`. It stores degree coordinates in
-flat contiguous buffers and takes the number of parameters at runtime. See
-[`docs/dynamic-coordinate-matrices.md`](docs/dynamic-coordinate-matrices.md)
-for construction, storage choices, and module/chain-complex integration.
-`<grlina/dynamic_grid_matrix.hpp>` adds `DynamicGridGradedSparseMatrix` with
-contiguous index degrees and scalar-valued grids. Both runtime classes support
-graded kernels and repeated kernels for projective resolutions in arbitrary
-dimensions, reusing the two-parameter algorithm on slices.
+Coordinate and grid matrices are available through `<grlina/mat_coord.hpp>` and
+`<grlina/mat_grid.hpp>`. Their types live in `graded_linalg` and
+take the coordinate scalar, dimension, and index type as template arguments:
+`CoordGradedSparseMatrix<double, 3, int>`. Both support graded kernels and
+integration with `Module` and `ChainComplex`. The [header guide](#library-structure)
+below lists the implementation headers by responsibility.
 
 ### Optional CSC matrix storage
 
-Include `<grlina/csc_matrix.hpp>` to select contiguous compressed sparse columns:
+Include `<grlina/mat_csc.hpp>` to select contiguous compressed sparse columns:
 
 ```cpp
-#include <grlina/csc_matrix.hpp>
-#include <grlina/modules.hpp>
+#include <grlina/mat_csc.hpp>
+#include <grlina/mod_modules.hpp>
 
 using namespace graded_linalg;
-using PackedMatrix = R2GradedSparseMatrix<int, CSCMatrix<int>>;
-using PackedModule = R2Module<int, CSCMatrix<int>>;
+using PackedMatrix = R2GradedSparseMatrix<int, CSCStorage<int>>;
+using PackedModule = R2Module<int, CSCStorage<int>>;
 
 PackedMatrix presentation("presentation.scc");
 const PackedModule module(presentation);
@@ -37,12 +34,15 @@ copy.col_op(0, 1);  // Supported, but warns about CSC mutation cost.
 ```
 
 `SparseMatrix<int>`, `R2GradedSparseMatrix<int>`, and `R2Module<int>` keep their
-vector-of-vectors storage. The added template argument selects storage at compile
-time; `const` controls mutability and does not choose the representation. The same
-option is available for the other coordinate-graded matrices and module aliases.
-Their shared algorithms dispatch to storage primitives, without virtual calls or
-a runtime variant. All CSC storage and diagnostics live in `csc_storage.hpp` and
-`csc_matrix.hpp`; existing headers contain only generic storage hooks.
+vector-of-vectors storage. Graded matrices always inherit from
+`SparseMatrix<index, Storage>`; the added template argument selects only storage
+at compile time. `const` controls mutability and does not choose the
+representation. The same option is available through the generic
+`GradedSparseMatrix` base. Shared
+algorithms dispatch to storage primitives, without virtual calls or a runtime
+variant. All CSC storage, column views, matrix integration and diagnostics live
+in the single header `grlina/mat_csc.hpp`; existing headers contain only
+generic storage hooks.
 
 CSC uses a contiguous row-index array and a `std::size_t` column-offset array.
 Matrix copies share these two buffers; a write detaches them first. Degree arrays,
@@ -81,7 +81,8 @@ vector-backed matrices still expose their mutable `data` as before.
 
 SCC readers append directly into the selected storage. To adopt buffers received
 from another program, move them into `CSCStorage` (offsets start at zero and end at
-the entry count), then assign the storage:
+the entry count), then assign the storage. Raw offset validity is checked only
+when `GRLINA_ENABLE_CHECKS` is enabled:
 
 ```cpp
 std::vector<std::size_t> offsets{0, 2, 2, 3};
@@ -288,6 +289,85 @@ multiplicity-eight positive cases and large real inputs can time out. The
 benchmark includes all-singular block spaces to expose this limit. Empirical
 size regressions for small `k` are not general complexity bounds.
 
+### Graded linear system scaling benchmark
+
+The benchmark compares the queued graded solver with the previous per-column
+solver and computing the full kernel of `(A | B)` followed by solution extraction.
+It checks the reference coefficients, grading, and A X = B outside the timed
+region. The functional tests also compare the methods on random systems and
+check that differences between nonunique solutions lie in the graded kernel.
+
+```bash
+cmake --build build --target graded_linear_system_benchmark -j 2
+ctest --test-dir build -R '^graded_linear_system_benchmark$' --output-on-failure
+./build/graded_linear_system_benchmark 256 3 all > build/graded-linear-system-scaling.csv
+./build/graded_linear_system_benchmark 1024 1 mixed 256 > build/graded-linear-system-large.csv
+./build/graded_linear_system_benchmark 1024 6 uniform 0 > build/graded-linear-system-balanced.csv
+```
+
+Arguments are maximum size, repetitions per size, and case (`uniform`, `mixed`,
+`late_basis`, `nonunique`, or `all`). Sizes double from 32; increase 256 to 512 or beyond for
+larger runs. The optional fourth argument caps the old solver's size so the
+new solver can be tested further; skipped old timings are `nan`.
+With the column baseline skipped, an even repetition count balances the order
+of the two remaining methods. CSV output
+reports median milliseconds for all three methods, speedups relative to the
+direct solver, growth when size doubles, observed exponents, and times normalized
+by n⁴ and n³. `kernel_ms` includes matrix construction and solution extraction;
+`kernel_only_ms` times the kernel call alone. Exact coefficient comparisons and
+`A X = B` checks are reported separately (`column_exact_match=-1` means skipped).
+Quartic growth predicts a factor of 16 per doubling; cubic growth predicts a factor of 8.
+`uniform` uses one RHS grade; `mixed` uses n incomparable grades. `late_basis`
+also puts late duplicate A columns before the admissible basis. In `nonunique`,
+both duplicate blocks are admissible: the column solver chooses late coordinates,
+while the other two choose early coordinates. These are different valid solutions.
+The direct solver's two-parameter cases all share
+the kernel algorithm's queued traversal and column reduction, with no per-degree
+fallback. The solver maintains an A helper and a slave initialized by `(I | 0)`;
+B columns never become reducers. Each zero RHS's slave column gives its solution
+in the original A basis. Reduction stops after the last requested RHS, without
+constructing any kernel generators. A `graded_kernel()` method is not required.
+For three or more parameters it reuses the existing kernel's two-parameter slice
+restrictions at the frozen prefixes requested by B. Timing estimates do not
+establish worst-case bounds in general dimensions.
+
+### Chain-complex minimization benchmark against multi-chunk
+
+The optional benchmark uses the multi-chunk checkout at `../multi-chunk`.
+Set `GRLINA_MULTI_CHUNK_ROOT` to use another location. It compares
+`ChainComplex::minimize(false)` on sorted input, the default `minimize()` call
+including its sorting step, and multi-chunk's compression routine. Both use
+one thread and omit map tracking. Timings are median milliseconds after a
+warm-up, with execution order rotated. Input copies, initial sorting, format
+conversion, and output checks are outside the timers; work performed inside
+each minimizer's public call is included.
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGRLINA_BUILD_TESTS=ON
+cmake --build build --target chain_complex_minimization_benchmark -j 2
+ctest --test-dir build -R '^chain_complex_minimization_benchmark' --output-on-failure
+./build/chain_complex_minimization_benchmark 4000 5 all > build/chain-minimization.csv
+./build/chain_complex_minimization_benchmark file ../multi-chunk/sample_files/hand.scc 3 > build/chain-minimization-hand.csv
+```
+
+Synthetic arguments are maximum cancellable pairs, repetitions, and family
+(`independent`, `path`, or `all`). `independent` has isolated local pairs;
+`path` has long chains of substitutions during compression. Both have a
+nonzero neighboring differential and a known reduced complex, checked exactly.
+CSV includes input/output generator and entry counts, all three timings,
+and `multi_over_grlina` (greater than one means grlina was faster).
+
+File mode accepts ordinary two-parameter SCC files with one degree per
+generator and grades for every chain group. Multicritical SCC files require
+conversion to a free complex before this comparison. The file is read once,
+with sparse boundary entries sorted and combined over F2 outside the timers;
+the adapter supplies multi-chunk's terminal zero map even when the file lacks
+a trailing zero rank. Every output is checked for grading, chain equations,
+and absence of equal-degree pairs, and the two methods must agree on generator
+counts per degree and chain group. General files may yield different bases;
+`exact_matrix_match` reports matrix equality separately. These checks do not
+construct an isomorphism between differing outputs.
+
 ### Using the library as a header-only dependency
 
 Since the core functionality lives entirely in the `include/grlina/` headers, you can integrate this into your own CMake project by adding the include path:
@@ -328,24 +408,66 @@ Both formats are compatible with [RIVET](https://github.com/rivetTDA/rivet), [mp
 
 ## Library Structure
 
+Header names identify their responsibility: `mat_` for matrix classes and
+algorithms, `deg_` for degree definitions and posets, `hom_` for homomorphism
+types and Hom-space algorithms, and `mod_` for module-level classes,
+operations and helpers. General utilities are in `general.hpp`, with graph utilities and the diagnostic policy in `graphs.hpp` and
+`general_checks.hpp`. Headers outside these categories, such as
+`chain_complex.hpp`, keep descriptive names without a forced prefix.
+`graded_linalg.hpp` and `mod_modules.hpp` are aggregate includes.
+
 ```
 include/grlina/
-├── column_types.hpp       # Column representations (vec, set, bitset) and Column_traits
-├── matrix_base.hpp        # MatrixUtil CRTP base: reduction, kernel, cokernel, solve
-├── sparse_matrix.hpp      # SparseMatrix<index>: column-sparse 𝔽₂ matrix
-├── dense_matrix.hpp       # DenseMatrix: bitset-based dense 𝔽₂ matrix
-├── graded_matrix.hpp      # GradedSparseMatrix<D,index,DERIVED>: generic graded matrix
-├── r2graded_matrix.hpp    # R2GradedSparseMatrix<index>: ℝ²-graded, kernel via MPfree
-├── r3graded_matrix.hpp    # R3GradedSparseMatrix<index>: ℝ³-graded matrices
-├── orders_and_graphs.hpp  # Degree_traits, partial orders, Hasse diagrams, sorting
-├── graded_linalg.hpp      # Umbrella include
-├── homomorphisms.hpp      # Hom-space computation
-├── modules.hpp            # Higher-level module operations
-├── to_quiver.hpp          # Quiver representation extraction
-├── grid_scheduler.hpp     # Grid traversal scheduler for kernel computation
-├── draw_hf.hpp            # Hilbert function visualisation helpers
-└── bitset_algebra.hpp     # Bitset arithmetic utilities
+├── deg_traits.hpp            # Degree_traits capabilities and linear-order contract
+├── deg_coordinate.hpp        # CoordinateDegree, product orders and R2 arithmetic
+├── deg_upset.hpp             # Scalar-templated 2D upsets, reverse inclusion
+├── deg_poset_operations.hpp  # Degree Hasse diagrams and CSV export
+├── mat_columns.hpp           # Column representations and Column_traits
+├── mat_storage.hpp           # Storage primitives for shared matrix algorithms
+├── mat_base.hpp              # MatrixUtil: reduction, kernel, cokernel and solving
+├── bitset_algebra.hpp        # F2 bitset arithmetic
+├── mat_dense.hpp             # DenseMatrix
+├── mat_sparse.hpp            # SparseMatrix
+├── mat_csc.hpp               # CSCStorage, borrowed columns and CSCMatrix
+├── mat_graded.hpp            # Generic GradedSparseMatrix CRTP base
+├── mat_upset.hpp             # UpsetGradedSparseMatrix and extended SCC I/O
+├── mat_r2.hpp                # R2GradedSparseMatrix
+├── mat_coord.hpp             # Coordinate-graded matrix classes and colex sorting
+├── mat_grid.hpp              # GridGradedSparseMatrix and degree/grid adapters
+├── mat_kernel.hpp            # Bigraded reduction, grid scheduler and muphasa 3D kernel
+├── mat_linear_system.hpp     # Degree-admissible linear systems
+├── mat_io.hpp                # Graded matrix SCC metadata adapters
+├── mat_operations.hpp        # Matrix conversions, subspaces and stream helpers
+├── hom_algorithms.hpp        # Full and optimised Hom-space algorithms
+├── hom_core_class.hpp        # Homomorphism class and resolution lifts
+├── hom_interface.hpp         # Module Hom bases and canonical shift interfaces
+├── mod_module.hpp            # Module, resolutions, Hilbert queries and homology
+├── mod_submodule.hpp         # Submodule with its parent and generator map
+├── mod_modules.hpp           # Aggregate module API
+├── mod_presentations.hpp     # Presentation/generator-matrix adapters
+├── mod_transformations.hpp   # Module sorting/minimization with transported maps
+├── mod_constructions.hpp     # Sums, quotients, pullbacks and pushouts with maps
+├── mod_epsilon.hpp           # Epsilon images and kernels
+├── mod_isomorphism.hpp       # Exact module isomorphism decisions
+├── quiver_representations.hpp # Quiver representation extraction
+├── mod_hilbert_plot.hpp      # Hilbert function visualization
+├── chain_complex.hpp         # ChainComplex, SCC I/O and ChainBasisMaps
+├── graded_linalg.hpp         # Aggregate library API
+├── general.hpp               # Timing, files, containers, sorting and formatting
+├── graphs.hpp                # Graph construction, traversal and condensation
+└── general_checks.hpp        # Diagnostic-check build policy
 ```
+
+`ChainBasisMaps` records the maps from each current chain-group basis to its
+original basis and back. `ChainComplex::sort_compatibly` and `minimize` transport
+these maps alongside the differentials; the type and identity helper therefore
+live in `chain_complex.hpp`. Euler-characteristic Hilbert helpers live with
+`Module` in `mod_module.hpp`. The Hom algorithms share `hom_algorithms.hpp`.
+
+The old forwarding headers have been removed. Include the implementation
+directly: `mat_grid.hpp`, `mat_storage.hpp`, `mat_io.hpp`, or `mat_kernel.hpp`.
+Timing helpers are provided by `general.hpp`. Class and function names are
+unchanged; clients using renamed headers must update their include paths.
 
 ### Key types at a glance
 
@@ -354,9 +476,10 @@ include/grlina/
 | `SparseMatrix<index>` | Ungraded 𝔽₂ matrix, columns as sorted `vec<index>` |
 | `GradedSparseMatrix<D, index, DERIVED>` | Matrix graded by degree type `D`; CRTP base for concrete degree specialisations |
 | `R2GradedSparseMatrix<index>` | ℝ²-graded matrix; primary working type for 2-parameter persistence |
-| `R3GradedSparseMatrix<index>` | ℝ³-graded matrix |
-| `R2Sequence<index>` | A two-term chain complex of ℝ²-graded matrices |
-| `R2Resolution<index>` | A free resolution `F₂ → F₁ → F₀` |
+| `CoordGradedSparseMatrix<Scalar, Dimension, Index>` | Coordinate-graded matrix with a compile-time dimension |
+| `GridGradedSparseMatrix<Scalar, Dimension, Index>` | Grid-graded matrix with physical coordinate grids |
+| `ChainComplex<Matrix>` | A chain complex of graded matrices |
+| `Module<Matrix>` | A persistence module owning its resolutions and Hilbert queries |
 | `Degree_traits<D>` | Policy struct defining the partial order, lexicographic sort, join/meet, I/O for degree type `D` |
 | `Column_traits<COLUMN, index>` | Policy struct for column arithmetic (add, pivot, scalar product, etc.) |
 
@@ -440,7 +563,7 @@ int main() {
 ### Building a free resolution
 
 ```cpp
-#include <grlina/r2graded_matrix.hpp>
+#include <grlina/mod_modules.hpp>
 using namespace graded_linalg;
 
 int main() {
@@ -448,23 +571,21 @@ int main() {
     d1.sort_columns_lexicographically();
     d1.sort_rows_lexicographically();
 
-    // Construct the resolution F₂ -d2-> F₁ -d1-> F₀
-    R2Resolution<int> res(d1);
+    Module<R2GradedSparseMatrix<int>> module(d1);
+    module.compute_projective_resolution();
 
-    // Write the resolution to a file (scc2020 format with 3 levels)
     std::ofstream out("resolution.scc");
-    res.to_stream(out);
+    module.to_stream(out);
 
-    // Query the dimension of the presented module at a point
     r2degree alpha = {1.5, 2.0};
-    std::cout << "dim at (1.5, 2.0) = " << res.dim_at(alpha) << "\n";
+    std::cout << "dim at (1.5, 2.0) = " << module.dimension_at(alpha) << "\n";
 }
 ```
 
 ### Snapping to a coarser grid
 
 ```cpp
-#include <grlina/r2graded_matrix.hpp>
+#include <grlina/mat_r2.hpp>
 using namespace graded_linalg;
 
 int main() {
@@ -480,13 +601,51 @@ int main() {
 
 ### Extending the library to a new degree type
 
-Persistence-Algebra is designed to be extended. To work with a new poset, specialise `Degree_traits`:
+Specialise `Degree_traits<D>` only for the capabilities your degree type has.
+The checks in `deg_traits.hpp` distinguish the comparison interface from sorting,
+lattice operations, and group operations:
+
+| Check | Required `Degree_traits<D>` interface |
+| --- | --- |
+| `is_poset_degree_v<D>` | `equals`, `smaller`, `greater`, `smaller_equal`, `greater_equal`, each returning `bool` |
+| `is_degree_v<D>` | Poset comparisons plus `lex_order(a, b)` and `lex_lambda()` for a compatible linear extension |
+| `is_lattice_degree_v<D>` | Poset comparisons plus `join(a, b)` and `meet(a, b)`, each returning `D` |
+| `is_ordered_abelian_group_degree_v<D>` | Poset comparisons plus `zero() -> D`, `add(amount, value) -> void`, and `subtract(amount, value) -> void` |
+| `is_lattice_ordered_abelian_group_degree_v<D>` | Both the lattice and ordered abelian group interfaces |
+
+`is_degree_v` is the minimum for generic graded matrices. Hasse-diagram code
+accepts `is_poset_degree_v` because it receives an already sorted list.
+The algebraic checks do not require sorting, serialization, printing, or
+coordinates. Individual operations can be checked using `has_degree_join_v`,
+`has_degree_meet_v`, `has_degree_zero_v`, `has_degree_add_v`, and
+`has_degree_subtract_v`. For example, shifting requires subtraction; it does not
+require joins or meets.
+Full relation minimization and free resolutions additionally need a
+poset-specific `graded_kernel` implementation on the matrix type; comparisons
+alone support local pair cancellation and degreewise dimension queries.
+
+The stronger mathematical structure is a **lattice-ordered abelian group**
+(abelian **ℓ-group**). Every pair has a least upper bound (join) and a greatest
+lower bound (meet), and translation preserves the partial order:
+`a <= b` implies `a + c <= b + c`. A total order is not required;
+coordinatewise order on ℤⁿ is an example. These C++ checks inspect signatures,
+not algebraic laws. Implementations must satisfy the partial-order, lattice,
+and abelian-group laws as appropriate. `add(amount, value)` changes `value` to
+`value + amount`; subtraction is analogous. The group identity is supplied
+explicitly by `zero()`, rather than assumed to be a default-constructed degree.
+
+This is a complete minimum specialization without arithmetic or lattice helpers:
 
 ```cpp
-#include <grlina/orders_and_graphs.hpp>
+#include <grlina/deg_traits.hpp>
 using namespace graded_linalg;
 
-struct MyDegree { int x, y, z; };
+struct MyDegree {
+    int x, y, z;
+    bool operator==(const MyDegree& b) const {
+        return x == b.x && y == b.y && z == b.z;
+    }
+};
 
 template<>
 struct Degree_traits<MyDegree> {
@@ -494,13 +653,76 @@ struct Degree_traits<MyDegree> {
         return a.x <= b.x && a.y <= b.y && a.z <= b.z;
     }
     static bool equals(const MyDegree& a, const MyDegree& b) {
-        return a.x == b.x && a.y == b.y && a.z == b.z;
+        return a == b;
     }
-    // ... implement smaller, greater, join, meet, lex_lambda, from_stream, position, etc.
+    static bool smaller(const MyDegree& a, const MyDegree& b) {
+        return smaller_equal(a, b) && !equals(a, b);
+    }
+    static bool greater(const MyDegree& a, const MyDegree& b) { return smaller(b, a); }
+    static bool greater_equal(const MyDegree& a, const MyDegree& b) { return smaller_equal(b, a); }
+    static bool lex_order(const MyDegree& a, const MyDegree& b) {
+        return a.x < b.x || (a.x == b.x &&
+            (a.y < b.y || (a.y == b.y && a.z < b.z)));
+    }
+    static auto lex_lambda() {
+        return [](const MyDegree& a, const MyDegree& b) { return lex_order(a, b); };
+    }
 };
 
-// Then use GradedSparseMatrix<MyDegree, int, MyDerivedMatrix>
+static_assert(is_degree_v<MyDegree>);
+static_assert(!is_lattice_ordered_abelian_group_degree_v<MyDegree>);
+// Usable with GradedSparseMatrix<MyDegree, int, MyDerivedMatrix>.
 ```
+
+Optional `has_degree_io_v<D>` checks `poset_id`, `write_degree(out, degree)`,
+and `from_stream(in)`. `has_degree_position_v<D>` checks
+`position(degree) -> std::vector<double>`, and `has_degree_print_v<D>` checks
+`print_degree(degree) -> void`. Serialization and visualization require these
+only when used. Built-in coordinate traits supply every capability, including
+`zero()`.
+
+With C++20, the corresponding concepts are `PosetDegree`, `Degree`,
+`LatticeDegree`, `OrderedAbelianGroupDegree`, and
+`LatticeOrderedAbelianGroupDegree`.
+
+`deg_upset.hpp` defines `r2upset<Scalar> = vec<CoordinateDegree<Scalar, 2>>`,
+using the corresponding coordinate degree traits. Generators must be sorted
+lexicographically by x, then y, with all redundant generators removed;
+`Degree_traits<r2upset<Scalar>>::remove_redundant` removes duplicate and dominated
+generators in place. Comparisons use reverse
+inclusion: `greater_equal(a, b)` means every generator of `a` lies above a
+generator of `b`. Consequently, `meet` computes union and `join` computes
+intersection. Both operations and comparisons take linear time in the input
+lengths. The empty vector is the greatest element. Lexicographic and
+colexicographic sorting put longer common prefixes first to preserve this order.
+SCC I/O follows multicritical's extended format: the parameter count is `2`, and
+each degree contains x/y pairs up to the mandatory semicolon, without a generator
+count. Parsing sorts the pairs and removes redundant generators.
+These degrees have no addition, subtraction, group identity, or fixed-dimensional
+geometric position.
+
+`UpsetGradedSparseMatrix<Scalar, Index>` in `mat_upset.hpp` uses these upsets as
+row and column degrees. It inherits the generic graded matrix operations and
+accepts stream or file-path constructors. `to_stream` and `to_file` write extended
+SCC data with enough precision to preserve the scalar values:
+
+```cpp
+#include <grlina/mat_upset.hpp>
+using namespace graded_linalg;
+using Matrix = UpsetGradedSparseMatrix<double, int>;
+
+Matrix matrix("presentation.scc");
+matrix.to_file("copy.scc");
+auto complex = ChainComplex<Matrix>::from_file("multicritical_chain.scc");
+complex.to_file("chain_copy.scc");
+```
+
+Full chain complexes use the existing `ChainComplex` interface, which stores
+differentials from low to high homological degree. Readers accept comments and
+blank lines; optional integer boundary coefficients are interpreted over F2.
+Degrees must be provided for every nonzero chain group, including the final
+group: SCC permits omitting that group's degrees, but then the file does not
+specify the graded matrix completely. No upset-specific graded kernel is supplied.
 
 ---
 
