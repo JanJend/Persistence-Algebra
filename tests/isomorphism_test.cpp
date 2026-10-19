@@ -141,8 +141,25 @@ void graded_examples() {
     }
 }
 
+void relation_witness_tests() {
+    // Different relation columns span the same graded submodule. The identity
+    // on the common generator basis gives a concrete isomorphism witness.
+    const vec<r2degree> rows{{0,0},{0,0}}, cols{{1,1},{2,2}};
+    const Mat a(2,2,{{0},{1}},cols,rows), b(2,2,{{0},{0,1}},cols,rows);
+    require(bool(solve_graded_linear_system(b,a)) && bool(solve_graded_linear_system(a,b)),
+            "Identity witness should lift in both directions");
+    check_pair(a,b,true);
+
+    // The identity need not be the isomorphism: swapping these generators is.
+    // Failed identity lifts must fall back to the complete decision algorithm.
+    const Mat c(1,2,{{0}},{{1,1}},rows), d(1,2,{{1}},{{1,1}},rows);
+    require(!solve_graded_linear_system(d,c) && !solve_graded_linear_system(c,d),
+            "Identity witness should fail for swapped generators");
+    check_pair(c,d,true);
+}
+
 int main() {
-    try { local_block_tests(); small_oracle_tests(); graded_examples(); }
+    try { relation_witness_tests(); local_block_tests(); small_oracle_tests(); graded_examples(); }
     catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
     std::cout << "Isomorphism regression tests passed\n";
 }

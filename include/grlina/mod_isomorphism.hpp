@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include <grlina/hom_algorithms.hpp>
@@ -159,6 +160,15 @@ bool is_isomorphic(Matrix A, Matrix B, bool assume_minimal = false,
     }
     if (A.row_degrees != B.row_degrees || A.col_degrees != B.col_degrees) return false;
     if (A.data == B.data) return true; // Includes zero modules and free modules.
+
+    if constexpr (std::is_same_v<typename Matrix::degree_type, r2degree>) {
+        // Equal generator degrees identify the free generator modules. If
+        // each relation map lifts through the other, their images coincide:
+        // the identity on generators induces an explicit module isomorphism.
+        // This exact witness avoids a very large Hom space for presentations
+        // of the same module with different choices of relation generators.
+        if (solve_graded_linear_system(B, A) && solve_graded_linear_system(A, B)) return true;
+    }
 
     A.compute_rows_forward();
     std::pair<SparseMatrix<I>, vec<std::pair<I, I>>> hom;

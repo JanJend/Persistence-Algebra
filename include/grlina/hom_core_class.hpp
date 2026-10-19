@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include <grlina/mod_module.hpp>
+#include <grlina/mod_class.hpp>
 #include <grlina/hom_algorithms.hpp>
 
 namespace graded_linalg {

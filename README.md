@@ -451,6 +451,7 @@ include/grlina/
 ├── mod_isomorphism.hpp       # Exact module isomorphism decisions
 ├── quiver_representations.hpp # Quiver representation extraction
 ├── mod_hilbert_plot.hpp      # Hilbert function visualization
+├── mod_landscape.hpp         # Exact rank landscapes and R2 CSV/SVG export
 ├── chain_complex.hpp         # ChainComplex, SCC I/O and ChainBasisMaps
 ├── graded_linalg.hpp         # Aggregate library API
 ├── general.hpp               # Timing, files, containers, sorting and formatting
@@ -508,6 +509,40 @@ Each tool reads from a file path passed as the first argument and writes to stdo
 ---
 
 ## Usage Examples
+
+### Computing a persistence landscape
+
+```cpp
+#include <grlina/mod_landscape.hpp>
+using namespace graded_linalg;
+
+Module<R2Matrix<>> module("presentation_or_resolution.scc");
+Landscape landscape(module); // 1% resolution; degree bounds enlarged by 20%
+landscape.save("landscape", 3); // barcode CSV, grid CSV, and SVG with three layers
+
+Landscape cropped(module, {0, 0, 1, 1}, 0.01); // xmin,ymin,xmax,ymax; relative resolution
+auto heights = cropped.at({0.5, 0.5}, 3);
+```
+
+`Landscape` owns barcodes on parallel diagonal slices, so construction performs
+about 200 reductions at the default resolution instead of about 10,000 for a grid.
+It keeps every landscape layer and needs no reference to the original module.
+Values are exact on these slices and linearly interpolated between them;
+`error_bound()` bounds the absolute error of every layer. Resolution is slice
+spacing relative to the longest box side in direction units. The default box
+uses `presentation_degree_bounds()` with 10% padding on each side; these are
+Betti-degree bounds for a minimal presentation. Constant axes use a unit span.
+
+`save` writes the full compressed representation to `landscape.barcodes.csv`,
+with bounds/direction/resolution metadata and `slice,offset,birth,death` rows.
+Empty slices have blank endpoints; infinite deaths are retained. It also writes
+the sampled `landscape.csv` (`x,y,layer,value`) and labelled `landscape.svg` views.
+Only saving materializes a grid. Bounds never clip bars or the module itself.
+
+This follows [Vipond's diagonal-slice construction, Proposition 41](https://jmlr.org/papers/volume21/19-054/19-054.pdf).
+The standalone `landscape_at` remains available for exact individual queries
+in any positive coordinate dimension. A positive direction argument selects
+coordinate weights; the default is `(1,...,1)`.
 
 ### Reading and minimising a presentation
 

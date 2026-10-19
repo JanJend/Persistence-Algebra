@@ -152,6 +152,9 @@ if(GRLINA_BUILD_TESTS)
     add_executable(module_hilbert_test tests/module_hilbert_test.cpp)
     target_link_libraries(module_hilbert_test grlina::grlina)
     add_test(NAME module_hilbert_test COMMAND module_hilbert_test)
+    add_executable(module_landscape_test tests/module_landscape_test.cpp)
+    target_link_libraries(module_landscape_test grlina::grlina)
+    add_test(NAME module_landscape_test COMMAND module_landscape_test)
     add_executable(module_operations_test tests/module_operations_test.cpp)
     target_link_libraries(module_operations_test grlina::grlina)
     add_test(NAME module_operations_test COMMAND module_operations_test)
@@ -288,7 +291,7 @@ if(GRLINA_BUILD_TESTS)
         set_tests_properties(${_legacy_test} PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     endforeach()
     # These tests use assert; keep checks active in Release builds as well.
-    foreach(_test epsilon_functors_test presentation_operations_test submodule_module_test submodule_reduction_test module_hilbert_test module_operations_test module_framework_test upset_degree_test upset_matrix_test upset_chain_complex_test multicritical_copy_test cli_programs_test
+    foreach(_test epsilon_functors_test presentation_operations_test submodule_module_test submodule_reduction_test module_hilbert_test module_landscape_test module_operations_test module_framework_test upset_degree_test upset_matrix_test upset_chain_complex_test multicritical_copy_test cli_programs_test
                   dense_matrix_test sparse_matrix_test matrix_solver_test graded_matrix_test hom_space_test graded_linear_system_test new_coord_graded_sparse_matrix_test new_grid_graded_sparse_matrix_test csc_matrix_test csc_graded_test)
         if(NOT TARGET ${_test})
             continue()
