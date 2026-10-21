@@ -217,6 +217,11 @@ This library is used as a dependency in the following projects, all part of the 
 - [CMake](https://cmake.org/) ≥ 3.15
 - [Boost](https://www.boost.org/) ≥ 1.70 (components: `timer`, `system`; `dynamic_bitset` is header-only)
 
+Hilbert PNG export (`mod_hilbert_plot.hpp`) uses the bundled
+`grlina/third_party/stb_image_write.h` (v1.16), installed with the library.
+Its original license notices are retained in the header. No separate image
+library or companion project is required.
+
 On Ubuntu/Debian:
 
 ```bash

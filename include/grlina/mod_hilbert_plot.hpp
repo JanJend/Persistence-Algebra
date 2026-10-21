@@ -1,6 +1,6 @@
 #pragma once
 #include <grlina/general_checks.hpp>
-#include <stb_image_write.h>
+#include <grlina/third_party/stb_image_write.h>
 #include <algorithm>
 #include <array>
 #include <cctype>
