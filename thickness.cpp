@@ -1,5 +1,6 @@
-#include "grlina/mat_r2.hpp"
-#include "grlina/mod_modules.hpp"
+#include <grlina/invariants/hilbert_function.hpp>
+#include "grlina/matrices/r2.hpp"
+#include "grlina/module/module_base.hpp"
 #include <iostream>
 #include <filesystem>
 
@@ -9,8 +10,8 @@ using namespace graded_linalg;
 void compute_thickness(std::filesystem::path input_path) {
 
     R2Module<int> module(input_path.string());
-    auto hilbert = module.hilbert_function_on_induced_grid();
-    std::cout << module.number_of_generators() << " x " << module.number_of_relations() << ": ";
+    auto hilbert = hilbert_function_on_induced_grid(module);
+    std::cout << module.num_of_gens() << " x " << module.num_of_rels() << ": ";
     std::cout << "thickness: " << hilbert.maximum << std::endl;
 }
 
@@ -95,12 +96,12 @@ void compute_decomp_thickness(std::filesystem::path input_path) {
             if(type == "free" || type == "cyclic" || type == "interval"){
                 thicks.push_back(1);
                 R2Module<int> module(input_file);
-                sizes.push_back(module.number_of_relations()+module.number_of_generators());
+                sizes.push_back(module.num_of_rels()+module.num_of_gens());
             } else {
                 R2Module<int> module(input_file);
-                auto hilbert = module.hilbert_function_on_induced_grid();
+                auto hilbert = hilbert_function_on_induced_grid(module);
                 thicks.push_back(hilbert.maximum);
-                sizes.push_back(module.number_of_relations()+module.number_of_generators());
+                sizes.push_back(module.num_of_rels()+module.num_of_gens());
             }
             
             processed_sections++;

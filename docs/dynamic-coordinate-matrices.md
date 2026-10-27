@@ -1,11 +1,14 @@
 # Coordinate matrix headers
 
-The active coordinate and grid classes are provided by `grlina/mat_coord.hpp`
-and `grlina/mat_grid.hpp`. They live in `graded_linalg` and take
+The active coordinate and grid classes are provided by `grlina/matrices/coord.hpp`
+and `grlina/matrices/grid.hpp`. They live in `graded_linalg` and take
 `Scalar, Dimension, Index` as template arguments. Degree definitions are in
-`deg_coordinate.hpp`; degree/grid adapters live with the grid matrix in
-`mat_grid.hpp`. Shared reduction, storage and SCC adapters are in
-`mat_kernel.hpp`, `mat_storage.hpp` and `mat_io.hpp`.
+`posets/coordinate.hpp`; degree/grid adapters live with the grid matrix in
+`matrices/grid.hpp`. Shared reduction, storage and SCC adapters are in
+`graded_kernel.hpp`, `storage/traits.hpp` and `matrices/io.hpp`. Include
+`graded_kernel.hpp` for graded kernels and methods that use them, including
+minimization and submodules. Other matrix methods are defined in their classes;
+`matrices/matrix_algorithms.hpp` holds free matrix-family algorithms and column-space comparison.
 See the [current header guide](../README.md#library-structure).
 
 ## Archived runtime-dimensional design
@@ -27,7 +30,7 @@ same C++ type. The sparse entries remain binary, as in `SparseMatrix`;
 
 ```cpp
 #include <grlina/runtime_matrices/class_coord_graded_sparse_matrix.hpp>
-#include <grlina/mod_module.hpp>
+#include <grlina/invariants/hilbert_function.hpp>
 
 using namespace graded_linalg;
 using Matrix = CoordGradedSparseMatrix<double, int>;
@@ -39,7 +42,7 @@ Matrix presentation(2, 1, 3, {{0}, {0}},
 Matrix empty_five_parameter_map(0, 0, 5);
 presentation.sort_compatibly();
 Module<Matrix> module(presentation);
-auto dimension = module.dimension_at(Degree{0, 0, 0}); // 1
+auto dimension = dimension_at(module, Degree{0, 0, 0}); // 1
 ```
 
 The new matrix derives from the existing `SparseMatrix<Index, Storage>`,
@@ -70,8 +73,8 @@ presentation.set_col_degree(0, Degree{2, 0, 0});
 
 Use `set_row_degree` and `set_col_degree` to copy coordinates into the matrix.
 The table-level `row_degrees.set(i, degree)` and `col_degrees.set(i, degree)`
-also exist. After direct table edits, set `compatibly_sorted = false`;
-after direct sparse-storage edits, call `invalidate_cached_rows()`. Runtime
+also exist. After direct table edits, set `compatibly_sorted = false`.
+Callers are responsible for recomputing stored rows after matrix edits. Runtime
 headers trust supplied coordinates, dimensions, indices, permutations and
 sparse buffers; indexing and arithmetic are unchecked. Matrix validation
 methods have been removed from the current API.
@@ -86,7 +89,7 @@ its header before the dynamic matrix header. `Index` must be a signed integral
 type, because the existing sparse algorithms use the `-1` sentinel:
 
 ```cpp
-#include <grlina/mat_csc.hpp>
+#include <grlina/storage/csc.hpp>
 #include <grlina/runtime_matrices/class_coord_graded_sparse_matrix.hpp>
 using CSC = graded_linalg::CoordGradedSparseMatrix<
     double, int, graded_linalg::CSCStorage<int>>;
@@ -147,7 +150,7 @@ Unused grid points have no SCC representation.
 The grid type supports full minimization and automatic projective resolutions.
 Two parameters use the existing `Grid_scheduler` kernel algorithm directly on
 the flat tables. Three parameters use an adaptation of muphasa's
-`computeGroebnerBases_gradeopt_min` in `mat_kernel.hpp`: columns are processed
+`computeGroebnerBases_gradeopt_min` in `graded_kernel.hpp`: columns are processed
 in colexicographic signature order, and a lexicographic event queue schedules
 column births and minimal joins between grades sharing an image pivot.
 Image and syzygy signature histories avoid repeating reductions already

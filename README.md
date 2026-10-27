@@ -5,22 +5,31 @@ Current version: **2.0.0**
 The compatibility-preserving persistence-module API is documented in
 [`docs/module-framework.md`](docs/module-framework.md). Existing presentation
 matrix APIs remain available; new clients should start with
-`#include <grlina/mod_modules.hpp>` and `R2Module<index>`.
+`#include <grlina/graded_linalg.hpp>` and `R2Module<index>`.
 
-Coordinate and grid matrices are available through `<grlina/mat_coord.hpp>` and
-`<grlina/mat_grid.hpp>`. Their types live in `graded_linalg` and
+Coordinate and grid matrices are available through `<grlina/matrices/coord.hpp>` and
+`<grlina/matrices/grid.hpp>`. Their types live in `graded_linalg` and
 take the coordinate scalar, dimension, and index type as template arguments:
 `CoordGradedSparseMatrix<double, 3, int>`. Both support graded kernels and
 integration with `Module` and `ChainComplex`. The [header guide](#library-structure)
 below lists the implementation headers by responsibility.
 
+`GridGradedSparseMatrix` is graded over integer degrees `D`. Its `grid_` maps
+these degrees into real space; `GridD` is the type of their images. `Grid` is
+an array of coordinate vectors, one monotone map per axis. Methods
+such as `dim_at(degree)` and `append_column(column, degree)` take coordinate
+values. Use `dim_at_grid_degree(indices)` or
+`append_column_at_grid_degree(column, indices)` for stored indices. This rule
+also applies when `Scalar` and `Index` are the same integer type.
+
 ### Optional CSC matrix storage
 
-Include `<grlina/mat_csc.hpp>` to select contiguous compressed sparse columns:
+Include `<grlina/matrices/sparse.hpp>` for `CSCMatrix`, the sparse matrix alias
+with contiguous compressed sparse columns:
 
 ```cpp
-#include <grlina/mat_csc.hpp>
-#include <grlina/mod_modules.hpp>
+#include <grlina/matrices/sparse.hpp>
+#include <grlina/graded_linalg.hpp>
 
 using namespace graded_linalg;
 using PackedMatrix = R2GradedSparseMatrix<int, CSCStorage<int>>;
@@ -40,9 +49,13 @@ at compile time. `const` controls mutability and does not choose the
 representation. The same option is available through the generic
 `GradedSparseMatrix` base. Shared
 algorithms dispatch to storage primitives, without virtual calls or a runtime
-variant. All CSC storage, column views, matrix integration and diagnostics live
-in the single header `grlina/mat_csc.hpp`; existing headers contain only
-generic storage hooks.
+variant. CSC storage, column views and diagnostics live in
+`grlina/storage/csc.hpp`; `grlina/matrices/sparse.hpp` defines the `CSCMatrix` alias.
+Other matrix types use the generic storage traits.
+
+Matrix templates use their template parameter names directly. Generic code can
+obtain types from the matrix interface with `matrix_index_t<Matrix>`,
+`matrix_storage_t<Matrix>`, `matrix_column_t<Matrix>`, and `matrix_degree_t<Matrix>`.
 
 CSC uses a contiguous row-index array and a `std::size_t` column-offset array.
 Matrix copies share these two buffers; a write detaches them first. Degree arrays,
@@ -67,7 +80,7 @@ Both warning channels are enabled by default:
   one message to `std::cerr`, across CSC index types and translation units.
 
 Define `GRLINA_CSC_COMPILE_WARNINGS=0` and/or
-`GRLINA_CSC_RUNTIME_WARNINGS=0` before including the CSC header to acknowledge the
+`GRLINA_CSC_RUNTIME_WARNINGS=0` before including matrix headers to acknowledge the
 cost and disable either channel independently. Keep these definitions consistent
 across translation units. Plain `CSCMatrix` construction, reads, and copies do not
 warn. Graded/module loading can produce the conservative compile diagnostics
@@ -217,7 +230,7 @@ This library is used as a dependency in the following projects, all part of the 
 - [CMake](https://cmake.org/) ≥ 3.15
 - [Boost](https://www.boost.org/) ≥ 1.70 (components: `timer`, `system`; `dynamic_bitset` is header-only)
 
-Hilbert PNG export (`mod_hilbert_plot.hpp`) uses the bundled
+Hilbert PNG export (`invariants/hilbert_plot.hpp`) uses the bundled
 `grlina/third_party/stb_image_write.h` (v1.16), installed with the library.
 Its original license notices are retained in the header. No separate image
 library or companion project is required.
@@ -413,67 +426,93 @@ Both formats are compatible with [RIVET](https://github.com/rivetTDA/rivet), [mp
 
 ## Library Structure
 
-Header names identify their responsibility: `mat_` for matrix classes and
-algorithms, `deg_` for degree definitions and posets, `hom_` for homomorphism
-types and Hom-space algorithms, and `mod_` for module-level classes,
-operations and helpers. General utilities are in `general.hpp`, with graph utilities and the diagnostic policy in `graphs.hpp` and
-`general_checks.hpp`. Headers outside these categories, such as
-`chain_complex.hpp`, keep descriptive names without a forced prefix.
-`graded_linalg.hpp` and `mod_modules.hpp` are aggregate includes.
+Matrix classes, conversions and the shared matrix/presentation algorithms live
+in `matrices/`. Storage internals and representation-specific arithmetic live in
+`storage/`. Module classes and constructions live in `module/`; landscape and
+Hilbert plotting live in `invariants/`. Degree definitions and poset helpers live
+in `posets/`. Graded kernels, solvers, isomorphism tests and the `hom_`
+homomorphism headers remain directly under `grlina/`. `graded_linalg.hpp` is the
+aggregate include for the library.
 
-```
+```text
 include/grlina/
-├── deg_traits.hpp            # Degree_traits capabilities and linear-order contract
-├── deg_coordinate.hpp        # CoordinateDegree, product orders and R2 arithmetic
-├── deg_upset.hpp             # Scalar-templated 2D upsets, reverse inclusion
-├── deg_poset_operations.hpp  # Degree Hasse diagrams and CSV export
-├── mat_columns.hpp           # Column representations and Column_traits
-├── mat_storage.hpp           # Storage primitives for shared matrix algorithms
-├── mat_base.hpp              # MatrixUtil: reduction, kernel, cokernel and solving
-├── bitset_algebra.hpp        # F2 bitset arithmetic
-├── mat_dense.hpp             # DenseMatrix
-├── mat_sparse.hpp            # SparseMatrix
-├── mat_csc.hpp               # CSCStorage, borrowed columns and CSCMatrix
-├── mat_graded.hpp            # Generic GradedSparseMatrix CRTP base
-├── mat_upset.hpp             # UpsetGradedSparseMatrix and extended SCC I/O
-├── mat_r2.hpp                # R2GradedSparseMatrix
-├── mat_coord.hpp             # Coordinate-graded matrix classes and colex sorting
-├── mat_grid.hpp              # GridGradedSparseMatrix and degree/grid adapters
-├── mat_kernel.hpp            # Bigraded reduction, grid scheduler and muphasa 3D kernel
-├── mat_linear_system.hpp     # Degree-admissible linear systems
-├── mat_io.hpp                # Graded matrix SCC metadata adapters
-├── mat_operations.hpp        # Matrix conversions, subspaces and stream helpers
-├── hom_algorithms.hpp        # Full and optimised Hom-space algorithms
+├── matrices/
+│   ├── base.hpp              # MatrixUtil interface and basic coefficient operations
+│   ├── sparse.hpp            # SparseMatrix and CSCMatrix alias
+│   ├── dense.hpp             # DenseMatrix
+│   ├── graded.hpp            # Generic GradedSparseMatrix CRTP base
+│   ├── upset.hpp             # UpsetGradedSparseMatrix
+│   ├── r2.hpp                # R2GradedSparseMatrix
+│   ├── coord.hpp             # Coordinate-graded matrices
+│   ├── grid.hpp              # Grid-graded matrices and degree/grid adapters
+│   ├── conversions.hpp       # Dense/sparse matrix conversions
+│   ├── matrix_algorithms.hpp # Free matrix-family algorithms and column-space comparison
+│   └── io.hpp                # SCC adapters and matrix stream helpers
+├── storage/
+│   ├── columns.hpp           # Column representations and Column_traits arithmetic
+│   ├── traits.hpp            # MatrixStorageTraits and vector-backed primitives
+│   ├── bitset_algebra.hpp    # Bitset helpers
+│   └── csc.hpp               # CSCStorage, borrowed columns, traits and diagnostics
+├── graded_kernel.hpp         # Graded kernels in two or more parameters
+├── graded_kernel_scheduler.hpp # Grade scheduling for graded kernel reductions
+├── graded_linear_system.hpp     # Degree-admissible linear systems
+├── subspaces.hpp             # Subspace enumeration, decomposition data and serialization
+├── posets/
+│   ├── traits.hpp            # Degree_traits capabilities and linear-order contract
+│   ├── coordinate.hpp        # CoordinateDegree, product orders and R2 arithmetic
+│   ├── upset.hpp             # Scalar-templated 2D upsets, reverse inclusion
+│   └── poset_operations.hpp  # Degree Hasse diagrams and CSV export
+├── hom_algorithms.hpp        # Full and optimized Hom-space algorithms
 ├── hom_core_class.hpp        # Homomorphism class and resolution lifts
 ├── hom_interface.hpp         # Module Hom bases and canonical shift interfaces
-├── mod_module.hpp            # Module, resolutions, Hilbert queries and homology
-├── mod_submodule.hpp         # Submodule with its parent and generator map
-├── mod_modules.hpp           # Aggregate module API
-├── mod_presentations.hpp     # Presentation/generator-matrix adapters
-├── mod_transformations.hpp   # Module sorting/minimization with transported maps
-├── mod_constructions.hpp     # Sums, quotients, pullbacks and pushouts with maps
-├── mod_epsilon.hpp           # Epsilon images and kernels
-├── mod_isomorphism.hpp       # Exact module isomorphism decisions
-├── quiver_representations.hpp # Quiver representation extraction
-├── mod_hilbert_plot.hpp      # Hilbert function visualization
-├── mod_landscape.hpp         # Exact rank landscapes and R2 CSV/SVG export
-├── chain_complex.hpp         # ChainComplex, SCC I/O and ChainBasisMaps
+├── module/
+│   ├── module_base.hpp       # Module, resolutions, Hilbert queries and homology
+│   ├── submodule.hpp         # Submodule, parent/generator maps and matrix adapters
+│   ├── transformations.hpp   # Sorting/minimization with transported maps
+│   ├── constructions.hpp     # Sums, quotients, pullbacks and pushouts with maps
+│   └── epsilon.hpp           # Epsilon images and kernels
+├── isomorphism_test.hpp       # Exact module isomorphism decisions
+├── quiver_representations.hpp # Quiver types, I/O and presentation conversion
+├── invariants/
+│   ├── hilbert_plot.hpp      # Hilbert function PNG visualization
+│   └── landscape.hpp         # Rank landscapes and R2 CSV/SVG export
+├── proj_chain_complex.hpp    # ChainComplex, SCC I/O and ChainBasisMaps
 ├── graded_linalg.hpp         # Aggregate library API
 ├── general.hpp               # Timing, files, containers, sorting and formatting
 ├── graphs.hpp                # Graph construction, traversal and condensation
 └── general_checks.hpp        # Diagnostic-check build policy
 ```
 
-`ChainBasisMaps` records the maps from each current chain-group basis to its
-original basis and back. `ChainComplex::sort_compatibly` and `minimize` transport
-these maps alongside the differentials; the type and identity helper therefore
-live in `chain_complex.hpp`. Euler-characteristic Hilbert helpers live with
-`Module` in `mod_module.hpp`. The Hom algorithms share `hom_algorithms.hpp`.
+Class and function names are unchanged. Matrix headers define their member
+operations directly:
 
-The old forwarding headers have been removed. Include the implementation
-directly: `mat_grid.hpp`, `mat_storage.hpp`, `mat_io.hpp`, or `mat_kernel.hpp`.
-Timing helpers are provided by `general.hpp`. Class and function names are
-unchanged; clients using renamed headers must update their include paths.
+```cpp
+#include <grlina/matrices/sparse.hpp>
+
+graded_linalg::SparseMatrix<int> matrix(2, 2, {{0}, {1}});
+auto kernel = matrix.get_kernel();
+```
+
+For graded kernels and methods that use them (including full presentation
+minimization and submodules), also include `graded_kernel.hpp`. Matrix-family
+algorithms and column-space comparison live in `matrices/matrix_algorithms.hpp`;
+induced quiver representations require `quiver_representations.hpp`.
+`graded_linalg.hpp` exports these algorithms and the module API. For a focused
+module include, use
+`module/module_base.hpp`, `module/submodule.hpp`, or the relevant construction
+header. Hilbert PNG export requires `invariants/hilbert_plot.hpp` separately.
+`shifted_identity` lives beside `GradedSparseMatrix` in `matrices/graded.hpp`.
+The dense/sparse conversion functions live in `matrices/conversions.hpp`.
+The old matrix and storage header paths have been removed.
+
+`ChainBasisMaps` and its identity helper live with `ChainComplex` in
+`proj_chain_complex.hpp`. Euler-characteristic Hilbert helpers live with
+`Module` in `module/module_base.hpp`. Hom-space algorithms share `hom_algorithms.hpp`.
+Submodule containment is `S.contains(T)` in `module/submodule.hpp`, with a check
+that both submodules have the same parent object. Equality checks containment
+in both directions; `present_same_submodule` adapts this to presentation and
+generator matrices. The graded linear solver lives in `graded_linear_system.hpp`.
+The former module umbrella and presentation-adapter headers have been removed.
 
 ### Key types at a glance
 
@@ -518,7 +557,7 @@ Each tool reads from a file path passed as the first argument and writes to stdo
 ### Computing a persistence landscape
 
 ```cpp
-#include <grlina/mod_landscape.hpp>
+#include <grlina/invariants/landscape.hpp>
 using namespace graded_linalg;
 
 Module<R2Matrix<>> module("presentation_or_resolution.scc");
@@ -535,7 +574,7 @@ It keeps every landscape layer and needs no reference to the original module.
 Values are exact on these slices and linearly interpolated between them;
 `error_bound()` bounds the absolute error of every layer. Resolution is slice
 spacing relative to the longest box side in direction units. The default box
-uses `presentation_degree_bounds()` with 10% padding on each side; these are
+uses `bounding_box()` with 10% padding on each side; these are
 Betti-degree bounds for a minimal presentation. Constant axes use a unit span.
 
 `save` writes the full compressed representation to `landscape.barcodes.csv`,
@@ -603,7 +642,7 @@ int main() {
 ### Building a free resolution
 
 ```cpp
-#include <grlina/mod_modules.hpp>
+#include <grlina/graded_linalg.hpp>
 using namespace graded_linalg;
 
 int main() {
@@ -618,14 +657,15 @@ int main() {
     module.to_stream(out);
 
     r2degree alpha = {1.5, 2.0};
-    std::cout << "dim at (1.5, 2.0) = " << module.dimension_at(alpha) << "\n";
+    std::cout << "dim at (1.5, 2.0) = " << dimension_at(module, alpha) << "\n";
 }
 ```
 
 ### Snapping to a coarser grid
 
 ```cpp
-#include <grlina/mat_r2.hpp>
+#include <grlina/matrices/r2.hpp>
+#include <grlina/matrices/matrix_algorithms.hpp>
 using namespace graded_linalg;
 
 int main() {
@@ -642,7 +682,7 @@ int main() {
 ### Extending the library to a new degree type
 
 Specialise `Degree_traits<D>` only for the capabilities your degree type has.
-The checks in `deg_traits.hpp` distinguish the comparison interface from sorting,
+The checks in `posets/traits.hpp` distinguish the comparison interface from sorting,
 lattice operations, and group operations:
 
 | Check | Required `Degree_traits<D>` interface |
@@ -677,7 +717,7 @@ explicitly by `zero()`, rather than assumed to be a default-constructed degree.
 This is a complete minimum specialization without arithmetic or lattice helpers:
 
 ```cpp
-#include <grlina/deg_traits.hpp>
+#include <grlina/posets/traits.hpp>
 using namespace graded_linalg;
 
 struct MyDegree {
@@ -725,7 +765,7 @@ With C++20, the corresponding concepts are `PosetDegree`, `Degree`,
 `LatticeDegree`, `OrderedAbelianGroupDegree`, and
 `LatticeOrderedAbelianGroupDegree`.
 
-`deg_upset.hpp` defines `r2upset<Scalar> = vec<CoordinateDegree<Scalar, 2>>`,
+`posets/upset.hpp` defines `r2upset<Scalar> = vec<CoordinateDegree<Scalar, 2>>`,
 using the corresponding coordinate degree traits. Generators must be sorted
 lexicographically by x, then y, with all redundant generators removed;
 `Degree_traits<r2upset<Scalar>>::remove_redundant` removes duplicate and dominated
@@ -741,13 +781,13 @@ count. Parsing sorts the pairs and removes redundant generators.
 These degrees have no addition, subtraction, group identity, or fixed-dimensional
 geometric position.
 
-`UpsetGradedSparseMatrix<Scalar, Index>` in `mat_upset.hpp` uses these upsets as
+`UpsetGradedSparseMatrix<Scalar, Index>` in `matrices/upset.hpp` uses these upsets as
 row and column degrees. It inherits the generic graded matrix operations and
 accepts stream or file-path constructors. `to_stream` and `to_file` write extended
 SCC data with enough precision to preserve the scalar values:
 
 ```cpp
-#include <grlina/mat_upset.hpp>
+#include <grlina/matrices/upset.hpp>
 using namespace graded_linalg;
 using Matrix = UpsetGradedSparseMatrix<double, int>;
 

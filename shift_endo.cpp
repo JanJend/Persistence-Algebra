@@ -1,5 +1,5 @@
 #include "grlina/hom_algorithms.hpp"
-#include "grlina/mat_r2.hpp"
+#include "grlina/matrices/r2.hpp"
 #include <grlina/graded_linalg.hpp>
 #include <iostream>
 #include <filesystem>
@@ -10,7 +10,7 @@ using namespace graded_linalg;
 void endomorphism_sizes(std::filesystem::path input_path) {
     auto module = std::make_shared<R2Module<int>>(input_path.string());
     module->sort_compatibly();
-    std::cout << module->number_of_generators() << " x " << module->number_of_relations() << std::endl;
+    std::cout << module->num_of_gens() << " x " << module->num_of_rels() << std::endl;
     for(int i = 0; i < 5; ++i) {
         double eps = 0.005 * i;
         auto shifted = std::make_shared<R2Module<int>>(*module);

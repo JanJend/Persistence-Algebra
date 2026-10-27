@@ -1,13 +1,18 @@
 #define GRLINA_CSC_COMPILE_WARNINGS 0
 #define GRLINA_CSC_RUNTIME_WARNINGS 0
+#include <grlina/invariants/hilbert_function.hpp>
 #include "test_degree_matrices.hpp"
-#include <grlina/mat_csc.hpp>
-#include <grlina/mod_modules.hpp>
+#include <grlina/storage/csc.hpp>
+#include <grlina/module/constructions.hpp>
+#include <grlina/hom_interface.hpp>
 #include <cassert>
 #include <cstdint>
 #include <random>
 #include <sstream>
 #include <type_traits>
+#include <grlina/matrices/matrix_algorithms.hpp>
+#include <grlina/quiver_representations.hpp>
+#include <grlina/graded_kernel.hpp>
 
 using namespace graded_linalg;
 using Mat = R2GradedSparseMatrix<int>;
@@ -16,11 +21,14 @@ using Hom = Homomorphism<Mat>;
 using Ptr = std::shared_ptr<const Mod>;
 static_assert(std::is_same_v<Mod, PersistenceModule<Mat>>);
 static_assert(std::is_same_v<Hom, ModuleMorphism<Mat>>);
+static_assert(std::is_nothrow_move_constructible_v<Mat>);
+static_assert(std::is_nothrow_move_constructible_v<R2GradedSparseMatrix<int, CSCStorage<int>>>);
 
 struct CopyCountingMatrix : GradedSparseMatrix<CoordinateDegree<double, 2>, int, CopyCountingMatrix> {
     using Base = GradedSparseMatrix<CoordinateDegree<double, 2>, int, CopyCountingMatrix>;
     using Base::Base;
     inline static int copies = 0;
+    inline static int kernel_calls = 0;
     CopyCountingMatrix() = default;
     CopyCountingMatrix(const CopyCountingMatrix& other) : Base(other) { ++copies; }
     CopyCountingMatrix(CopyCountingMatrix&&) = default;
@@ -30,6 +38,14 @@ struct CopyCountingMatrix : GradedSparseMatrix<CoordinateDegree<double, 2>, int,
         return *this;
     }
     CopyCountingMatrix& operator=(CopyCountingMatrix&&) = default;
+    CopyCountingMatrix graded_kernel() {
+        ++kernel_calls;
+        Mat source(this->get_num_cols(), this->get_num_rows(),
+                   this->data, this->col_degrees, this->row_degrees);
+        Mat kernel = source.graded_kernel();
+        return CopyCountingMatrix(kernel.get_num_cols(), kernel.get_num_rows(),
+                                  kernel.data, kernel.col_degrees, kernel.row_degrees);
+    }
 };
 
 template <typename F> void rejects(F action) {
@@ -39,7 +55,7 @@ template <typename F> void rejects(F action) {
 }
 
 Mat identity_lift(const Mod& source, const Mod& target) {
-    Mat I(source.number_of_generators(), target.number_of_generators(), "Identity");
+    Mat I(source.num_of_gens(), target.num_of_gens(), "Identity");
     I.col_degrees = source.presentation().row_degrees;
     I.row_degrees = target.presentation().row_degrees;
     return I;
@@ -53,7 +69,7 @@ void test_homomorphisms() {
     assert(quotient.check_lifts());
     assert(!quotient.generator_lift().compatibly_sorted); // no implicit sorting certification
     Submodule<Mat> zero_from_relations(interval, interval->presentation());
-    assert(zero_from_relations.number_of_generators() == 1 && zero_from_relations.is_zero());
+    assert(zero_from_relations.num_of_gens() == 1 && zero_from_relations.is_zero());
     assert(!zero_from_relations.generator_map().generator_lift().compatibly_sorted);
     assert(!Submodule<Mat>::whole(interval).is_zero());
     auto relation_lift = lift_to_relations(free->presentation(), interval->presentation(), quotient.generator_lift());
@@ -79,53 +95,53 @@ void test_homomorphisms() {
     auto resolved = std::make_shared<Mod>(interval->presentation());
     resolved->compute_projective_resolution();
     Hom I = Hom::identity(resolved);
-    assert(I.lifts().size() == 3 && I.check_lifts());
+    assert(I.resolution_maps().size() == 3 && I.check_lifts());
     Hom J(resolved, resolved, I.generator_lift());
     J.lift_to_resolution();
-    assert(J.lifts().size() == 3 && J.check_lifts());
+    assert(J.resolution_maps().size() == 3 && J.check_lifts());
     auto composed = I.compose(J);
-    assert(composed.lifts().size() == 3 && composed.check_lifts());
+    assert(composed.resolution_maps().size() == 3 && composed.check_lifts());
     auto zero = I + J;
     assert(zero.check_lifts() && zero.generator_lift().data == array<int>({{}}));
 
     auto K = kernel(quotient);
     assert(K.inclusion.check_lifts());
-    assert(K.module->dimension_at({0, 0}) == 0);
-    assert(K.module->dimension_at({1, 1}) == 1);
+    assert(dimension_at(*K.module, {0, 0}) == 0);
+    assert(dimension_at(*K.module, {1, 1}) == 1);
     assert(K.inclusion.compose(quotient).check_lifts());
     auto Im = image(quotient);
-    assert(Im.inclusion.check_lifts() && Im.module->dimension_at({0, 0}) == 1);
+    assert(Im.inclusion.check_lifts() && dimension_at(*Im.module, {0, 0}) == 1);
     auto Co = cokernel(quotient);
-    assert(Co.projection.check_lifts() && Co.module->dimension_at({0, 0}) == 0);
+    assert(Co.projection.check_lifts() && dimension_at(*Co.module, {0, 0}) == 0);
     auto Ci = coimage(quotient);
     assert(Ci.projection.check_lifts());
-    assert(Ci.module->dimension_at({0, 0}) == 1 && Ci.module->dimension_at({1, 1}) == 0);
-    assert(quotient.cokernel().dimension_at({0, 0}) == 0);
-    assert(quotient.coimage().dimension_at({1, 1}) == 0);
+    assert(dimension_at(*Ci.module, {0, 0}) == 1 && dimension_at(*Ci.module, {1, 1}) == 0);
+    assert(dimension_at(quotient.cokernel(), {0, 0}) == 0);
+    assert(dimension_at(quotient.coimage(), {1, 1}) == 0);
 
     auto D = direct_sum<Mat>(free, interval);
-    assert(D.module->dimension_at({0, 0}) == 2 && D.module->dimension_at({1, 1}) == 1);
+    assert(dimension_at(*D.module, {0, 0}) == 2 && dimension_at(*D.module, {1, 1}) == 1);
     for (const auto* map : {&D.inclusion_left, &D.inclusion_right, &D.projection_left, &D.projection_right})
         assert(map->check_lifts());
     assert(D.inclusion_left.compose(D.projection_left).generator_lift().data == array<int>({{0}}));
     assert(D.inclusion_left.compose(D.projection_right).generator_lift().data == array<int>({{}}));
     auto reconstructed = D.projection_left.compose(D.inclusion_left) + D.projection_right.compose(D.inclusion_right);
     assert(reconstructed.generator_lift().data == array<int>({{0}, {1}}));
-    assert(product<Mat>(free, interval).module->dimension_at({0, 0}) == 2);
-    assert(coproduct<Mat>(free, interval).module->dimension_at({1, 1}) == 1);
+    assert(dimension_at(*product<Mat>(free, interval).module, {0, 0}) == 2);
+    assert(dimension_at(*coproduct<Mat>(free, interval).module, {1, 1}) == 1);
 
     auto E = equalizer(quotient, Hom::zero(free, interval));
-    assert(E.inclusion.check_lifts() && E.module->dimension_at({1, 1}) == 1);
+    assert(E.inclusion.check_lifts() && dimension_at(*E.module, {1, 1}) == 1);
     auto CE = coequalizer(quotient, quotient);
-    assert(CE.projection.check_lifts() && CE.module->dimension_at({0, 0}) == 1);
+    assert(CE.projection.check_lifts() && dimension_at(*CE.module, {0, 0}) == 1);
     auto PB = pullback(quotient, quotient);
     assert(PB.to_left.check_lifts() && PB.to_right.check_lifts());
-    assert(PB.module->dimension_at({0, 0}) == 1 && PB.module->dimension_at({1, 1}) == 2);
+    assert(dimension_at(*PB.module, {0, 0}) == 1 && dimension_at(*PB.module, {1, 1}) == 2);
     auto difference = PB.to_left.compose(quotient) + PB.to_right.compose(quotient);
     assert(difference.image().is_zero());
     auto PO = pushout(quotient, quotient);
     assert(PO.from_left.check_lifts() && PO.from_right.check_lifts());
-    assert(PO.module->dimension_at({0, 0}) == 1 && PO.module->dimension_at({1, 1}) == 0);
+    assert(dimension_at(*PO.module, {0, 0}) == 1 && dimension_at(*PO.module, {1, 1}) == 0);
     assert((quotient.compose(PO.from_left) + quotient.compose(PO.from_right)).image().is_zero());
     rejects([&] { pullback(quotient, Hom::identity(free)); });
     rejects([&] { pushout(quotient, Hom::identity(interval)); });
@@ -144,20 +160,20 @@ void test_kernel_minimization() {
     minimized.minimize();
     assert(minimized.get_num_cols() == 2 && minimized.get_num_rows() == 3);
     for (const r2degree d : {r2degree{-1,-1}, {0,1}, {1,0}, {1,1}, {2,2}})
-        assert(Mod(P).dimension_at(d) == Mod(minimized).dimension_at(d));
+        assert(dimension_at(Mod(P), d) == dimension_at(Mod(minimized), d));
     cheap.minimize_variant();
     assert(cheap.data == minimized.data && cheap.col_degrees == minimized.col_degrees);
     // Module preprocessing must retain exact kernel-based minimization, even
     // when ordinary column reduction misses a relation at a join degree.
     Mod module(P);
     module.minimize();
-    assert(module.number_of_generators() == 3 && module.number_of_relations() == 2);
+    assert(module.num_of_gens() == 3 && module.num_of_rels() == 2);
     for (const r2degree d : {r2degree{-1,-1}, {0,1}, {1,0}, {1,1}, {2,2}})
-        assert(module.dimension_at(d) == Mod(P).dimension_at(d));
+        assert(dimension_at(module, d) == dimension_at(Mod(P), d));
     auto parent = std::make_shared<Mod>(Mat(0, 3, {}, {}, P.row_degrees));
     Submodule<Mat> S(parent, P);
     S.minimize_generators();
-    assert(S.number_of_generators() == 2);
+    assert(S.num_of_gens() == 2);
     Mat unsorted = P;
     unsorted.permute_rows_graded({2, 0, 1});
     auto source = unsorted;
@@ -174,24 +190,24 @@ void test_resolution_minimization_and_sorting() {
     assert(resolution.is_chain_complex());
     Mod M(resolution);
     M.minimize();
-    assert(M.projective_resolution().size() == 3 && M.projective_resolution().is_chain_complex());
-    assert(M.number_of_generators() == 1 && M.number_of_relations() == 0);
-    assert(M.projective_resolution()[1].get_num_cols() == 0);
-    assert(M.projective_resolution()[2].get_num_cols() == 0);
+    assert(M.proj_res_.size() == 3 && M.proj_res_.is_chain_complex());
+    assert(M.num_of_gens() == 1 && M.num_of_rels() == 0);
+    assert(M.proj_res_[1].get_num_cols() == 0);
+    assert(M.proj_res_[2].get_num_cols() == 0);
     Mod presentation_only(resolution);
     presentation_only.minimize_presentation();
-    assert(presentation_only.projective_resolution().size() == 1);
+    assert(presentation_only.proj_res_.size() == 1);
     Mod editable(resolution, resolution); // storage compatibility, exactness trusted
-    editable.mutable_presentation();
-    assert(editable.projective_resolution().size() == 1 && !editable.has_injective_resolution());
+    editable.remove_relations({0});
+    assert(editable.proj_res_.size() == 1 && editable.inj_res_.empty());
 
     Mat triangle(3, 3, {{0,2}, {1,2}, {0,1}}, {{0,1}, {1,0}, {1,1}},
                  {{-1,-1}, {-1,-1}, {-1,-1}});
     Mat syzygy(1, 3, {{0,1,2}}, {{1,1}}, triangle.col_degrees);
     Mod T(ChainComplex<Mat>({triangle, syzygy}));
     T.minimize();
-    assert(T.number_of_relations() == 2 && T.projective_resolution()[1].get_num_cols() == 0);
-    assert(T.projective_resolution().is_chain_complex());
+    assert(T.num_of_rels() == 2 && T.proj_res_[1].get_num_cols() == 0);
+    assert(T.proj_res_.is_chain_complex());
 
     // Repeated grades with distinct basis elements must be permuted identically.
     Mat fold(3, 1, {{0}, {0}, {0}}, {{2,2}, {0,0}, {0,0}}, {{0,0}});
@@ -231,24 +247,30 @@ void test_resolution_minimization_and_sorting() {
     higher.sort_compatibly();
     higher.semi_minimize();
     assert(higher.get_num_cols() == 1);
+    auto complete_without_kernel = Module<NoKernelMatrix<4>>::from_projective_resolution(
+        ChainComplex<NoKernelMatrix<4>>({higher}), ResolutionCompleteness::complete);
+    complete_without_kernel.minimize_resolution();
+    assert(complete_without_kernel.res_complete_ && complete_without_kernel.num_of_rels() == 1);
     Module<NoKernelMatrix<4>> injective(ChainComplex<NoKernelMatrix<4>>({higher}),
                                                ResolutionKind::injective);
-    rejects([&] { injective.minimize(); });
+    rejects([&] { injective.minimize_injective_resolution(); });
 }
 
 void test_chain_vs_resolution_minimization() {
-    // [x x] is minimal as a complex, but not as a presentation of S/(x).
+    // A truncation needs one extra kernel map to expose terminal redundant
+    // relations as cancellable pairs in the extended chain complex.
     // Its nonzero H1 is free on (1,1) in degree (1,0).
     Mat duplicate(2, 1, {{0}, {0}}, {{1,0}, {1,0}}, {{0,0}});
     ChainComplex<Mat> C({duplicate});
     C.minimize();
     assert(C[0].data == duplicate.data && C[0].col_degrees == duplicate.col_degrees);
-    assert(homology_module(C, 1).dimension_at({1,0}) == 1);
-    assert(homology_module(C, 1).dimension_at({0,0}) == 0);
+    assert(dimension_at(homology_module(C, 1), {1,0}) == 1);
+    assert(dimension_at(homology_module(C, 1), {0,0}) == 0);
     Mod presentation(C);
     presentation.minimize_resolution(); // explicit method also accepts one map
-    assert(presentation.number_of_relations() == 1);
-    assert(presentation.dimension_at({0,0}) == 1 && presentation.dimension_at({1,0}) == 0);
+    assert(presentation.proj_res_.size() == 1 && presentation.num_of_rels() == 1);
+    assert(!presentation.res_complete_);
+    assert(dimension_at(presentation, {0,0}) == 1 && dimension_at(presentation, {1,0}) == 0);
 
     // A truncated resolution of the square interval with duplicate top syzygies.
     // It is exact at F1, but H2 is free in degree (1,1).
@@ -257,14 +279,15 @@ void test_chain_vs_resolution_minimization() {
     ChainComplex<Mat> truncated({square, syzygies});
     truncated.minimize();
     assert(truncated[1].data == syzygies.data);
-    assert(homology_module(truncated, 2).dimension_at({1,1}) == 1);
+    assert(dimension_at(homology_module(truncated, 2), {1,1}) == 1);
     Mod M(truncated);
     M.minimize(); // dispatches to module resolution minimization
-    assert(M.projective_resolution().size() == 2);
-    assert(M.projective_resolution()[1].data == array<int>({{0,1}}));
-    assert(M.projective_resolution().is_chain_complex());
-    assert(homology_module(M.projective_resolution(), 2).dimension_at({1,1}) == 0);
-    assert(M.dimension_at({0,0}) == 1 && M.dimension_at({1,0}) == 0);
+    assert(M.proj_res_.size() == 2);
+    assert(M.proj_res_[1].data == array<int>({{0,1}}));
+    assert(M.proj_res_.is_chain_complex());
+    assert(dimension_at(homology_module(M.proj_res_, 2), {1,1}) == 0);
+    assert(!M.res_complete_);
+    assert(dimension_at(M, {0,0}) == 1 && dimension_at(M, {1,0}) == 0);
 
     // Completing the resolution exposes a contractible pair: ordinary chain
     // minimization then removes both a duplicate syzygy and its dependency.
@@ -285,7 +308,7 @@ void test_chain_vs_resolution_minimization() {
     assert((general[0].col_degrees == vec<CoordinateDegree<double, 4>>({CoordinateDegree<double, 4>{1,1,1,1}})));
     Module<Higher> unsupported(ChainComplex<Higher>({local}));
     rejects([&] { unsupported.minimize_resolution(); });
-    assert(unsupported.presentation().data == local.data); // strong exception guarantee
+    assert(unsupported.presentation().data == local.data); // rejected before minimization
 
     ChainComplex<Mat> empty;
     empty.minimize();
@@ -312,12 +335,30 @@ void test_chain_minimization_does_not_copy() {
         assert(Matrix::copies == 0);
         assert(complex[0].get_num_rows() == 0 && complex[0].get_num_cols() == 0);
         assert(complex[1].get_num_rows() == 0 && complex[1].get_num_cols() == 0);
+
+        Module<Matrix> module(ChainComplex<Matrix>({lower, upper}));
+        module.res_complete_ = true;
+        Matrix::copies = 0;
+        Matrix::kernel_calls = 0;
+        module.minimize_resolution(sort);
+        assert(Matrix::copies == 0 && Matrix::kernel_calls == 0);
+        assert(module.proj_res_[0].get_num_rows() == 0 && module.proj_res_[0].get_num_cols() == 0);
+        assert(module.proj_res_[1].get_num_rows() == 0 && module.proj_res_[1].get_num_cols() == 0);
+
+        Module<Matrix> truncated(ChainComplex<Matrix>({lower, upper}));
+        Matrix::copies = 0;
+        Matrix::kernel_calls = 0;
+        truncated.minimize_resolution(sort);
+        assert(Matrix::copies == 1 && Matrix::kernel_calls == 1);
+        assert(truncated.proj_res_.size() == 2 && !truncated.res_complete_);
+        assert(truncated.proj_res_[0].get_num_rows() == 0 && truncated.proj_res_[0].get_num_cols() == 0);
+        assert(truncated.proj_res_[1].get_num_rows() == 0 && truncated.proj_res_[1].get_num_cols() == 0);
     }
 }
 
 template<class Matrix>
 void test_batched_chain_minimization() {
-    using D = typename Matrix::degree_type;
+    using D = matrix_degree_t<Matrix>;
     using Complex = ChainComplex<Matrix>;
     auto check = [](const Complex& original, bool sort) {
         std::stringstream before, after;
@@ -329,7 +370,7 @@ void test_batched_chain_minimization() {
         assert(reduced.is_chain_complex());
         for (std::size_t level = 0; level < reduced.size(); ++level) {
             const auto& d = reduced[level];
-            assert(d.is_graded_matrix() && !d.rows_computed);
+            assert(d.is_graded_matrix() && d.rows_computed);
             for (int c = 0; c < d.get_num_cols(); ++c)
                 for (int r : d.data[c]) assert(!Degree_traits<D>::equals(d.col_degrees[c], d.row_degrees[r]));
             if (level) assert(d.row_degrees == reduced[level - 1].col_degrees);
@@ -440,15 +481,89 @@ void test_batched_chain_minimization() {
 void test_scc() {
     std::stringstream zero("scc2020\n2\n0 0 0\n");
     Mod Z(zero);
-    assert(Z.has_presentation() && Z.number_of_generators() == 0 && Z.dimension_at({0,0}) == 0);
+    assert(Z.has_presentation() && Z.num_of_gens() == 0 && dimension_at(Z, {0,0}) == 0);
     std::stringstream encoded;
     Z.to_stream(encoded);
     Mod round_trip(encoded);
-    assert(round_trip.has_presentation() && round_trip.number_of_relations() == 0);
+    assert(round_trip.has_presentation() && round_trip.num_of_rels() == 0);
     rejects([] { std::stringstream s("scc2020\n2\n1 1 rubbish\n"); Mod wrong(s); });
     rejects([] { std::stringstream s("scc2020\n2\n1 1 0\n1 1 ; 0 garbage\n0 0 ;\n"); Mod wrong(s); });
     rejects([] { std::stringstream s("scc2020\n3\n1 1 0\n1 1 ; 0\n0 0 ;\n");
         ChainComplex<NoKernelMatrix<3>> wrong(s); });
+}
+
+void test_resolution_degree_operations() {
+    Mat d1(2, 1, {{0}, {0}}, {{0, 2}, {2, 0}}, {{0, 0}});
+    Mat d2(1, 2, {{0, 1}}, {{2, 2}}, d1.col_degrees);
+    ChainComplex<Mat> projective({d1, d2});
+    ChainComplex<Mat> injective = projective;
+    for (auto& differential : injective.differentials()) differential.shift({-4, -4});
+    const vec<double> axis{0, 3, 4, 7};
+
+    for (bool complete : {false, true}) {
+        for (int operation = 0; operation < 4; ++operation) {
+            Mod module(projective, injective);
+            module.res_complete_ = complete;
+            switch (operation) {
+                case 0: module.snap_to_grid(axis, axis); break;
+                case 1: module.snap_to_equidistant_grid(2); break;
+                case 2: module.bound_support({1, 1}); break;
+                case 3: module.cut_above(0.5, 0.5); break;
+            }
+            if (operation == 2) {
+                assert(module.proj_res_.size() == 1 && module.inj_res_.empty());
+                assert(!module.res_complete_);
+                assert(module.presentation().col_degrees == vec<r2degree>({{0, 1}, {1, 0}}));
+                assert(dimension_at(module, {0, 0}) == 1);
+                assert(dimension_at(module, {1, 0}) == 0 && dimension_at(module, {0, 1}) == 0);
+                module.compute_projective_resolution();
+                assert(module.res_complete_ && module.proj_res_.size() == 2);
+                assert(module.proj_res_.is_chain_complex());
+                assert(module.proj_res_[1].col_degrees == vec<r2degree>({{1, 1}}));
+                continue;
+            }
+            assert(module.proj_res_.size() == 2 && module.inj_res_.size() == 2);
+            assert(module.res_complete_ == complete);
+            if (operation == 0) {
+                assert(module.proj_res_[0].col_degrees == vec<r2degree>({{0, 3}, {3, 0}}));
+                assert(module.proj_res_[1].col_degrees == vec<r2degree>({{3, 3}}));
+                assert(module.inj_res_[0].col_degrees == vec<r2degree>({{4, 7}, {7, 4}}));
+                assert(module.inj_res_[1].col_degrees == vec<r2degree>({{7, 7}}));
+            } else {
+                assert(module.proj_res_[1].get_num_rows() == 0);
+                assert(module.proj_res_[1].get_num_cols() == 0);
+                assert(module.inj_res_[1].get_num_rows() == 0);
+                assert(module.inj_res_[1].get_num_cols() == 0);
+                assert(module.proj_res_[0].get_num_cols() == 0);
+                assert(module.inj_res_[0].get_num_cols() == 0);
+                assert(module.inj_res_[0].row_degrees == vec<r2degree>({{4, 4}}));
+            }
+        }
+    }
+
+    Mod injective_only = Mod::from_injective_resolution(injective);
+    injective_only.snap_to_equidistant_grid(2, true);
+    assert(injective_only.proj_res_.empty() && injective_only.inj_res_.size() == 2);
+    assert(injective_only.inj_res_[0].col_degrees == injective[0].col_degrees);
+
+    using Grid = GridGradedSparseMatrix<float, 3, int>;
+    Grid grid(1, 1, {{0}}, {{1, 1, 1}}, {{0, 0, 0}});
+    Module<Grid> higher(ChainComplex<Grid>({grid}), ChainComplex<Grid>({grid}));
+    const std::array<vec<float>, 3> axes{{{0, 2}, {0, 2}, {0, 2}}};
+    higher.snap_to_grid(axes);
+    assert(higher.proj_res_[0].real_col_degrees() == vec<Grid::GridD>({{2, 2, 2}}));
+    assert(higher.inj_res_[0].real_col_degrees() == vec<Grid::GridD>({{2, 2, 2}}));
+    higher.cut_above(std::array<double, 3>{0.5, 0.5, 0.5});
+    assert(higher.proj_res_[0].get_num_cols() == 0 && higher.inj_res_[0].get_num_cols() == 0);
+
+    // Integral physical coordinates must not be interpreted as grid indices.
+    using IntegralGrid = GridGradedSparseMatrix<int, 2, int>;
+    IntegralGrid free(0, 1, {}, {}, {{0, 0}});
+    Module<IntegralGrid> integral(ChainComplex<IntegralGrid>({free}), ChainComplex<IntegralGrid>({free}));
+    integral.bound_support({2, 3});
+    const vec<IntegralGrid::GridD> deaths{{0, 3}, {2, 0}};
+    assert(integral.proj_res_[0].real_col_degrees() == deaths);
+    assert(integral.inj_res_.empty() && !integral.res_complete_);
 }
 
 void test_presentation_adapters() {
@@ -457,58 +572,58 @@ void test_presentation_adapters() {
     auto [local, rows] = module.local_presentation_at({2, 2});
     assert(rows == vec<int>({1, 2}));
     assert(local.get_num_rows() == 2 && local.data == array<int>({{0, 1}}));
-    vec<int> relations{99};
-    auto available = module.relations_at({2, 2}, relations);
+    vec<int> relations;
+    auto available = module.presentation().map_at_degree({2, 2}, relations);
     assert(relations == vec<int>({0}));
     assert(available.get_num_rows() == 3 && available.data == array<int>({{1, 2}}));
     auto [before_birth, no_rows] = module.local_presentation_at({-1, -1});
     assert(no_rows.empty() && before_birth.get_num_rows() == 0);
 
-    auto bounds = module.presentation_degree_bounds();
+    auto bounds = module.bounding_box();
     assert((bounds.first == r2degree{0, 0} && bounds.second == r2degree{4, 4}));
-    assert(module.equidistant_presentation_grid(2) == vec<r2degree>({{0,0}, {0,4}, {4,0}, {4,4}}));
-    assert(module.equidistant_presentation_grid(1) == vec<r2degree>({{0,0}}));
-    assert(module.equidistant_presentation_grid(0).empty());
-    rejects([&] { module.equidistant_presentation_grid(-1); });
+    assert(module.get_equidistant_grid(2) == vec<r2degree>({{0,0}, {0,4}, {4,0}, {4,4}}));
+    assert(module.get_equidistant_grid(1) == vec<r2degree>({{0,0}}));
+    assert(module.get_equidistant_grid(0).empty());
+    rejects([&] { module.get_equidistant_grid(-1); });
     Mod empty(Mat(0, 0));
-    rejects([&] { empty.presentation_degree_bounds(); });
-    assert(empty.equidistant_presentation_grid(3).empty());
+    rejects([&] { empty.bounding_box(); });
+    assert(empty.get_equidistant_grid(3).empty());
 
     module.compute_projective_resolution();
-    module.set_injective_resolution(module.projective_resolution());
+    module.inj_res_ = module.proj_res_;
     module.remove_relations({1, 0, 1});
-    assert(module.number_of_relations() == 0 && module.dimension_at({4,4}) == 3);
-    assert(module.projective_resolution().size() == 1);
-    assert(!module.has_injective_resolution()); // No relations now: a complete free presentation.
+    assert(module.num_of_rels() == 0 && dimension_at(module, {4,4}) == 3);
+    assert(module.proj_res_.size() == 1);
+    assert(module.inj_res_.empty()); // No relations now: a complete free presentation.
     module.add_relation({1, 2}, {2, 2});
-    assert(!module.has_complete_projective_resolution());
-    assert(module.dimension_at({2,2}) == 1);
+    assert(!module.res_complete_);
+    assert(dimension_at(module, {2,2}) == 1);
     rejects([&] { module.remove_relations({-1}); });
     rejects([&] { module.quotient_by_generators({3}); });
-    assert(module.number_of_relations() == 1);
+    assert(module.num_of_rels() == 1);
     module.quotient_by_generators({2, 0, 2});
-    assert(module.number_of_generators() == 1);
+    assert(module.num_of_gens() == 1);
     assert(module.presentation().row_degrees == vec<r2degree>({{0,0}}));
-    assert(module.dimension_at({1,1}) == 1 && module.dimension_at({2,2}) == 0);
+    assert(dimension_at(module, {1,1}) == 1 && dimension_at(module, {2,2}) == 0);
 
     Mod tail(Mat(1, 3, {{0, 2}}, {{3,3}}, {{0,0}, {1,1}, {2,2}}));
     tail.quotient_by_tail_generators(2);
-    assert(tail.number_of_generators() == 2 && tail.presentation().data == array<int>({{0}}));
+    assert(tail.num_of_gens() == 2 && tail.presentation().data == array<int>({{0}}));
     rejects([&] { tail.quotient_by_tail_generators(3); });
     rejects([&] { tail.quotient_by_tail_generators(-1); });
     tail.quotient_by_tail_generators(0);
-    assert(tail.dimension_at({5,5}) == 0);
+    assert(dimension_at(tail, {5,5}) == 0);
 
     Mod nonminimal(Mat(2, 2, {{0}, {1}}, {{2,2}, {0,0}}, {{2,2}, {0,0}}));
     assert(!nonminimal.is_presentation_minimal());
-    assert(nonminimal.number_of_generators() == 2); // Query did not mutate.
+    assert(nonminimal.num_of_gens() == 2); // Query did not mutate.
     nonminimal.semi_minimize_presentation();
-    assert(nonminimal.number_of_generators() == 0 && nonminimal.is_presentation_minimal());
+    assert(nonminimal.num_of_gens() == 0 && nonminimal.is_presentation_minimal());
     // Partial cancellation is also available without a graded-kernel implementation.
     Module<NoKernelMatrix<3>> three(
         NoKernelMatrix<3>(1, 1, {{0}}, {{1,1,1}}, {{1,1,1}}));
     three.semi_minimize_presentation();
-    assert(three.number_of_generators() == 0);
+    assert(three.num_of_gens() == 0);
 
     std::ostringstream output;
     auto* previous = std::cout.rdbuf(output.rdbuf());
@@ -524,8 +639,8 @@ void test_generated_fibre_and_quiver() {
     assert(sub.parent() == parent);
     assert(sub.generator_map().generator_lift().row_degrees == parent->presentation().row_degrees);
     auto presented = sub.presented_module();
-    assert(presented.dimension_at({0,0}) == 0);
-    assert(presented.dimension_at({1,1}) == 2 && presented.dimension_at({2,2}) == 1);
+    assert(dimension_at(presented, {0,0}) == 0);
+    assert(dimension_at(presented, {1,1}) == 2 && dimension_at(presented, {2,2}) == 1);
     assert(submodule_generated_at(parent, r2degree{-1,-1}).is_zero());
     assert(submodule_generated_at(parent, r2degree{2,2}).number_of_embedding_generators() == 1);
     rejects([] { submodule_generated_at<Mat>(nullptr, {0,0}); });
@@ -553,8 +668,8 @@ void test_minimization_preserves_injective_storage() {
     ChainComplex<Mat> injective({Mat(1, 2, {{0,1}}, {{4,4}}, {{3,3}, {3,3}}),
                                 Mat(0, 1, {}, {}, {{4,4}})});
     auto unchanged = [&](const Mod& module) {
-        assert(module.has_injective_resolution());
-        const auto& actual = module.injective_resolution();
+        assert(!module.inj_res_.empty());
+        const auto& actual = module.inj_res_;
         assert(actual.size() == injective.size());
         for (std::size_t i = 0; i < actual.size(); ++i) {
             assert(actual[i].data == injective[i].data);
@@ -566,21 +681,21 @@ void test_minimization_preserves_injective_storage() {
     for (int operation = 0; operation < 5; ++operation) {
         Mod module(P);
         if (operation == 4) module.compute_projective_resolution();
-        module.set_injective_resolution(injective);
-        const auto* storage = module.injective_resolution()[0].data.data();
+        module.inj_res_ = injective;
+        const auto* storage = module.inj_res_[0].data.data();
         if (operation == 0) module.minimize_presentation();
         if (operation == 1) module.semi_minimize_presentation();
-        if (operation == 2) module.remove_extra_rels();
+        if (operation == 2) module.presentation().remove_redundant_relations();
         if (operation >= 3) module.minimize();
         unchanged(module);
-        assert(module.injective_resolution()[0].data.data() == storage);
-        assert(operation == 2 ? module.number_of_relations() < 3 : module.number_of_generators() == 1);
+        assert(module.inj_res_[0].data.data() == storage);
+        assert(operation == 2 ? module.num_of_rels() < 3 : module.num_of_gens() == 1);
     }
     auto parent = std::make_shared<Mod>(P);
-    parent->set_injective_resolution(injective);
+    parent->inj_res_ = injective;
     for (bool full : {false, true}) {
         auto S = Submodule<Mat>::whole(parent);
-        S.set_injective_resolution(injective);
+        S.inj_res_ = injective;
         if (full) S.minimize_parent(); else S.lazy_minimize_parent();
         unchanged(*S.parent());
         unchanged(S);
@@ -591,21 +706,22 @@ void test_minimization_preserves_injective_storage() {
         S.minimize_generators();
         unchanged(S);
         S.shift_generators({1,1});
-        assert(!S.has_injective_resolution());
+        assert(S.inj_res_.empty());
     }
     auto zero = Submodule<Mat>::zero(parent);
-    zero.set_injective_resolution(injective);
+    zero.inj_res_ = injective;
     zero.compute_presentation(true);
     unchanged(zero);
     auto quotient = Submodule<Mat>::whole(parent).submodule_quotient(Submodule<Mat>::whole(parent));
-    assert(!quotient.parent()->has_injective_resolution());
+    assert(quotient.parent()->inj_res_.empty());
     Mod edited(P);
-    edited.set_injective_resolution(injective);
+    edited.inj_res_ = injective;
     edited.add_relation({1}, {1,1});
-    assert(!edited.has_injective_resolution());
+    assert(edited.inj_res_.empty());
 }
 
 int main() {
+    test_resolution_degree_operations();
     test_minimization_preserves_injective_storage();
     test_presentation_adapters();
     test_generated_fibre_and_quiver();

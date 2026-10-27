@@ -23,13 +23,16 @@ All types live in `graded_linalg`.
   the inclusion and `parent()` returns its target. The generator lift's row
   degrees must exactly equal the parent's presentation row degrees.
 - `Homomorphism<Matrix>` (`ModuleMorphism` and `ModuleFunction` are compatibility aliases) owns pointers to its
-  domain and target and stores the lifts to their projective resolutions.
+  domain and target. `resolution_maps()` returns the stored components of a
+  possibly partial chain map between their projective resolutions: entry 0 maps
+  generators, entry 1 maps relations, and later entries map higher syzygies.
+  This accessor computes nothing; `lift_to_resolution()` extends the stored map.
 - `module_hom_space_basis` and `module_endomorphism_basis` adapt the established
   Hom algorithms and return typed module homomorphisms.
 
-The implementation is split across `chain_complex.hpp`, `mod_module.hpp`,
-`mod_submodule.hpp`, `hom_core_class.hpp`, and `hom_interface.hpp`.
-Including `grlina/mod_modules.hpp` loads the whole public layer.
+The implementation is split across `proj_chain_complex.hpp`, `module/module_base.hpp`,
+`module/submodule.hpp`, `hom_core_class.hpp`, and `hom_interface.hpp`.
+Including `grlina/graded_linalg.hpp` loads the whole public layer.
 See [the correction/review guide](module-framework-review.md) for the latest
 algorithm contracts, categorical operations and a suggested walkthrough.
 
@@ -47,10 +50,12 @@ degrees are module generators. Higher differentials follow the same convention.
 
 A module created from a presentation has a one-differential projective
 resolution. A module created from a chain complex trusts its structure and the
-caller's exactness. Calling
-`mutable_presentation()` discards higher projective differentials first, because
-an arbitrary edit would make them stale. `minimize_presentation()` also discards
-higher projective maps; standard `minimize()` instead minimizes the stored
+caller's exactness. The stored chains `proj_res_` and
+`inj_res_`, and the completeness flag `res_complete_`, are public.
+Direct edits through `presentation()` leave flag and higher-map maintenance to
+the caller. Generator/relation edits and support bounding discard stale models.
+Grid snapping and cutting instead apply to every stored differential.
+`minimize_presentation()` also discards higher projective maps; standard `minimize()` instead minimizes the stored
 resolution when it has multiple maps. `compute_projective_resolution()` completes
 the stored sequence by repeated kernels until the terminal map is injective,
 for matrix types whose `graded_kernel()` returns that same matrix type. Existing
@@ -105,38 +110,45 @@ computation is skipped entirely.
 `ChainComplex::minimize()` only cancels contractible equal-degree pairs, transporting
 basis changes into both adjacent differentials. It preserves every homology module,
 does not assume exactness and needs no graded kernel. `Module::minimize_resolution()`
-first invokes that operation, then minimizes the terminal generating set via its
-kernel. That extra step is valid for a truncated resolution of a module, but can
-change its terminal homology, so it is not part of chain-complex minimization.
+applies that operation directly to a complete resolution. For a truncation, it
+first appends the kernel of the last differential, minimizes the extended complex,
+and drops the added differential. This exposes redundant terminal generators as
+contractible pairs while preserving the represented module and exactness below
+truncation. Extending a truncation requires a graded-kernel implementation.
 
 ## Euler-characteristic Hilbert queries
 
+Include `grlina/invariants/hilbert_function.hpp` for the free functions
+`dimension_at(module, degree)`, `hilbert_function(module, locations)`,
+`hilbert_function_on_support(module)`, `support_degrees(module)`, and the R2 grid
+helpers. Their types and computations live outside `Module`.
+
 `dimension_at` uses the alternating sum of free chain-group generators born at
-or below the queried degree when `has_complete_projective_resolution()` is true.
+or below the queried degree when `res_complete_` is true.
 Otherwise a point query retains the local-presentation method and does not
 compute a resolution just for that point.
 
 Completeness is distinct from merely storing several differentials. Use
 `ResolutionCompleteness::complete` when supplying a known full projective
-resolution, or `set_projective_resolution_completeness` after reading one.
+resolution, or set `res_complete_ = true` after reading one.
 The guarantee is trusted, like exactness. Unmarked sequences are treated as
-truncated unless their terminal free group is explicitly zero. SCC itself has
-no completeness marker. Computed resolutions are marked complete; presentation
-edits/replacement invalidate the guarantee. Sorting, shifts and full-resolution
-minimization preserve it.
+truncated, including those whose terminal free group is zero. SCC itself has
+no completeness marker. Computed resolutions are marked complete. Module
+generator/relation edits and support bounding invalidate the guarantee; direct edits
+require updating the flag. Sorting, shifts and full-resolution minimization
+preserve it.
 
-R2 `hilbert_function_on_induced_grid()` and `hilbert_function_on_grid(xs, ys)`
-automatically complete a missing/truncated resolution when a graded kernel is
-available, then use a signed birth histogram and two-dimensional prefix sums.
+R2 `hilbert_function_on_induced_grid(module)` and `hilbert_function_on_grid(module, xs, ys)`
+use a signed birth histogram and two-dimensional prefix sums when
+`res_complete_` is true. Call `compute_projective_resolution()` explicitly to
+enable this path.
 The axes of an explicit grid must be sorted and unique. For B total free
 summands and an X-by-Y grid this takes O(B(log X + log Y) + XY), excluding the
 one-time resolution computation. Arbitrary R2 location lists use an incremental
 x-sweep and y-prefix counts when the resolution is complete; output order and
 repeated locations are preserved. Generic point queries use the poset comparison.
 
-Mutable grid queries retain the computed resolution for reuse. Const grid queries
-compute on a private copy, so querying a shared const module does not invalidate
-references to its bases. Without a graded kernel, incomplete modules fall back to
+Grid queries leave the stored resolution unchanged. Incomplete modules use
 local presentation evaluations. A supplied complete resolution still enables Euler
 queries even when that matrix type cannot compute its own kernel. Cartesian-grid
 helpers remain R2-specific; generic point/list queries work with other degree traits.
@@ -169,13 +181,15 @@ path used by `mpfree_clone`.
 ## Typical use
 
 ```cpp
+#include <grlina/invariants/hilbert_function.hpp>
+
 using Matrix = graded_linalg::R2GradedSparseMatrix<int>;
 using Module = graded_linalg::R2Module<int>;
 
 Module module("input.scc");
 module.minimize();
-int dimension = module.dimension_at({0.5, 1.0});
-auto hilbert = module.hilbert_function_on_induced_grid();
+int dimension = dimension_at(module, {0.5, 1.0});
+auto hilbert = hilbert_function_on_induced_grid(module);
 module.compute_projective_resolution();
 module.to_file("resolution.scc");
 ```
@@ -198,7 +212,7 @@ Module image_as_module = image.presented_module();
 submodules with that exact module as their shared parent. Both methods are const,
 require a stored presentation, and require the module to be owned by a
 `std::shared_ptr`; calling them on a stack-allocated module throws
-`std::bad_weak_ptr`. Include `grlina/mod_submodule.hpp` or `grlina/mod_modules.hpp` to use
+`std::bad_weak_ptr`. Include `grlina/module/submodule.hpp` or `grlina/graded_linalg.hpp` to use
 them. The returned submodules keep their parent alive.
 
 No separate module object is needed for a submodule's own presentation/resolution:
@@ -207,21 +221,22 @@ No separate module object is needed for a submodule's own presentation/resolutio
 auto image = f.image();
 image.compute_presentation();         // stores its own d1 in the Module base
 image.compute_projective_resolution(); // completes/stores its own resolution
-auto dimension = image.dimension_at({0.5, 1.0});
+auto dimension = dimension_at(image, {0.5, 1.0});
 image.to_file("image-resolution.scc");
 ```
 
-`compute_projective_resolution()` also obtains a missing presentation automatically,
-including through a `Module<Matrix>&`. `Module::compute_presentation` is a virtual
-construction hook; `Module` has a virtual destructor and defaulted copy/move
-operations. Existing binaries using these header types should be rebuilt.
+`Submodule::compute_projective_resolution()` also obtains a missing presentation
+automatically, including through a `Module<Matrix>&`. `compute_presentation()`
+belongs only to `Submodule`; resolution computation dispatches virtually.
+`Module` has a virtual destructor and defaulted copy/move operations. Existing
+binaries using these header types should be rebuilt.
 
 By default, `Submodule::compute_presentation(false)` keeps its generator basis:
 the stored presentation's rows correspond exactly to `generator_map().generator_lift()`'s columns.
 `compute_presentation(true)` removes redundant inclusion generators and stores the
 presentation in that same basis. The domain of `generator_map()` is this object's
 `Module` base, whether or not a presentation exists. `domain()` never computes it.
-After computation, `number_of_embedding_generators()` and `number_of_generators()`
+After computation, `number_of_embedding_generators()` and `num_of_gens()`
 agree. Normal minimization through a `Module&` dispatches to the submodule's
 presentation/resolution minimizer, preserving the inclusion basis.
 
@@ -241,17 +256,22 @@ same module's representations, not automatic transport of embeddings under such 
 ## Migrated clients
 
 Stable-Decomposition's reusable helpers are exposed in
-`grlina/mod_presentations.hpp` (included by `mod_modules.hpp`) and
-`grlina/hom_interface.hpp` and `grlina/mat_base.hpp`. In particular:
+`grlina/module/submodule.hpp`, `grlina/hom_interface.hpp`, and
+`grlina/matrices/base.hpp`, all included by
+`grlina/graded_linalg.hpp`. In particular:
 
 - `S.contains(T)`, `S.is_contained_in(T)`, and `S.equals(T)` test exact submodule
   membership modulo their common parent's relations, without requiring a kernel.
+  `S.contains(T)` means that S contains T, including equality. It first checks
+  parent identity in every build, then tests whether `[parent relations, S] X = T`
+  has a graded solution. Equality calls containment in both directions, also
+  through the `present_same_submodule` matrix adapter.
 - `Homomorphism<Matrix>::canonical_shift(M, amount)` builds the structure map
   with identity lifts on all stored projective groups. `f.shifted(amount)`
   translates both endpoint modules and every stored lift.
 - `f.image(S)` computes the image of a submodule of its domain.
 - Matrix-level adapters cover zero/whole/sum/reduction, canonical shift lifts,
-  free-target image inclusion and equality in a presented parent. They preserve
+  and equality in a presented parent. They preserve
   ambient row coordinates; containment needs no sorting.
 - `homomorphism_lift_basis` and `End_2d_0` intentionally
   operate on spaces of generator lifts. Use `module_hom_space_basis` when maps
@@ -314,8 +334,8 @@ resolution cancellation, sorting and explicit homomorphism-equation queries.
 
 ## Presentation operations on modules
 
-The following adapters reuse the graded-matrix algorithms. Edits that change the
-module discard higher projective maps and the injective model. Presentation
+The following adapters reuse the graded-matrix algorithms. Generator/relation edits
+and support bounding discard higher projective maps and the injective model. Presentation
 minimization retains the injective model because the module is unchanged.
 Queries leave the module unchanged.
 
@@ -323,7 +343,6 @@ Queries leave the module unchanged.
 |---|---|
 | `cull_columns(count, false)` | `quotient_by_tail_generators(count)` — retain the first `count` generators, kill the rest |
 | `map_at_degree_pair` | `local_presentation_at(degree)` — local matrix and original row indices |
-| `map_at_degree` | `relations_at(degree, relation_indices)` — available relations, with all original rows |
 | `print_graded` | `print_presentation()` |
 | `delete_columns` | `remove_relations(indices)` |
 | `delete_rows` | `quotient_by_generators(indices)` |
@@ -333,8 +352,23 @@ Queries leave the module unchanged.
 | `append_column` | `add_relation(coefficients, degree)` |
 | `submodule_generated_at` | `submodule_generated_at(shared_parent, degree)` — free function returning an embedded `Submodule` |
 | `induced_quiver_rep` | `to_quiver(vertices = {}, edges = {})` |
-| `bounding_box` | `presentation_degree_bounds()` |
-| `get_equidistant_grid` | `equidistant_presentation_grid(n)` |
+| `bounding_box` | `bounding_box()` |
+| `get_equidistant_grid` | `get_equidistant_grid(n)` |
+| `snap_to_grid` | `snap_to_grid(x_grid, y_grid)` or `snap_to_grid(axes)` for coordinate/grid matrices |
+| `snap_to_equidistant_grid` | `snap_to_equidistant_grid(n, end_inclusive = false)` |
+| `bound_support` | `bound_support(bound)` |
+| `cut_above` | `cut_above(x_cutoff, y_cutoff)` or `cut_above(cutoffs)` for coordinate/grid matrices |
+
+`bound_support(bound)` modifies only the presentation, discards higher projective
+maps, clears the injective resolution, and resets `res_complete_`. Its new boundary
+relations require recomputing the resolution with `compute_projective_resolution()`.
+
+Grid snapping and cutting operate independently on every
+projective and injective differential, retaining both vectors and `res_complete_`.
+These matrix methods can change bases and dimensions independently; equidistant
+snapping and cutting also use each matrix's own bounding box. Consequently,
+retaining the maps and flag does not establish that the transformed sequence is
+a resolution. The caller must maintain compatible adjacent bases and exactness.
 
 The local matrix presents the fibre; the fibre itself is its cokernel.
 Generator and relation indices refer to the current presentation. Removing
@@ -418,11 +452,11 @@ including zero or redundant columns; neither computes S's own presentation.
 Both clear S's cached projective representation, preserve its injective resolution,
 and leave other objects sharing the old parent unchanged. Failed minimization leaves S unchanged.
 
-`Module::remove_extra_rels()` performs only the graded-kernel relation-removal
-step. It preserves ambient generator coordinates, including their original
-order, so existing submodule generator matrices remain valid. Higher projective
-maps are discarded; the independent injective resolution is preserved. `minimize_presentation()` reuses this
-step after local cancellation. To obtain the final module in pruning:
+`presentation().remove_redundant_relations()` performs the graded-kernel
+relation-removal step while preserving ambient generator coordinates and their
+order. Callers must discard higher projective maps and reset `res_complete_` if
+they edit a stored resolution this way. `minimize_presentation()` uses this matrix
+operation after local cancellation. To obtain the final module in pruning:
 
 ```cpp
 auto quotient_submodule = I.submodule_quotient(K, true);
@@ -474,7 +508,7 @@ categorical results such as `kernel(f)` valid after local temporaries disappear;
 it does not add a hidden domain object to I.
 
 `hom_core_class.hpp` defines the map class before Submodule is complete;
-`mod_submodule.hpp` then defines Submodule with its member map. Include the latter when
+`module/submodule.hpp` then defines Submodule with its member map. Include the latter when
 using both types. The empty `hom_operations.hpp` forwarding header was removed.
 
 
@@ -489,12 +523,13 @@ Presentation minimization, local cancellation and removal of redundant relations
 preserve the module, so they retain its independently stored injective resolution.
 Submodule parent minimization copies that resolution to the new parent as well.
 Recomputing a submodule's presentation preserves its own injective model.
-Arbitrary presentation edits and operations that change the module still invalidate
-it; a quotient does not inherit the original module's injective resolution.
+Arbitrary generator/relation edits and support bounding still invalidate it; a
+quotient does not inherit the original module's injective resolution. Grid snapping
+and cutting transform each stored injective map as described above.
 
 ### Basis transformations and cycle representatives (NEW)
 
-`grlina/mod_transformations.hpp` provides `sort_module_with_maps(M)` and
+`grlina/module/transformations.hpp` provides `sort_module_with_maps(M)` and
 `minimize_module_with_maps(M)`. Each returns `original`, `transformed`,
 `forward` (original to transformed), and `backward` (transformed to original),
 including lifts on every stored projective group. `M` is unchanged. Passing a

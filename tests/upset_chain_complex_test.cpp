@@ -1,6 +1,7 @@
-#include <grlina/mat_upset.hpp>
+#include <grlina/matrices/upset.hpp>
 #include <cassert>
 #include <iostream>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 using namespace graded_linalg;
 using Matrix = UpsetGradedSparseMatrix<double, int>;

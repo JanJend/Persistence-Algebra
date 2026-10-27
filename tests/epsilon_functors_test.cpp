@@ -1,6 +1,8 @@
-#include <grlina/mod_modules.hpp>
+#include <grlina/invariants/hilbert_function.hpp>
+#include <grlina/module/epsilon.hpp>
 #include <cassert>
 #include <limits>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 using namespace graded_linalg;
 using Mat = R2GradedSparseMatrix<int>;
@@ -15,6 +17,16 @@ template <typename F> void rejects(F action) {
 }
 
 int main() {
+    auto check_shifted_identity_order = [](vec<r2degree> generators, bool sorted) {
+        const auto identity = shifted_identity<r2degree, Mat>(generators, {0.5, 1.5});
+        assert(identity.compatibly_sorted == sorted);
+        assert(identity.row_degrees == generators);
+    };
+    check_shifted_identity_order({}, true);
+    check_shifted_identity_order({{1, 2}}, true);
+    check_shifted_identity_order({{0, 2}, {0, 2}, {1, 0}}, true);
+    check_shifted_identity_order({{1, 0}, {0, 2}}, false);
+
     // Unequal birth coordinates distinguish the shift direction and both axes.
     Ptr free = std::make_shared<Mod>(Mat(0, 1, {}, {}, {{1, 2}}));
     auto image = epsilon_image(free, 0.5);
@@ -23,9 +35,9 @@ int main() {
     assert(image.generator_map().generator_lift().col_degrees == vec<r2degree>({{1.5, 2.5}}));
     assert(image.generator_map().generator_lift().data == vec<vec<int>>({{0}}));
     auto image_module = image.presented_module();
-    assert(image_module.dimension_at({1.5, 2.5}) == 1);
-    assert(image_module.dimension_at({1.25, 2.5}) == 0);
-    assert(image_module.dimension_at({1.5, 2.25}) == 0);
+    assert(dimension_at(image_module, {1.5, 2.5}) == 1);
+    assert(dimension_at(image_module, {1.25, 2.5}) == 0);
+    assert(dimension_at(image_module, {1.5, 2.25}) == 0);
     assert(epsilon_kernel(free, 0.5).is_zero());
 
     // Shifting a presented submodule must discard its old module presentation.
@@ -33,9 +45,9 @@ int main() {
     shifted.compute_projective_resolution();
     shifted.shift_generators({0.5, 0.5});
     assert(!shifted.has_presentation());
-    assert(!shifted.has_injective_resolution());
+    assert(shifted.inj_res_.empty());
     assert(shifted.parent() == free && shifted.equals(image));
-    assert(shifted.presented_module().dimension_at({1, 2}) == 0);
+    assert(dimension_at(shifted.presented_module(), {1, 2}) == 0);
     assert(shifted.equals(image));
 
     // The relation e0 + e1 dies at (3,4); its kernel starts at (2.5,3.5).
@@ -49,9 +61,9 @@ int main() {
     assert(kernel.generator_map().generator_lift().row_degrees == original.row_degrees);
     assert(kernel.equals(expected));
     auto kernel_module = kernel.presented_module();
-    assert(kernel_module.dimension_at({2.5, 3.5}) == 1);
-    assert(kernel_module.dimension_at({2.25, 3.5}) == 0);
-    assert(kernel_module.dimension_at({3, 4}) == 0);
+    assert(dimension_at(kernel_module, {2.5, 3.5}) == 1);
+    assert(dimension_at(kernel_module, {2.25, 3.5}) == 0);
+    assert(dimension_at(kernel_module, {3, 4}) == 0);
     assert(epsilon_image(coupled, 0).equals(Sub::whole(coupled)));
     assert(epsilon_kernel(coupled, 0).is_zero());
     // Large shifts must still respect the birth degrees of every summand.

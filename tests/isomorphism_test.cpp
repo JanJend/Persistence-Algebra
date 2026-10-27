@@ -1,7 +1,9 @@
+#include <grlina/invariants/hilbert_function.hpp>
 #include "isomorphism_examples.hpp"
-#include <grlina/mod_modules.hpp>
+#include <grlina/module/module_base.hpp>
 #include <iostream>
 #include <set>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 using namespace iso_test;
 
@@ -124,7 +126,7 @@ void graded_examples() {
         auto pair=negative_pair(2*k,k,rng);
         Module<Mat> ma(pair.first),mb(pair.second);
         const vec<double> xs{-5,-4,-3,-2,-1}, ys{0,4.0*(2*k)+10,4.0*(2*k)+11,4.0*(2*k)+12};
-        require(ma.hilbert_function_on_grid(xs,ys).values==mb.hilbert_function_on_grid(xs,ys).values,
+        require(hilbert_function_on_grid(ma, xs,ys).values==hilbert_function_on_grid(mb, xs,ys).values,
                 "Negative control must have the same Hilbert function");
         auto original=pair.first;
         scramble(pair.second,rng,200);

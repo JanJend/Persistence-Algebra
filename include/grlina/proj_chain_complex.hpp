@@ -8,6 +8,7 @@
 #include <cctype>
 #include <fstream>
 #include <iomanip>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -15,9 +16,10 @@
 #include <utility>
 #include <vector>
 
-#include <grlina/mat_graded.hpp>
-#include <grlina/mat_io.hpp>
-#include <grlina/mat_grid.hpp>
+#include <grlina/matrices/graded.hpp>
+#include <grlina/matrices/io.hpp>
+#include <grlina/matrices/grid.hpp>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 namespace graded_linalg {
 
@@ -36,16 +38,16 @@ struct ChainBasisMaps {
  * is d1 : C1 -> C0, differentials()[1] is d2 : C2 -> C1, and so on.
  *
  * The class is generic in Matrix and therefore has no knowledge of the
- * underlying degree type or poset.  Matrix supplies those through its
- * degree_type/index_type aliases, Degree_traits, and GradedMatrixIO.
+ * underlying degree type or poset. Matrix supplies those through its members,
+ * Degree_traits, and GradedMatrixIO.
  */
 template <typename Matrix>
 class ChainComplex {
 public:
     static_assert(is_graded_sparse_matrix_v<Matrix>,
                   "ChainComplex<Matrix> requires the graded sparse matrix interface");
-    using degree_type = typename Matrix::degree_type;
-    using index_type = typename Matrix::index_type;
+    using degree_type = matrix_degree_t<Matrix>;
+    using index_type = matrix_index_t<Matrix>;
 
 private:
     using matrix_io = GradedMatrixIO<Matrix>;
@@ -192,7 +194,6 @@ public:
                 auto& inclusion = basis_maps->to_original[group];
                 inclusion.permute_columns(new_to_old);
                 inclusion.col_degrees = degrees;
-                inclusion.invalidate_cached_rows();
                 inclusion.compatibly_sorted = false;
                 basis_maps->from_original[group].permute_rows_graded(old_to_new);
             }
@@ -200,7 +201,6 @@ public:
                 auto& outgoing = differentials_[group - 1];
                 outgoing.permute_columns(new_to_old);
                 outgoing.col_degrees = degrees;
-                outgoing.invalidate_cached_rows();
                 outgoing.compatibly_sorted = false;
             }
             if (group < size()) differentials_[group].permute_rows_graded(old_to_new);
@@ -243,7 +243,6 @@ public:
                 }
             });
         }
-        for (auto& d : maps) d.invalidate_cached_rows();
     }
 
     template <typename OutputStream>
@@ -331,7 +330,7 @@ public:
 
         struct Group {
             std::vector<serialized_degree_type> degrees;
-            typename Matrix::storage_type columns;
+            matrix_storage_t<Matrix> columns;
         };
         std::vector<Group> groups(ranks.size());
 
@@ -384,7 +383,7 @@ ChainBasisMaps<Matrix> identity_basis_maps(const ChainComplex<Matrix>& complex) 
         if (group > 0) degrees = geometric_col_degrees(reference);
         Matrix identity(degrees);
         if constexpr (matrix_grid_backed_v<Matrix>) {
-            identity.reindex_grid(reference.grids);
+            identity.reindex_grid(reference.grid_);
         }
         identity.compatibly_sorted = reference.compatibly_sorted;
         maps.to_original.push_back(std::move(identity));
@@ -393,25 +392,27 @@ ChainBasisMaps<Matrix> identity_basis_maps(const ChainComplex<Matrix>& complex) 
     return maps;
 }
 
-// matrices[n] maps domain Cn to target Cn. The endpoints are borrowed;
-// they must outlive the map and keep the same bases.
+// matrices[n] maps domain Cn to target Cn. Shared ownership keeps the endpoints
+// alive when the map is returned, copied, or moved, without copying the complexes.
+// Their chain-group bases must remain unchanged while the map is used.
 template <typename Matrix>
 class ChainMap {
 public:
     using chain_complex_type = ChainComplex<Matrix>;
 
 private:
-    const chain_complex_type& domain_;
-    const chain_complex_type& target_;
+    std::shared_ptr<const chain_complex_type> domain_;
+    std::shared_ptr<const chain_complex_type> target_;
     std::vector<Matrix> matrices_;
 
 public:
-    ChainMap(const chain_complex_type& domain, const chain_complex_type& target,
+    ChainMap(std::shared_ptr<const chain_complex_type> domain,
+             std::shared_ptr<const chain_complex_type> target,
              std::vector<Matrix> matrices)
-        : domain_(domain), target_(target), matrices_(std::move(matrices)) {}
+        : domain_(std::move(domain)), target_(std::move(target)), matrices_(std::move(matrices)) {}
 
-    const chain_complex_type& domain() const noexcept { return domain_; }
-    const chain_complex_type& target() const noexcept { return target_; }
+    const chain_complex_type& domain() const noexcept { return *domain_; }
+    const chain_complex_type& target() const noexcept { return *target_; }
     const std::vector<Matrix>& matrices() const noexcept { return matrices_; }
     const Matrix& operator[](std::size_t degree) const { return matrices_[degree]; }
 };

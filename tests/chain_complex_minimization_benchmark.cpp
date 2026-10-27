@@ -4,7 +4,7 @@
 // Setup, sorting the shared input, conversion and checks are outside timers.
 // Both reducers use one thread and do not track maps. Report medians after a
 // warm-up, rotating execution order to reduce cache and clock bias.
-#include <grlina/mat_coord.hpp>
+#include <grlina/matrices/coord.hpp>
 #include <grlina/proj_chain_complex.hpp>
 #include <multi_chunk/multi_chunk.h>
 #include <array>
@@ -17,6 +17,7 @@
 #include <stdexcept>
 #ifdef _OPENMP
 #include <omp.h>
+#include <grlina/matrices/matrix_algorithms.hpp>
 #endif
 
 using namespace graded_linalg;

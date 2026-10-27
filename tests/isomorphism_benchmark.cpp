@@ -1,8 +1,9 @@
 #include "isomorphism_examples.hpp"
-#include <grlina/mod_modules.hpp>
+#include <grlina/module/module_base.hpp>
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 using namespace iso_test;
 using Clock=std::chrono::steady_clock;

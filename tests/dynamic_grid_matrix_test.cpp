@@ -1,10 +1,13 @@
 // NEW: runtime grids preserve real geometry across storage and algebra operations.
 #define GRLINA_CSC_COMPILE_WARNINGS 0
 #define GRLINA_CSC_RUNTIME_WARNINGS 0
+#include <grlina/invariants/hilbert_function.hpp>
 #include <grlina/runtime_matrices/class_grid_graded_sparse_matrix.hpp>
-#include <grlina/mod_module.hpp>
+#include <grlina/module/module_base.hpp>
 #include <cassert>
 #include <sstream>
+#include <grlina/matrices/matrix_algorithms.hpp>
+#include <grlina/graded_kernel.hpp>
 
 using namespace graded_linalg;
 
@@ -29,12 +32,12 @@ template<class Storage> void grid_checks() {
     auto original = matrix;
     original.sort_compatibly(); original.compute_rows_forward();
     auto editable = original.editable_copy();
-    static_assert(std::is_same_v<typename decltype(editable)::storage_type, vec<vec<int>>>);
-    assert(editable.grids == original.grids && editable.col_degrees == original.col_degrees);
+    static_assert(std::is_same_v<matrix_storage_t<decltype(editable)>, vec<vec<int>>>);
+    assert(editable.grid_ == original.grid_ && editable.col_degrees == original.col_degrees);
     assert(editable.row_degrees == original.row_degrees);
     assert(editable.rows_computed && editable._rows == original._rows && editable.compatibly_sorted);
     auto packed = editable.template to_storage<CSCStorage<int>>();
-    assert(packed.grids == original.grids && packed.real_col_degrees() == original.real_col_degrees());
+    assert(packed.grid_ == original.grid_ && packed.real_col_degrees() == original.real_col_degrees());
     for (int i = 0; i < packed.get_num_cols(); ++i) assert(packed.get_col(i) == original.get_col(i));
     editable.set_col(0, {});
     assert(!original.get_col(0).empty() && !packed.get_col(0).empty());
@@ -44,12 +47,12 @@ template<class Storage> void grid_checks() {
     assert(kernel.get_num_cols() == 1 && kernel.get_num_rows() == 3);
     assert(kernel.real_col_degree(0) == D({2.75,4,2}));
     assert(kernel.get_col(0) == vec<int>({0,1,2}));
-    assert(kernel.grids == original.grids);
+    assert(kernel.grid_ == original.grid_);
     assert((original * kernel).is_zero());
     auto terminal = kernel.graded_kernel();
-    assert(terminal.get_num_cols() == 0 && terminal.grids == original.grids);
+    assert(terminal.get_num_cols() == 0 && terminal.grid_ == original.grid_);
     auto restriction = original.restricted_domain_copy(vec<int>{2,0});
-    assert(restriction.grids == original.grids && restriction.real_col_degree(0) == D({2.75,4,2}));
+    assert(restriction.grid_ == original.grid_ && restriction.real_col_degree(0) == D({2.75,4,2}));
     auto shifted = original; shifted.shift(D{0.25,0.5,0.75});
     assert(shifted.real_col_degree(0) == D({0.25,3.5,0.5}));
     assert(shifted.col_degrees == original.col_degrees);
@@ -64,7 +67,7 @@ template<class Storage> void grid_checks() {
     first.append_matrix(second);
     assert(first.get_num_cols() == 6 && first.real_col_degree(3) == original.real_col_degree(0));
     Module<M> module(original);
-    assert(module.dimension_at(D{1,4,2}) == 1);
+    assert(dimension_at(module, D{1,4,2}) == 1);
     auto final_map = original.empty_like(0, original.get_num_cols());
     final_map.row_degrees = original.col_degrees;
     ChainComplex<M> chain({original, final_map});
@@ -84,8 +87,8 @@ template<class Storage> void two_parameter_kernels() {
     assert(kernel.get_num_cols() == 1 && kernel.get_col(0) == vec<int>({0,1}));
     assert(kernel.real_col_degree(0) == D({2.75,4.25}));
     assert(kernel.real_row_degrees() == source.real_col_degrees());
-    assert(kernel.grids == source.grids && (source * kernel).is_zero());
-    auto zero = kernel.graded_kernel(); assert(zero.get_num_cols() == 0 && zero.grids == source.grids);
+    assert(kernel.grid_ == source.grid_ && (source * kernel).is_zero());
+    auto zero = kernel.graded_kernel(); assert(zero.get_num_cols() == 0 && zero.grid_ == source.grid_);
     std::stringstream firep("firep\nx\ny\n2 1 0\n0.5 4.25 ; 0\n2.75 1.5 ; 0\n-1 0 ;\n");
     M from_firep(firep);
     assert(from_firep.real_col_degrees() == source.real_col_degrees());
@@ -109,9 +112,9 @@ template<class Storage> void three_parameter_resolution() {
     assert((original_second * third).is_zero());
     auto fourth = third.graded_kernel(); assert(fourth.get_num_cols() == 0);
     Module<M> module(differential);
-    assert(module.dimension_at(D{0,0,0}) == 1 && module.dimension_at(D{1,1,1}) == 0);
+    assert(dimension_at(module, D{0,0,0}) == 1 && dimension_at(module, D{1,1,1}) == 0);
     module.compute_projective_resolution();
-    const auto& resolution = module.projective_resolution();
+    const auto& resolution = module.proj_res_;
     assert(resolution.size() == 3 && resolution.is_chain_complex());
 }
 

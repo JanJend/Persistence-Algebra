@@ -9,9 +9,9 @@
 #include <multicritical/free_resolution.hpp>
 #endif
 
-#include <grlina/mat_coord.hpp>
-#include <grlina/mat_csc.hpp>
-#include <grlina/mat_upset.hpp>
+#include <grlina/matrices/coord.hpp>
+#include <grlina/storage/csc.hpp>
+#include <grlina/matrices/upset.hpp>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -25,7 +25,7 @@ using Complex = graded_linalg::ChainComplex<Matrix>;
 
 #ifndef GRLINA_MULTICRITICAL_ORIGINAL
 static_assert(std::is_same_v<multi_critical::Degree, Matrix::degree_type>);
-static_assert(std::is_same_v<decltype(multi_critical::Input_simplex{}.grades), UpsetMatrix::degree_type>);
+static_assert(std::is_same_v<decltype(multi_critical::Input_simplex{}.grades), graded_linalg::matrix_degree_t<UpsetMatrix>>);
 static_assert(std::is_same_v<decltype(multi_critical::free_resolution(std::declval<const UpsetComplex&>())), Complex>);
 #endif
 
@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
     require(wide_result[0].get_num_cols() == 2); // The default is path.
     require(wide_result[1].get_num_cols() == 0);
     require(wide[0].get_num_cols() == 0 && wide[0].get_num_rows() == 1);
-    require(wide[0].row_degrees == std::vector<WideUpsetMatrix::degree_type>({{{0, 2}, {1, 1}, {2, 0}}}));
+    require(wide[0].row_degrees == std::vector<graded_linalg::matrix_degree_t<WideUpsetMatrix>>({{{0, 2}, {1, 1}, {2, 0}}}));
 
     // Expansion must reject dimensions that do not fit the output index type.
     using TinyUpsetMatrix = graded_linalg::UpsetGradedSparseMatrix<double, signed char>;

@@ -284,117 +284,12 @@ void insert_into_sorted_vector(vec<index>& v, index i){
  * @return std::unordered_map<index, index>
  */
 template <typename index>
-std::unordered_map<index, index> shiftIndicesMap(const vec<index>& indices) {
-    std::unordered_map<index, index> indexMap;
-    indexMap.reserve(indices.size());
-    for (std::size_t i = 0; i < indices.size(); ++i) {
-        indexMap[indices[i]] = i;
-    }
-    return indexMap;
-}
-
-/**
- * @brief Expand sorted, distinct surviving indices into a dense old-to-new map.
- * Missing indices map to -1. Moving indices into this overload reuses its buffer.
- */
-template <typename index>
-vec<index> shiftIndicesMap(vec<index> indices, index num_rows) {
-    GRLINA_ASSERT(num_rows >= 0);
-    GRLINA_ASSERT(std::is_sorted(indices.begin(), indices.end()));
-    GRLINA_ASSERT(std::adjacent_find(indices.begin(), indices.end()) == indices.end());
-    GRLINA_ASSERT(indices.empty() || (indices.front() >= 0 && indices.back() < num_rows));
-    std::size_t remaining = indices.size();
-    indices.resize(num_rows, index(-1));
-    // Walk backwards so writing the map cannot overwrite unread surviving indices.
-    for (index row = num_rows; row-- > 0;) {
-        if (remaining && indices[remaining - 1] == row)
-            indices[row] = static_cast<index>(--remaining);
-        else indices[row] = index(-1);
-    }
-    return indices;
-}
-
-/**
- * @brief This function is used to delete rows in a LOC sparse matrix.
- * It creates a map which maps the old indices to the new indices.
- *
- * @param indices Holds the indices of the rows which should stay in the matrix.
- * @return std::unordered_map<index, index>
- */
-template <typename index>
 std::unordered_map< std::pair<index,index>, index, pair_hash<index> > pair_to_index_map(const vec<std::pair<index, index>>& index_pairs) {
     std::unordered_map<std::pair<index, index>, index, pair_hash<index> > indexMap;
     for (std::size_t i = 0; i < index_pairs.size(); ++i) {
         indexMap[index_pairs[i]] = i;
     }
     return indexMap;
-}
-
-/**
- * @brief Apply an index map in place, optionally deleting unmapped entries in one pass.
- *
- * @param target
- * @param indexMap
- * @param needsNoDeletion If the target vector only contains indices which are in the indexMap, this can be set to true.
- */
-template <typename index>
-void apply_transformation(vec<index>& target, const std::unordered_map<index, index>& indexMap, const bool& needsNoDeletion = false) {
-    if (needsNoDeletion) {
-        for (index& entry : target) {
-            auto mapped = indexMap.find(entry);
-            GRLINA_ASSERT(mapped != indexMap.end());
-            entry = mapped->second;
-        }
-    } else {
-        std::size_t write = 0;
-        for (index entry : target) {
-            auto mapped = indexMap.find(entry);
-            if (mapped != indexMap.end()) target[write++] = mapped->second;
-        }
-        target.resize(write);
-    }
-}
-
-/**
- * @brief Apply a transformation given by a vector to a vector of indices.
- *
- * @param target
- * @param index_vector
- * @param needsNoDeletion Defaults to mapping only. If false, discard entries mapped to -1.
- */
-template <typename index>
-void apply_transformation(vec<index>& target, const vec<index>& index_vector, bool needsNoDeletion = true) {
-    if (needsNoDeletion) {
-        for (index& entry : target) entry = index_vector[entry];
-    } else {
-        std::size_t write = 0;
-        for (index entry : target) {
-            const index mapped = index_vector[entry];
-            if (mapped != index(-1)) target[write++] = mapped;
-        }
-        target.resize(write);
-    }
-}
-
-/**
- * @brief Re-indxes the entries of v by subtracting the number of entries in w which are smaller than v[i].
- *
- * @tparam index
- * @param v
- * @param w
- */
-template<typename index>
-void re_index_non_ocurrences(std::vector<index>& v, const std::vector<index>& w) {
-    GRLINA_ASSERT(std::is_sorted(v.begin(), v.end()));
-    GRLINA_ASSERT(std::is_sorted(w.begin(), w.end()));
-    index j = 0;
-    index m = w.size();
-    for (index& a : v) {
-        while (j < m && w[j] < a) {
-            ++j;
-        }
-        a -= j;
-    }
 }
 
 /**

@@ -1,6 +1,7 @@
 #include "test_degree_matrices.hpp"
-#include <grlina/mod_modules.hpp>
+#include <grlina/module/submodule.hpp>
 #include <cassert>
+#include <grlina/graded_kernel.hpp>
 
 using namespace graded_linalg;
 using Mat = R2GradedSparseMatrix<int>;
@@ -50,7 +51,7 @@ void test_lazy_reduction() {
     auto bucket_parent = std::make_shared<Module<Mat>>(bucket);
     Submodule<Mat> killed(bucket_parent, Mat(1, 1, {{0}}, {{0,1}}, bucket.row_degrees));
     killed.reduce_generators_lazy();
-    assert(killed.number_of_generators() == 0);
+    assert(killed.num_of_gens() == 0);
 }
 
 void test_lazy_is_not_exact() {
@@ -64,7 +65,7 @@ void test_lazy_is_not_exact() {
     assert(S.generator_map().generator_lift().data == G.data);
     S.minimize_generators();
     direct.minimize_generators(false);
-    assert(S.number_of_generators() == 0 && direct.number_of_generators() == 0);
+    assert(S.num_of_gens() == 0 && direct.num_of_gens() == 0);
 }
 
 void test_preprocessing_and_deferred_deletion() {
@@ -91,7 +92,7 @@ void test_preprocessing_and_deferred_deletion() {
     Submodule<T> zero(parent, T(2, 2, {{0}, {}}, {{1,1}, {0,0}}, parent->presentation().row_degrees));
     T::reset_counts();
     zero.minimize_generators();
-    assert(zero.number_of_generators() == 0 && T::kernel_input_sizes.empty());
+    assert(zero.num_of_gens() == 0 && T::kernel_input_sizes.empty());
 
     // Many exact eliminations, but only one physical generator compaction.
     auto free = std::make_shared<Module<T>>(T(0, 1, {}, {}, {{0,0}}));
@@ -107,7 +108,7 @@ void test_preprocessing_and_deferred_deletion() {
     auto empty = Submodule<T>::zero(zero_parent);
     T::reset_counts();
     empty.minimize_generators();
-    assert(empty.number_of_generators() == 0 && T::kernel_input_sizes.empty());
+    assert(empty.num_of_gens() == 0 && T::kernel_input_sizes.empty());
 }
 
 void test_no_kernel_required_for_lazy() {
@@ -130,8 +131,8 @@ void test_identity_paths_do_not_refresh_sorting() {
     auto parent = std::make_shared<const M>(std::move(presentation));
     auto eta = H::canonical_shift(parent, {1,1});
     auto next = H::canonical_shift(eta.target(), {1,1});
-    H ordinary(eta.domain(), eta.target(), eta.lifts());
-    H ordinary_next(next.domain(), next.target(), next.lifts());
+    H ordinary(eta.domain(), eta.target(), eta.resolution_maps());
+    H ordinary_next(next.domain(), next.target(), next.resolution_maps());
     auto whole = Submodule<T>::whole(parent);
     T unknown(2, 2, "Identity");
     unknown.col_degrees = unknown.row_degrees = parent->presentation().row_degrees;

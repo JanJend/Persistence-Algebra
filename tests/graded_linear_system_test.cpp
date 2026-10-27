@@ -1,11 +1,14 @@
-#include <grlina/mat_linear_system.hpp>
-#include <grlina/mat_r2.hpp>
-#include <grlina/mat_coord.hpp>
-#include <grlina/mat_grid.hpp>
+#include <grlina/graded_linear_system.hpp>
+#include <grlina/matrices/r2.hpp>
+#include <grlina/matrices/coord.hpp>
+#include <grlina/matrices/grid.hpp>
+#include <grlina/matrices/upset.hpp>
 #include "test_degree_matrices.hpp"
 #include "graded_linear_system_baselines.hpp"
 #include <cassert>
 #include <random>
+#include <grlina/matrices/matrix_algorithms.hpp>
+#include <grlina/matrices/io.hpp>
 
 using namespace graded_linalg;
 
@@ -26,6 +29,14 @@ void check(const Matrix& A, const Matrix& B, bool solvable) {
     const auto original_a = A, original_b = B;
     auto X = solve_graded_linear_system(A, B);
     assert(X.has_value() == solvable);
+    assert((solve_graded_linear_system<Matrix, false>(A, B) == solvable));
+    assert(graded_linear_system_is_solvable(A, B) == solvable);
+    if constexpr (std::tuple_size<matrix_geometry_degree_t<Matrix>>::value == 2) {
+        auto movable_a = A, movable_b = B;
+        auto moved = solve_bigraded_linear_system(std::move(movable_a), std::move(movable_b));
+        assert(moved.has_value() == solvable);
+        if (moved) assert(moved->data == X->data);
+    }
     auto compare = [&](const std::optional<Matrix>& other) {
         assert(other.has_value() == solvable);
         if (!other) return;
@@ -53,13 +64,35 @@ void check(const Matrix& A, const Matrix& B, bool solvable) {
     assert(A.data == original_a.data && B.data == original_b.data);
     assert(A.col_degrees == original_a.col_degrees && A.row_degrees == original_a.row_degrees);
     assert(B.col_degrees == original_b.col_degrees && B.row_degrees == original_b.row_degrees);
+    if constexpr (matrix_grid_backed_v<Matrix>) {
+        assert(A.grid_ == original_a.grid_ && B.grid_ == original_b.grid_);
+    }
     if (!X) return;
 
     assert(X->get_num_cols() == B.get_num_cols() && X->get_num_rows() == A.get_num_cols());
     assert(geometric_col_degrees(*X) == geometric_col_degrees(B));
     assert(geometric_row_degrees(*X) == geometric_col_degrees(A));
+    const auto a_degrees = geometric_col_degrees(A), b_degrees = geometric_col_degrees(B);
+    for (int j = 0; j < X->get_num_cols(); ++j)
+        for (int k : X->column(j))
+            assert(Degree_traits<matrix_geometry_degree_t<Matrix>>::smaller_equal(a_degrees[k], b_degrees[j]));
     auto product = A * *X;
     for (int j = 0; j < B.get_num_cols(); ++j) assert(product.get_col(j) == B.get_col(j));
+}
+
+void bigraded_solver_without_matrix_copies() {
+    struct MoveOnlyMatrix : GradedSparseMatrix<r2degree, int, MoveOnlyMatrix> {
+        using Base = GradedSparseMatrix<r2degree, int, MoveOnlyMatrix>;
+        using Base::Base;
+        MoveOnlyMatrix(const MoveOnlyMatrix&) = delete;
+        MoveOnlyMatrix(MoveOnlyMatrix&&) = default;
+    };
+    MoveOnlyMatrix A(2, 2, {{0,1}, {1}}, {{0,1}, {1,0}}, {{0,0}, {0,0}});
+    MoveOnlyMatrix B(1, 2, {{0}}, {{1,1}}, A.row_degrees);
+    auto X = solve_bigraded_linear_system(std::move(A), std::move(B));
+    assert(X && X->get_col(0) == vec<int>({0,1}));
+    assert(X->col_degrees == vec<r2degree>({{1,1}}));
+    assert(X->row_degrees == vec<r2degree>({{0,1}, {1,0}}));
 }
 
 template<class Matrix>
@@ -171,6 +204,35 @@ void randomized_checks(std::size_t dimensions) {
     }
 }
 
+void solvability_without_output_matrix() {
+    struct NoOutputMatrix : GradedSparseMatrix<r2degree, int, NoOutputMatrix> {
+        using Base = GradedSparseMatrix<r2degree, int, NoOutputMatrix>;
+        using Base::Base;
+        // The boolean solver must compile without a solution constructor.
+        NoOutputMatrix(int, int) = delete;
+    };
+    const NoOutputMatrix A(2, 2, {{0,1}, {1}}, {{0,1}, {1,0}}, {{0,0}, {0,0}});
+    const NoOutputMatrix B(1, 2, {{0}}, {{1,1}}, A.row_degrees);
+    assert((solve_graded_linear_system<NoOutputMatrix, false>(A, B)));
+    assert(graded_linear_system_is_solvable(A, B));
+    const NoOutputMatrix too_early(1, 2, {{0}}, {{0,1}}, A.row_degrees);
+    assert(!graded_linear_system_is_solvable(A, too_early));
+    const NoOutputMatrix wrong_rows(1, 2, {{0}}, {{1,1}}, {{-1,0}, {0,0}});
+    bool rejected = false;
+    try { graded_linear_system_is_solvable(A, wrong_rows); }
+    catch (const std::invalid_argument&) { rejected = true; }
+    assert(rejected);
+}
+
+void upset_solvability_checks() {
+    using Matrix = UpsetGradedSparseMatrix<double, int>;
+    using D = matrix_geometry_degree_t<Matrix>;
+    const vec<D> rows(2, D{{0,0}});
+    const auto A = matrix<Matrix>({{0}, {1}}, {D{{1,0}}, D{{0,1}}}, rows);
+    assert(graded_linear_system_is_solvable(A, matrix<Matrix>({{0,1}}, {D{{1,1}}}, rows)));
+    assert(!graded_linear_system_is_solvable(A, matrix<Matrix>({{0,1}}, {D{{1,0}}}, rows)));
+}
+
 void reduction_stops_after_targets() {
     struct CountingMatrix : SparseMatrix<int> {
         using SparseMatrix<int>::SparseMatrix;
@@ -212,6 +274,9 @@ void reduction_stops_after_targets() {
 }
 
 int main() {
+    bigraded_solver_without_matrix_copies();
+    solvability_without_output_matrix();
+    upset_solvability_checks();
     reduction_stops_after_targets();
     // The existing batched helper must initialize the caller's solution matrix.
     SparseMatrix<int> helper(2, 2, array<int>{{0,1}, {1}}), rhs(2, 2, array<int>{{0}, {1}}), solution;

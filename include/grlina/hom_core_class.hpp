@@ -6,8 +6,9 @@
 #include <utility>
 #include <vector>
 
-#include <grlina/mod_class.hpp>
+#include <grlina/module/module_base.hpp>
 #include <grlina/hom_algorithms.hpp>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 namespace graded_linalg {
 
@@ -25,8 +26,8 @@ private:
 
     std::shared_ptr<const module_type> domain_;
     std::shared_ptr<const module_type> target_;
-    // Lifts between the source and target resolutions, not a chain complex.
-    std::vector<Matrix> lifts_;
+    // Components of a possibly partial chain map between projective resolutions.
+    std::vector<Matrix> resolution_maps_;
     bool id_matrix_ = false;
     // Only this prefix is known to have identity coefficients. Extending a
     // quotient map to relations need not produce further identity lifts.
@@ -35,7 +36,7 @@ private:
 
     static const auto& chain_group_degrees(
         const module_type& module, std::size_t degree) {
-        const auto& resolution = module.projective_resolution();
+        const auto& resolution = module.proj_res_;
         GRLINA_DEBUG_CHECK(
             if (resolution.empty()) throw std::invalid_argument("A module map requires projective resolutions");
             if (degree > resolution.size()) throw std::invalid_argument("Lift exceeds the available projective resolution"));
@@ -45,7 +46,7 @@ private:
 
     static std::vector<matrix_geometry_degree_t<Matrix>> geometric_chain_group_degrees(
         const module_type& module, std::size_t degree) {
-        const auto& resolution = module.projective_resolution();
+        const auto& resolution = module.proj_res_;
         if (degree == 0) return geometric_row_degrees(resolution[0]);
         return geometric_col_degrees(resolution[degree - 1]);
     }
@@ -72,15 +73,15 @@ private:
                    bool id_matrix)
         : domain_(std::move(domain)), target_(std::move(target)),
           id_matrix_(id_matrix), identity_lift_count_(id_matrix ? 1 : 0) {
-        lifts_.push_back(std::move(generator_lift));
+        resolution_maps_.push_back(std::move(generator_lift));
     }
 
     Homomorphism(std::shared_ptr<const module_type> domain,
                    std::shared_ptr<const module_type> target, std::vector<Matrix> lifts,
                    bool id_matrix)
         : domain_(std::move(domain)), target_(std::move(target)),
-          lifts_(std::move(lifts)), id_matrix_(id_matrix),
-          identity_lift_count_(id_matrix ? lifts_.size() : 0) {}
+          resolution_maps_(std::move(lifts)), id_matrix_(id_matrix),
+          identity_lift_count_(id_matrix ? resolution_maps_.size() : 0) {}
 
 public:
     /** Access endpoints without computing a presentation. A submodule's own
@@ -88,8 +89,13 @@ public:
      */
     const std::shared_ptr<const module_type>& domain() const noexcept { return domain_; }
     const std::shared_ptr<const module_type>& target() const noexcept { return target_; }
-    const std::vector<Matrix>& lifts() const noexcept { return lifts_; }
-    const Matrix& generator_lift() const { return lifts_[0]; }
+    /** Stored components f_i : F_i(domain) -> F_i(target), starting at i = 0.
+     * Entry 0 maps generators, entry 1 maps relations, and later entries map
+     * higher syzygies. This only exposes the stored prefix; lift_to_resolution()
+     * computes missing components through the common stored resolution length.
+     */
+    const std::vector<Matrix>& resolution_maps() const noexcept { return resolution_maps_; }
+    const Matrix& generator_lift() const { return resolution_maps_[0]; }
     /** True means identity coefficients, not necessarily an identity map:
      * endpoints and generator degrees may differ. This is a construction
      * invariant, never checked by scanning matrix coefficients.
@@ -97,10 +103,10 @@ public:
     bool id_matrix() const noexcept { return id_matrix_; }
 
     bool check_lifts() const {
-        if (!is_homomorphism(domain()->presentation(), target_->presentation(), lifts_[0])) return false;
-        for (std::size_t i = 1; i < lifts_.size(); ++i) {
-            auto left = target_->projective_resolution()[i - 1] * lifts_[i];
-            auto right = lifts_[i - 1] * domain()->projective_resolution()[i - 1];
+        if (!is_homomorphism(domain()->presentation(), target_->presentation(), resolution_maps_[0])) return false;
+        for (std::size_t i = 1; i < resolution_maps_.size(); ++i) {
+            auto left = target_->proj_res_[i - 1] * resolution_maps_[i];
+            auto right = resolution_maps_[i - 1] * domain()->proj_res_[i - 1];
             if (left.data != right.data) return false;
         }
         return true;
@@ -108,9 +114,9 @@ public:
 
     /** Extend through the common stored part of the two resolutions. */
     void lift_to_resolution() {
-        auto result = lifts_;
-        const auto& source = domain()->projective_resolution();
-        const auto& destination = target_->projective_resolution();
+        auto result = resolution_maps_;
+        const auto& source = domain()->proj_res_;
+        const auto& destination = target_->proj_res_;
         const auto length = std::min(source.size(), destination.size());
         while (result.size() <= length) {
             const std::size_t i = result.size() - 1;
@@ -118,22 +124,22 @@ public:
             if (!next) throw std::invalid_argument("Homomorphism cannot be lifted through the supplied resolutions");
             result.push_back(std::move(*next));
         }
-        lifts_ = std::move(result);
+        resolution_maps_ = std::move(result);
     }
 
     static Homomorphism identity(std::shared_ptr<const module_type> module) {
         GRLINA_DEBUG_CHECK(
             if (!module) throw std::invalid_argument("Identity requires a module");
-            if (module->projective_resolution().empty())
+            if (module->proj_res_.empty())
                 throw std::invalid_argument("A module map requires projective resolutions"));
         std::vector<Matrix> lifts;
-        for (std::size_t i = 0; i <= module->projective_resolution().size(); ++i) {
+        for (std::size_t i = 0; i <= module->proj_res_.size(); ++i) {
             std::size_t differential = 0;
             if (i > 0) differential = i - 1;
-            const Matrix& reference = module->projective_resolution()[differential];
+            const Matrix& reference = module->proj_res_[differential];
             Matrix identity(geometric_chain_group_degrees(*module, i));
             if constexpr (matrix_grid_backed_v<Matrix>) {
-                identity.reindex_grid(reference.grids);
+                identity.reindex_grid(reference.grid_);
             }
             identity.compatibly_sorted = reference.compatibly_sorted;
             lifts.push_back(std::move(identity));
@@ -149,7 +155,7 @@ public:
         const auto& parent = K.parent();
         Matrix lift(geometric_row_degrees(parent->presentation()));
         if constexpr (matrix_grid_backed_v<Matrix>) {
-            lift.reindex_grid(parent->presentation().grids);
+            lift.reindex_grid(parent->presentation().grid_);
         }
         lift.compatibly_sorted = parent->presentation().compatibly_sorted;
         return Homomorphism(parent, std::move(quotient), std::move(lift), true);
@@ -158,7 +164,7 @@ public:
     static Homomorphism zero(std::shared_ptr<const module_type> domain,
                              std::shared_ptr<const module_type> target) {
         GRLINA_DEBUG_CHECK(if (!domain || !target) throw std::invalid_argument("Zero homomorphism requires modules"));
-        Matrix zero = empty_matrix_like(domain->presentation(), domain->number_of_generators(), target->number_of_generators());
+        Matrix zero = empty_matrix_like(domain->presentation(), domain->num_of_gens(), target->num_of_gens());
         set_geometric_degrees(zero, geometric_row_degrees(domain->presentation()),
                                            geometric_row_degrees(target->presentation()));
         return Homomorphism(std::move(domain), std::move(target), std::move(zero));
@@ -175,7 +181,7 @@ public:
             destination = std::make_shared<module_type>(*target_);
             destination->shift(amount);
         }
-        auto translated = lifts_;
+        auto translated = resolution_maps_;
         for (auto& lift : translated) {
             lift.shift(amount);
         }
@@ -196,13 +202,13 @@ public:
         shifted_module->shift(amount);
         auto result = identity(module);
         result.target_ = shifted_module;
-        auto lifts = result.lifts();
+        auto lifts = result.resolution_maps();
         for (std::size_t i = 0; i < lifts.size(); ++i) {
             auto& lift = lifts[i];
             set_geometric_degrees(lift, geometric_chain_group_degrees(*module, i),
                                                geometric_chain_group_degrees(*shifted_module, i));
         }
-        result.lifts_ = std::move(lifts);
+        result.resolution_maps_ = std::move(lifts);
         return result;
     }
 
@@ -228,11 +234,10 @@ public:
             target_.get() != other.target_.get())
             throw std::invalid_argument("Homomorphism addition requires the same domain and target"));
         std::vector<Matrix> result;
-        for (std::size_t i = 0; i < std::min(lifts_.size(), other.lifts_.size()); ++i) {
-            Matrix sum = lifts_[i];
+        for (std::size_t i = 0; i < std::min(resolution_maps_.size(), other.resolution_maps_.size()); ++i) {
+            Matrix sum = resolution_maps_[i];
             for (std::size_t j = 0; j < sum.data.size(); ++j)
-                sum.add_to_col(j, other.lifts_[i].column(j));
-            sum.invalidate_cached_rows();
+                sum.add_to_col(j, other.resolution_maps_[i].column(j));
             result.push_back(std::move(sum));
         }
         return Homomorphism(domain_, target_, std::move(result));
@@ -285,19 +290,19 @@ public:
         GRLINA_DEBUG_CHECK(if (target_.get() != after_this.domain().get())
             throw std::invalid_argument("Module-map composition has incompatible middle module"));
         std::vector<Matrix> composite;
-        for (std::size_t i = 0; i < std::min(lifts_.size(), after_this.lifts_.size()); ++i) {
+        for (std::size_t i = 0; i < std::min(resolution_maps_.size(), after_this.resolution_maps_.size()); ++i) {
             if (i < after_this.identity_lift_count_) {
-                Matrix lift = lifts_[i];
+                Matrix lift = resolution_maps_[i];
                 set_geometric_degrees(lift, geometric_col_degrees(lift),
-                                                   geometric_row_degrees(after_this.lifts_[i]));
+                                                   geometric_row_degrees(after_this.resolution_maps_[i]));
                 composite.push_back(std::move(lift));
             } else if (i < identity_lift_count_) {
-                Matrix lift = after_this.lifts_[i];
-                set_geometric_degrees(lift, geometric_col_degrees(lifts_[i]),
+                Matrix lift = after_this.resolution_maps_[i];
+                set_geometric_degrees(lift, geometric_col_degrees(resolution_maps_[i]),
                                                    geometric_row_degrees(lift));
                 composite.push_back(std::move(lift));
             } else {
-                composite.push_back(after_this.lifts_[i] * lifts_[i]);
+                composite.push_back(after_this.resolution_maps_[i] * resolution_maps_[i]);
             }
         }
         auto result = Homomorphism(domain_, after_this.target_, std::move(composite));

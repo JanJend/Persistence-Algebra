@@ -10,8 +10,8 @@ of every older library routine. Arithmetic and categorical formulas are over F2.
 
 ## 1. Types, ownership and homomorphisms
 
-- Actual classes: `Module` in `mod_module.hpp`, `Homomorphism` in `hom_core_class.hpp`,
-  and `Submodule` in `mod_submodule.hpp`. Earlier type names remain aliases.
+- Actual classes: `Module` in `module/module_base.hpp`, `Homomorphism` in `hom_core_class.hpp`,
+  and `Submodule` in `module/submodule.hpp`. Earlier type names remain aliases.
 - CRTP enforcement requires `GradedSparseMatrix<D, index, Matrix>`. Generic
   constructions call the concrete `graded_kernel`, not a poset-blind substitute.
   The index type must be signed integral, with -1 available as a sentinel.
@@ -29,7 +29,7 @@ of every older library routine. Arithmetic and categorical formulas are over F2.
   Library constructions guarantee
   the equations algebraically; regression tests independently check their maps.
 
-`mat_linear_system.hpp` adds `solve_graded_linear_system(A, B)` for A X = B.
+`graded_linear_system.hpp` adds `solve_graded_linear_system(A, B)` for A X = B.
 Each right-hand column uses only A columns born at or below its degree.
 Containment uses `graded_linear_system_is_solvable(A, B)`, which groups columns
 by degree and reuses one reduction per group without computing coefficients.
@@ -126,39 +126,42 @@ Standard `Module::minimize()` dispatches on the stored projective map count:
 one map means presentation minimization; multiple maps mean
 `Module::minimize_resolution()`. Presentation-only minimization first reduces
 relation columns before local cancellation and exact relation minimization.
-The resolution method first calls the chain-complex
-minimizer, then removes terminal redundant generators using their graded kernel.
-The additional step preserves the resolved module and exactness below truncation,
-but can change the terminal homology of a truncated resolution. Exactness is the
-caller's guarantee. Both operations work on copies and check d*d=0, committing
-only on success. Explicit `minimize_presentation()` ignores/discards higher maps.
+The resolution method minimizes a complete stored resolution directly in place.
+For a truncation, it appends one kernel map, minimizes the extended chain complex,
+then removes the added tail. The extra map exposes terminal redundant generators
+as equal-degree cancellable pairs. The retained prefix resolves the same module
+and remains exact below truncation, though its terminal homology can change.
+Only the truncated case requires a graded-kernel implementation. Explicit
+`minimize_presentation()` ignores/discards higher maps.
 
 For example, `[x x] : S(-1,0)^2 -> S` is already a minimal chain complex with
 nonzero H1, whereas its presentation of S/(x) has a redundant relation. Chain
-minimization retains both columns; module minimization can delete one. The
-previous `ChainComplex::minimize_resolution` method mixed these contracts and
+minimization retains both columns. Module resolution minimization appends the
+syzygy `(1,1)`, cancels a pair, and drops the added tail, retaining just one
+relation. The previous `ChainComplex::minimize_resolution` method mixed these contracts and
 has been replaced by this separation, not retained as a misleading alias.
 With both projective and injective representations present, standard minimization
 acts on the projective one.
 
 ### Euler Hilbert-query follow-up
 
-`mod_module.hpp` now tracks completeness separately from the presence of resolution
+`module/module_base.hpp` now tracks completeness separately from the presence of resolution
 maps. Supplied resolutions default to truncated/unknown unless explicitly marked
-`ResolutionCompleteness::complete` (or terminated by a zero free group). Exactness
+`ResolutionCompleteness::complete` or by setting `res_complete_`. Exactness
 and an explicit completeness assertion remain the caller's guarantees. This is
 essential: duplicate terminal syzygies can make the Euler sum of a truncation
 incorrect even though the represented module is unchanged.
 
 `compute_projective_resolution()` extends the stored maps without rebasing them
 and computes kernels until the terminal map is injective. It then records
-completeness. `dimension_at()` uses signed chain-group counts for complete
-resolutions and local presentation evaluation otherwise. `mod_module.hpp`
-contains the degree-only routines: generic point evaluation, incremental R2
-query sweeps, and R2 Cartesian-grid prefix sums. Full-grid queries compute a
-resolution by default when the concrete matrix offers a graded kernel. Mutable
-queries retain it; const queries use a private copy. Without a kernel they retain
-the local-evaluation fallback. No new SCC metadata or injective convention is assumed.
+completeness. `dimension_at(module, degree)` uses signed chain-group counts for complete
+resolutions and local presentation evaluation otherwise.
+`invariants/hilbert_function.hpp` contains the Hilbert value/grid types and all
+Hilbert free functions. `Module` has no Hilbert members or include dependency.
+The degree-only routines cover generic point evaluation, incremental R2 query sweeps, and
+R2 Cartesian-grid prefix sums. Grid queries use the stored completeness flag and
+leave the resolution unchanged, using local evaluation when the flag is false.
+No new SCC metadata or injective convention is assumed.
 
 `tests/module_hilbert_test.cpp` checks square-interval dimensions on induced,
 non-induced and 100-by-100 grids, duplicates and unordered point lists, a
@@ -172,9 +175,9 @@ evaluation on Euler paths, proving that the optimization is actually selected.
 `Submodule<Matrix>` now publicly inherits `Module<Matrix>`. The base stores the
 submodule's own projective/injective representations, separately from its parent
 pointer and defining parent-coordinate generator matrix. `compute_presentation()`
-stores d1 directly; inherited `compute_projective_resolution()` invokes the virtual
-presentation-construction hook if needed and retains all resulting maps in that
-same object. This works through a Module reference/pointer. A virtual destructor
+stores d1 directly; `Submodule::compute_projective_resolution()` constructs a
+missing presentation before completing the resolution in that same object. This
+works through a Module reference/pointer. A virtual destructor
 supports polymorphic ownership; explicit copy/move operations rebind the self inclusion. Rebuild clients after this header-level layout change.
 
 The inclusion's domain is the Submodule object's own Module base. Domain access
@@ -201,15 +204,16 @@ cache invalidation and the legacy copy-returning API.
 
 The Stable-Decomposition extraction adds exact parent-aware Submodule
 containment/equality, canonical and translated Homomorphism shifts retaining
-all stored lifts, and images of submodules. New presentation adapters are in
-`mod_presentations.hpp`; matrix-family quotient reduction is in
+all stored lifts, and images of submodules. Presentation adapters are in
+`module/submodule.hpp`; containment is the parent-aware `Submodule::contains` method;
+matrix-family quotient reduction is in
 `mat_base.hpp`. The latter uses coefficient spaces, not Hom classes modulo
 relations. Tests cover this distinction, incomparable degrees, rectangular
 families and preservation of ambient row bases. The old kernel-degree-multiset
 containment heuristic is not carried over: membership is solved directly by
 degree-admissible linear systems. See `module-framework.md` for the public APIs.
 
-`mod_constructions.hpp` returns objects together with their canonical maps:
+`module/constructions.hpp` returns objects together with their canonical maps:
 
 | Operation | Construction / returned maps |
 | --- | --- |
@@ -297,26 +301,27 @@ in the submodule minimizer and redundant grading checks after homomorphism shift
 Remaining candidates, identified rather than removed:
 
 - `hom_interface.hpp`: duplicated shifted-Hom computations across overloads.
-- `mod_presentations.hpp`: shared-module allocations for trivial matrices.
-- `graded_linalg.hpp` / `mod_modules.hpp`: broad includes for otherwise optional features.
-- `mod_module.hpp`: convenience forwarding methods, aliases, and arbitrary edits that
+- `module/submodule.hpp`: shared-module allocations for trivial matrices.
+- `graded_linalg.hpp`: broad includes for otherwise optional features.
+- `module/module_base.hpp`: convenience forwarding methods, aliases, and arbitrary edits that
   require care when applied to a Submodule with an inclusion.
 - `r4graded_matrix.hpp`, `z2graded_matrix.hpp`, `z3graded_matrix.hpp`,
   `z4graded_matrix.hpp`: four thin wrappers around generic coordinate matrices.
 - `mat_graded.hpp`: sorting-certificate machinery and repeated validation scans.
 - `general.hpp`: application-style threaded progress reporting in the library.
 
-Header origins (Git records creation, not user authorization):
+Header origins, using the historical filenames (Git records creation, not user authorization):
 
 | First commit | Added headers |
 | --- | --- |
 | `f2322c6` | `chain_complex.hpp`, `mod_module.hpp`, `mod_submodule.hpp`, `deg_coordinate.hpp`, `r4graded_matrix.hpp`, `z2graded_matrix.hpp`, `z3graded_matrix.hpp`, `z4graded_matrix.hpp` |
-| `d82d073` | `mat_linear_system.hpp`, `mod_constructions.hpp` |
+| `d82d073` | `graded_linear_system.hpp`, `mod_constructions.hpp` |
 | `2060662` | `mod_module.hpp` |
 | `99034a6` | `mat_base.hpp`, `mod_presentations.hpp`, `general.hpp` |
 | `da01012` | `general_checks.hpp`, `mod_epsilon.hpp`, `hom_interface.hpp`, `hom_core_class.hpp`, `hom_operations.hpp` (now removed) |
 
-`mod_modules.hpp` predates this framework (`350d7f1`). The former `homomorphism.hpp`,
+The former `mod_modules.hpp` umbrella predates this framework (`350d7f1`);
+its includes now live in `graded_linalg.hpp`. The former `homomorphism.hpp`,
 `module_morphism.hpp`, and `module_homomorphisms.hpp` were already absent before
 this cleanup. Solver, kernel, and Euler-query headers contain actual algorithms;
 their small size alone does not make them redundant.

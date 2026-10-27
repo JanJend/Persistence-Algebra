@@ -1,7 +1,7 @@
 #define GRLINA_CSC_COMPILE_WARNINGS 0
 #define GRLINA_CSC_RUNTIME_WARNINGS 0
-#include <grlina/mat_upset.hpp>
-#include <grlina/mat_csc.hpp>
+#include <grlina/matrices/upset.hpp>
+#include <grlina/storage/csc.hpp>
 #include <cassert>
 #include <chrono>
 #include <cmath>

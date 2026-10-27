@@ -2,7 +2,7 @@
 // tested separately so this differential suite can run without diagnostic noise.
 #define GRLINA_CSC_COMPILE_WARNINGS 0
 #define GRLINA_CSC_RUNTIME_WARNINGS 0
-#include <grlina/mat_csc.hpp>
+#include <grlina/matrices/sparse.hpp>
 #include <cassert>
 #include <random>
 #include <type_traits>
@@ -59,7 +59,7 @@ void test_identity_shortcuts() {
     assert(inclusion.is_identity);
     A.compute_rows_forward();
     const auto embedded = inclusion * A;
-    assert(!embedded.rows_computed && embedded.get_num_rows() == 5);
+    assert(embedded.rows_computed && embedded._rows == A._rows && embedded.get_num_rows() == 5);
     assert((embedded.get_col(2) == vec<int>{1, 3}));
     check(inclusion, A);
     vec<int> removed{1};
@@ -253,12 +253,14 @@ void test_batch_row_deletion() {
         CSCMatrix<int> packed(columns.size(), 6, columns);
         ordinary.compute_rows_forward();
         packed.compute_rows_forward();
+        const auto stored_rows = ordinary._rows;
         ordinary.delete_rows(removed);
         packed.delete_rows(removed);
         const SparseMatrix<int> reference(columns.size(), 6 - removed.size(), expected);
         assert_same(reference, packed);
         assert(ordinary.data == expected && ordinary.get_num_rows() == reference.get_num_rows());
-        if (!removed.empty()) assert(!ordinary.rows_computed && !packed.rows_computed);
+        assert(ordinary.rows_computed && packed.rows_computed);
+        assert(ordinary._rows == stored_rows && packed._rows == stored_rows);
     }
     SparseMatrix<int> empty(0, 6);
     CSCMatrix<int> packed_empty(0, 6);

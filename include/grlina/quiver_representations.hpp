@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Copyright 2025 TU Graz. Author: Jan Jendrysiak.
 #pragma once
 #include <grlina/general_checks.hpp>
 
-#include <grlina/deg_poset_operations.hpp>
-#include <grlina/mat_sparse.hpp>
+#include <grlina/posets/poset_operations.hpp>
+#include <grlina/matrices/sparse.hpp>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 namespace graded_linalg {
 
@@ -270,5 +273,130 @@ struct QuiverRepresentation {
 
     }
 };
+
+
+// Conversion from graded presentations to their induced quiver representations.
+
+template<typename D, typename index, typename DERIVED, typename Storage>
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
+    requires Degree<D>
+#endif
+template <typename T>
+auto GradedSparseMatrix<D, index, DERIVED, Storage>::extractElements(const vec<T>& target, const vec<index>& indices) -> vec<T> {
+    vec<T> result;
+    result.reserve(indices.size());
+    for (index i : indices) {
+        GRLINA_ASSERT(i >= 0 && i < target.size() && "Index out of bounds");
+        result.push_back(target[i]);
+    }
+    return result;
+}
+
+template<typename D, typename index, typename DERIVED, typename Storage>
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
+    requires Degree<D>
+#endif
+auto GradedSparseMatrix<D, index, DERIVED, Storage>::getIndicatorVector(vec<index> target, vec<index> subset) -> vec<index> {
+    vec<index> result;
+    auto itS = subset.begin();
+    for(index i = 0; i < target.size() ; i++){
+        if(itS != subset.end()){
+        if(*itS == target[i]){
+        result.push_back(i);
+        itS++;
+        }
+        }
+    }
+    GRLINA_ASSERT(itS == subset.end() && "Not all elements of the subset were found in the target");
+    return result;
+}
+
+template<typename D, typename index, typename DERIVED, typename Storage>
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
+    requires Degree<D>
+#endif
+auto GradedSparseMatrix<D, index, DERIVED, Storage>::basisLifting(std::pair<vec<index>, vec<index>>& source, std::pair<vec<index>, vec<index>>& target) -> vec<index> {
+    // Probably this doesnt need to be its own function
+    vec<index> result = GradedSparseMatrix::getIndicatorVector(target.first, GradedSparseMatrix::extractElements(source.first, source.second));
+    return result;
+}
+
+template<typename D, typename index, typename DERIVED, typename Storage>
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
+    requires Degree<D>
+#endif
+auto GradedSparseMatrix<D, index, DERIVED, Storage>::induced_quiver_rep(vec<D> vertices, array<index> edges) -> QuiverRepresentation<index, D, SparseMatrix<index, Storage>> {
+            if (vertices.empty() && edges.empty()) vertices = discrete_support();
+            if (edges.empty() && !vertices.empty()) {
+                edges = minimal_directed_graph<D, index>(vertices);
+            }
+            GRLINA_DEBUG_CHECK(if (vertices.size() != edges.size())
+                throw std::invalid_argument("Quiver adjacency must match its vertices");
+            for (index i = 0; i < static_cast<index>(vertices.size()); ++i)
+                for (index j : edges[i])
+                    if (j < 0 || j >= static_cast<index>(vertices.size()) ||
+                        !Degree_traits<D>::smaller_equal(vertices[i], vertices[j]))
+                        throw std::invalid_argument("Quiver edge must follow the degree order"));
+
+            QuiverRepresentation<index, D, SparseMatrix<index, Storage>> rep;
+            rep.degrees = vertices;
+            for(index i = 0; i < rep.degrees.size(); i++) {
+                for(index j : edges[i]){
+                    rep.edges.push_back(std::make_pair(i, j));
+                }
+            }
+
+            index num_vert = rep.degrees.size();
+            index num_edges = rep.edges.size();
+
+            // For each degree we want to store the cokernel,
+            // the row-indices of the generators which form its domain
+            // and a section of the cokernel given by column indices which are mapped to a basis
+            vec< SparseMatrix<index, Storage> > pointwise_Presentations;
+            vec< std::pair< vec<index> , vec<index>> > pointwise_base;
+            pointwise_Presentations.reserve(num_vert);
+            pointwise_base.reserve(num_vert);
+            rep.dimensionVector.reserve(num_vert);
+
+            // #pragma omp parallel for
+            for (index i = 0; i < num_vert; i++) {
+
+                SparseMatrix<index, Storage> S;
+                vec<index> gens;
+                std::tie(S, gens) = this->map_at_degree_pair(rep.degrees[i]);
+                S.column_reduction();
+                vec<index> basisLift;
+                pointwise_Presentations.emplace_back(S.coKernel(true, &basisLift));
+                pointwise_base.emplace_back(std::make_pair(gens, basisLift));
+                rep.dimensionVector.emplace_back(basisLift.size());
+            }
+
+            rep.matrices.reserve(num_edges);
+            for (index i = 0; i < num_edges; i++) {
+                index source = rep.edges[i].first;
+                index target = rep.edges[i].second;
+
+                auto sourceBasis = pointwise_base[source];
+                auto targetBasis = pointwise_base[target];
+
+                GRLINA_ASSERT(pointwise_Presentations[source].get_num_cols() == sourceBasis.first.size());
+                GRLINA_ASSERT(pointwise_Presentations[target].get_num_cols() == targetBasis.first.size());
+
+                vec<index> lift_of_basis = GradedSparseMatrix::basisLifting(sourceBasis, targetBasis);
+                rep.matrices.emplace_back( pointwise_Presentations[target].restricted_domain_copy(lift_of_basis) );
+            }
+
+            GRLINA_DEBUG_CHECK(for (index j = 0; j < num_edges; j++) {
+                if(rep.matrices[j].get_num_cols() != rep.dimensionVector[rep.edges[j].first] || rep.matrices[j].get_num_rows() != rep.dimensionVector[rep.edges[j].second]){
+                    throw std::runtime_error("Dimension mismatch in path action");
+                }
+            });
+            return rep;
+}
+
+template<typename Scalar, std::size_t Dimension, typename Index>
+auto GridGradedSparseMatrix<Scalar, Dimension, Index>::induced_quiver_rep(vec<GridD> vertices, array<Index> edges) {
+    return to_coordinates().induced_quiver_rep(std::move(vertices), std::move(edges));
+}
 
 } // namespace graded_linalg

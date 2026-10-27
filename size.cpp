@@ -82,7 +82,7 @@ void get_size_decomp(std::filesystem::path input_path) {
             input_file.seekg(pos_before_header);
             
             R2Module<int> module(input_file);
-            std::cout << module.number_of_entries() << std::endl;
+            std::cout << module.presentation().num_of_entries() << std::endl;
             processed_sections++;
             
         } catch (const std::exception& e) {
@@ -115,7 +115,7 @@ void get_size_decomp(std::filesystem::path input_path) {
 void get_size(std::filesystem::path input_path) {
     
     R2Module<int> module(input_path.string());
-    std::cout << module.number_of_entries() << std::endl;
+    std::cout << module.presentation().num_of_entries() << std::endl;
 }
 
 

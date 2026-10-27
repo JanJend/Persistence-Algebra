@@ -4,6 +4,9 @@
 #include <iostream>
 #include <cassert>
 #include <filesystem>
+#include <grlina/matrices/matrix_algorithms.hpp>
+#include <grlina/quiver_representations.hpp>
+#include <grlina/graded_kernel.hpp>
 
 using namespace graded_linalg; 
 

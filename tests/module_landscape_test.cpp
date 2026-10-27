@@ -1,9 +1,10 @@
-#include <grlina/mod_landscape.hpp>
+#include <grlina/invariants/landscape.hpp>
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
 #include <random>
 #include <sstream>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 using namespace graded_linalg;
 using Mat = R2Matrix<>;
@@ -62,7 +63,7 @@ int main(int argc, char** argv) {
     assert(landscape_at(module, {0,0}, 0).empty());
     auto resolved = module;
     resolved.compute_projective_resolution();
-    assert(resolved.projective_resolution().size() > 1);
+    assert(resolved.proj_res_.size() > 1);
     assert(landscape_at(resolved, {0.5,0.5}, 3) == vec<double>({0.5,0.25,0}));
     assert(resolved.presentation().data == presentation.data); // queries preserve the representation
     Module<GridGradedSparseMatrix<double, 2, int>> grid{

@@ -7,6 +7,8 @@
 #include <cassert>
 #include <cstdint>
 #include <random>
+#include <grlina/matrices/matrix_algorithms.hpp>
+#include <grlina/graded_kernel.hpp>
 
 using namespace graded_linalg;
 
@@ -43,7 +45,7 @@ vec<double> axis_values(const CoordGradedSparseMatrix<Scalar, Index, Storage>& m
 template<class Scalar, class Index, class Storage>
 void check_embedding(const GridGradedSparseMatrix<Scalar, Index, Storage>& source,
                      const GridGradedSparseMatrix<Scalar, Index, Storage>& kernel) {
-    assert(kernel.grids == source.grids);
+    assert(kernel.grid_ == source.grid_);
     assert(kernel.real_row_degrees() == source.real_col_degrees());
 }
 

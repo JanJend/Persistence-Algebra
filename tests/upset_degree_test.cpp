@@ -1,9 +1,10 @@
-#include <grlina/mat_upset.hpp>
+#include <grlina/matrices/upset.hpp>
 #include <cassert>
 #include <cmath>
 #include <limits>
 #include <sstream>
 #include <type_traits>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 using namespace graded_linalg;
 using Point = CoordinateDegree<double, 2>;

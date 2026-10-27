@@ -1,8 +1,10 @@
+#include <grlina/invariants/hilbert_function.hpp>
 #include "test_degree_matrices.hpp"
-#include <grlina/mod_submodule.hpp>
+#include <grlina/module/submodule.hpp>
 #include <grlina/hom_interface.hpp>
-#include <grlina/mod_modules.hpp>
+#include <grlina/module/constructions.hpp>
 #include <cassert>
+#include <grlina/matrices/matrix_algorithms.hpp>
 using namespace graded_linalg;
 using Mat = R2GradedSparseMatrix<int>;
 using Mod = Module<Mat>;
@@ -20,21 +22,27 @@ void containment() {
     Mat spanning(2, 2, {{0,1}, {1}}, {{1,0}, {0,1}}, {{0,0}, {0,0}});
     Mat late(1, 2, {{0}}, {{1,1}}, spanning.row_degrees);
     Mat early(1, 2, {{0}}, {{1,0}}, spanning.row_degrees);
-    assert(image_contained_in_image(late, spanning));
-    assert(!image_contained_in_image(early, spanning));
-    assert(!image_contained_in_image(spanning, late));
+    auto free_parent = std::make_shared<const Mod>(Mat(0, 2, {}, {}, spanning.row_degrees));
+    Sub containing(free_parent, spanning), late_submodule(free_parent, late);
+    assert(containing.contains(late_submodule));
+    assert(containing.contains(containing));
+    assert(!containing.contains(Sub(free_parent, early)));
+    assert(!late_submodule.contains(containing));
     Mat different(0, 1, {}, {}, {{0,0}});
-    rejects([&] { image_contained_in_image(late, different); });
+    auto different_parent = std::make_shared<const Mod>(different);
+    rejects([&] { late_submodule.contains(Sub::zero(different_parent)); });
     Mat relation(1, 2, {{0,1}}, {{0,0}}, {{0,0}, {0,0}});
     auto parent = std::make_shared<const Mod>(relation);
     Mat e0(1, 2, {{0}}, {{0,0}}, relation.row_degrees);
     Mat e1(1, 2, {{1}}, {{0,0}}, relation.row_degrees);
     Sub A(parent, e0), B(parent, e1);
-    assert(!image_contained_in_image(e0, e1));
+    assert(!Sub(free_parent, e0).contains(Sub(free_parent, e1)));
     assert(A.contains(B) && A.is_contained_in(B) && A.equals(B));
     assert(present_same_submodule(relation, e0, e1));
     auto zero = Sub::zero(parent);
     assert(A.contains(zero) && !zero.contains(A) && !A.equals(zero));
+    assert(!present_same_submodule(relation, e0, zero.generator_map().generator_lift()));
+    assert(!present_same_submodule(relation, zero.generator_map().generator_lift(), e0));
     Sub foreign(std::make_shared<const Mod>(relation), e0);
     rejects([&] { A.contains(foreign); });
     rejects([&] { A.equals(foreign); });
@@ -55,7 +63,8 @@ void containment() {
         for (r2degree degree : {r2degree{0,0}, {1,0}, {0,1}, {1,1}}) {
             Mat B(4, 2, {{0}, {1}, {0,1}, {}},
                   {degree, {1,1}, degree, {0,0}}, A.row_degrees);
-            assert(image_contained_in_image(B, A) == solve_graded_linear_system(A, B).has_value());
+            assert(Sub(free_parent, A).contains(Sub(free_parent, B)) ==
+                   solve_graded_linear_system(A, B).has_value());
             assert(A.data == columns && B.data == array<int>({{0}, {1}, {0,1}, {}}));
         }
     }
@@ -129,15 +138,15 @@ void homomorphism_shifts() {
     catch (const std::bad_weak_ptr&) { unowned_threw = true; }
     assert(unowned_threw);
     assert(can.domain() == source && can.check_lifts());
-    assert(can.target()->has_complete_projective_resolution());
-    assert(can.lifts().size() == source->projective_resolution().size() + 1);
+    assert(can.target()->res_complete_);
+    assert(can.resolution_maps().size() == source->proj_res_.size() + 1);
     assert(can.generator_lift().row_degrees == vec<r2degree>({{-0.5,-0.5}}));
     assert(can.generator_lift().col_degrees == source->presentation().row_degrees);
     assert(source->presentation().row_degrees == vec<r2degree>({{0,0}}));
     assert(canonical_shift_lift(source->presentation(), {0.5,0.5}).data == can.generator_lift().data);
     rejects([&] { Hom::canonical_shift(nullptr, {1,1}); });
     auto translated = can.shifted({1,2});
-    assert(translated.check_lifts() && translated.lifts().size() == can.lifts().size());
+    assert(translated.check_lifts() && translated.resolution_maps().size() == can.resolution_maps().size());
     assert(translated.domain()->presentation().row_degrees == vec<r2degree>({{-1,-2}}));
     auto identity = Hom::identity(source).shifted({-1,-2});
     assert(identity.domain() == identity.target() && identity.check_lifts());
@@ -207,7 +216,7 @@ void identity_shortcuts() {
     auto eta = Hom::canonical_shift(X, {1,1});
     assert(eta.id_matrix() && Hom::identity(X).id_matrix());
     assert(eta.shifted({2,2}).id_matrix());
-    Hom ordinary(eta.domain(), eta.target(), eta.lifts());
+    Hom ordinary(eta.domain(), eta.target(), eta.resolution_maps());
     assert(!ordinary.id_matrix());
     Sub I(X, Mat(2, 2, {{0,1}, {1}}, {{2,2}, {1,1}}, X->presentation().row_degrees));
     auto fast = eta.image(I, false);
@@ -221,13 +230,13 @@ void identity_shortcuts() {
     auto composite = eta.compose(next);
     assert(composite.id_matrix() && composite.check_lifts());
 
-    for (std::size_t i = 0; i < composite.lifts().size(); ++i) {
-        auto expected = next.lifts()[i] * eta.lifts()[i];
-        assert(composite.lifts()[i].data == expected.data);
-        assert(composite.lifts()[i].row_degrees == expected.row_degrees);
-        assert(composite.lifts()[i].col_degrees == expected.col_degrees);
+    for (std::size_t i = 0; i < composite.resolution_maps().size(); ++i) {
+        auto expected = next.resolution_maps()[i] * eta.resolution_maps()[i];
+        assert(composite.resolution_maps()[i].data == expected.data);
+        assert(composite.resolution_maps()[i].row_degrees == expected.row_degrees);
+        assert(composite.resolution_maps()[i].col_degrees == expected.col_degrees);
     }
-    Hom unmarked_next(next.domain(), next.target(), next.lifts());
+    Hom unmarked_next(next.domain(), next.target(), next.resolution_maps());
     auto left_identity = eta.compose(unmarked_next);
     auto right_identity = ordinary.compose(next);
     assert(!left_identity.id_matrix() && !right_identity.id_matrix());
@@ -266,11 +275,11 @@ void identity_shortcuts() {
     auto composed_quotient = quotient.projection.compose(shifted_quotient);
 
     assert(composed_quotient.check_lifts());
-    assert(composed_quotient.lifts()[1].data ==
-           (shifted_quotient.lifts()[1] * quotient.projection.lifts()[1]).data);
+    assert(composed_quotient.resolution_maps()[1].data ==
+           (shifted_quotient.resolution_maps()[1] * quotient.projection.resolution_maps()[1]).data);
     auto twice = quotient.projection.compose(Hom::identity(quotient.module));
     // Only F0 of twice is known to be identity; F1 still must be multiplied.
-    Hom unmarked_identity(quotient.module, quotient.module, Hom::identity(quotient.module).lifts());
+    Hom unmarked_identity(quotient.module, quotient.module, Hom::identity(quotient.module).resolution_maps());
     auto three = twice.compose(unmarked_identity);
 
     assert(three.check_lifts());
@@ -290,7 +299,7 @@ void submodule_quotients_and_parent_minimization() {
     Sub K(X, Mat(1, 3, {{0,1}}, {{1,1}}, P.row_degrees));
     auto raw = I.submodule_quotient(K);
     assert(raw.parent() != X && I.parent() == X && K.parent() == X);
-    assert(raw.parent()->number_of_generators() == 3 && raw.parent()->number_of_relations() == 3);
+    assert(raw.parent()->num_of_gens() == 3 && raw.parent()->num_of_rels() == 3);
     assert(raw.generator_map().generator_lift().data == I.generator_map().generator_lift().data);
     assert(raw.generator_map().generator_lift().row_degrees == I.generator_map().generator_lift().row_degrees);
     auto lazy = I.submodule_quotient(K, true);
@@ -298,14 +307,14 @@ void submodule_quotients_and_parent_minimization() {
     auto both = I.submodule_quotient(K, true, true);
     for (auto* result : {&lazy, &full, &both}) {
 
-        assert(result->parent()->number_of_generators() == 2);
-        assert(result->parent()->number_of_relations() == 1);
+        assert(result->parent()->num_of_gens() == 2);
+        assert(result->parent()->num_of_rels() == 1);
         assert(result->generator_map().generator_lift().data == array<int>({{0,1}, {0}, {1}}));
         assert(result->generator_map().generator_lift().col_degrees == I.generator_map().generator_lift().col_degrees);
         auto presented = result->presented_module(true);
         auto expected = raw.presented_module(true);
         for (const r2degree d : {r2degree{0,0}, {1,1}, {2,2}, {4,4}})
-            assert(presented.dimension_at(d) == expected.dimension_at(d));
+            assert(dimension_at(presented, d) == dimension_at(expected, d));
     }
     assert(X->presentation().data == P.data && X->presentation().row_degrees == P.row_degrees);
     auto saved_parent = raw.parent();
@@ -313,7 +322,7 @@ void submodule_quotients_and_parent_minimization() {
     assert(raw.has_presentation());
     raw.lazy_minimize_parent();
     assert(!raw.has_presentation() && raw.parent() != saved_parent);
-    assert(saved_parent->number_of_generators() == 3);
+    assert(saved_parent->num_of_gens() == 3);
     rejects([&] { I.submodule_quotient(Sub::whole(std::make_shared<const Mod>(P))); });
     assert(I.submodule_quotient(Sub::whole(X), true).is_zero());
     auto zero = Sub::zero(X).submodule_quotient(K, true);
@@ -325,7 +334,7 @@ void submodule_quotients_and_parent_minimization() {
         {{2,2}, {1,1}}, {{2,2}, {1,1}, {0,0}}));
     Sub single(chain, Mat(1, 3, {{0}}, {{2,2}}, chain->presentation().row_degrees));
     single.lazy_minimize_parent();
-    assert(single.parent()->number_of_generators() == 1);
+    assert(single.parent()->num_of_gens() == 1);
     assert(single.generator_map().generator_lift().data == array<int>({{0}}));
     assert(single.generator_map().generator_lift().row_degrees == vec<r2degree>({{0,0}}));
     assert(single.generator_map().generator_lift().col_degrees == vec<r2degree>({{2,2}}));
@@ -336,9 +345,9 @@ void submodule_quotients_and_parent_minimization() {
     auto R = std::make_shared<Mod>(redundant);
     auto whole = Sub::whole(R);
     whole.lazy_minimize_parent();
-    assert(whole.parent()->number_of_relations() == 3);
+    assert(whole.parent()->num_of_rels() == 3);
     whole.minimize_parent();
-    assert(whole.parent()->number_of_relations() == 2);
+    assert(whole.parent()->num_of_rels() == 2);
 
     // Removing only relations preserves original ambient coordinates and caches
     // belonging to submodules, even when the parent rows need sorting.
@@ -348,10 +357,12 @@ void submodule_quotients_and_parent_minimization() {
     auto retained = Sub::whole(U);
     retained.compute_presentation();
     U->compute_projective_resolution();
-    U->remove_extra_rels();
-    assert(U->number_of_relations() == 2);
+    U->presentation().remove_redundant_relations();
+    U->proj_res_.differentials().resize(1);
+    U->res_complete_ = false;
+    assert(U->num_of_rels() == 2);
     assert(U->presentation().row_degrees == unsorted.row_degrees);
-    assert(U->projective_resolution().size() == 1);
+    assert(U->proj_res_.size() == 1);
 
     assert(retained.equals(Sub::whole(U)));
 
@@ -361,7 +372,7 @@ void submodule_quotients_and_parent_minimization() {
         {CoordinateDegree<double, 4>{0,0,0,0}}, {CoordinateDegree<double, 4>{0,0,0,0}}));
     auto four_sub = Submodule<Four>::whole(four);
     four_sub.lazy_minimize_parent();
-    assert(four_sub.parent()->number_of_generators() == 0);
+    assert(four_sub.parent()->num_of_gens() == 0);
     auto empty = std::make_shared<const Mod>(Mat(0,0,{}, {}, {}));
     auto empty_sub = Sub::whole(empty).submodule_quotient(Sub::zero(empty), false, true);
 

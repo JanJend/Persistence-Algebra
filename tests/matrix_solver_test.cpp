@@ -1,7 +1,8 @@
-#include <grlina/mat_sparse.hpp>
-#include <grlina/mat_dense.hpp>
+#include <grlina/matrices/sparse.hpp>
+#include <grlina/matrices/dense.hpp>
 #include <cassert>
 #include <set>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 using namespace graded_linalg;
 
@@ -46,7 +47,7 @@ void check_solver(Matrix matrix, const array<int>& columns) {
         bool solvable = false;
         for (unsigned x = 0; x < (1u << matrix.get_num_rows()); ++x)
             solvable |= evaluate_equations(columns, x) == b;
-        auto rhs = column_from_mask<typename Matrix::column_type>(b, matrix.get_num_cols());
+        auto rhs = column_from_mask<matrix_column_t<Matrix>>(b, matrix.get_num_cols());
         const auto original_rhs = rhs;
         bool solved = false;
         try { input.column_gauss_solver(rhs); solved = true; }
@@ -93,8 +94,8 @@ void check_matrix_family() {
     auto make = [](unsigned first, unsigned second) {
         Matrix matrix(2, 3);
         matrix.resize_data(2);
-        matrix.set_col(0, column_from_mask<typename Matrix::column_type>(first, 3));
-        matrix.set_col(1, column_from_mask<typename Matrix::column_type>(second, 3));
+        matrix.set_col(0, column_from_mask<matrix_column_t<Matrix>>(first, 3));
+        matrix.set_col(1, column_from_mask<matrix_column_t<Matrix>>(second, 3));
         return matrix;
     };
     const Matrix xy = make(1, 4), y = make(0, 4), x = make(1, 0), z = make(0, 1);
@@ -107,8 +108,8 @@ void check_matrix_family() {
     assert(A.size() == 2 && A[1].is_zero());
     assert(B.size() == 2 && B[0].data == x.data && B[1].data == z.data);
     if constexpr (std::is_same_v<Matrix, SparseMatrix<int>>) {
-        assert(A[0].rows_computed && !A[1].rows_computed);
-        assert(!B[0].rows_computed && B[1].rows_computed);
+        assert(A[0].rows_computed && A[1].rows_computed);
+        assert(B[0].rows_computed && B[1].rows_computed);
         B[0].compute_rows_forward();
         assert(B[0]._rows == array<int>({{0}, {}, {}}));
     }

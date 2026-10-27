@@ -1,10 +1,11 @@
 #include "grlina/graded_linalg.hpp"
-#include "grlina/mat_base.hpp"
-#include "grlina/mat_r2.hpp"
-#include "grlina/mat_sparse.hpp"
+#include "grlina/matrices/base.hpp"
+#include "grlina/matrices/r2.hpp"
+#include "grlina/matrices/sparse.hpp"
 #include <iostream>
 #include <cassert>
 #include <filesystem>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 using namespace graded_linalg; 
 using Mat = R2GradedSparseMatrix<int>;

@@ -1,4 +1,6 @@
-#include <grlina/mat_csc.hpp>
+#include <grlina/matrices/sparse.hpp>
+// Compile the consolidated matrix and quiver methods in C++17 and C++20.
+#include <grlina/quiver_representations.hpp>
 
 // Compiled in several modes by csc_warnings.cmake. Read-only code must remain
 // warning-free even when deprecated declarations are treated as errors.

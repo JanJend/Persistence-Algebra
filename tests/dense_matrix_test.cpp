@@ -1,8 +1,9 @@
 #include <iostream>
 #include <cassert>
-#include <grlina/mat_dense.hpp>
-#include <grlina/mat_base.hpp>
+#include <grlina/matrices/dense.hpp>
+#include <grlina/matrices/base.hpp>
 #include <filesystem>
+#include <grlina/subspaces.hpp>
 
 using namespace graded_linalg;
 

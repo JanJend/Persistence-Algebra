@@ -1,0 +1,1258 @@
+/**
+ * @file base.hpp
+ * @author Jan Jendrysiak
+ * @brief Shared MatrixUtil interface and basic coefficient operations.
+ * @version 2.0.0
+ * @date 2025-03-13
+ *
+ * @copyright 2025 TU Graz
+ *  This file is part of the AIDA library.
+ *  You can redistribute it and/or modify
+ *  it under the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ */
+
+
+#pragma once
+#include <grlina/general_checks.hpp>
+
+
+#ifndef GRLINA_MATRICES_BASE_HPP
+#define GRLINA_MATRICES_BASE_HPP
+
+
+#include <iostream>
+#include <array>
+#include <map>
+#include <unordered_map>
+#include <boost/dynamic_bitset.hpp>
+#include <numeric>
+#include <cassert>
+#include <regex>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
+#include <grlina/storage/columns.hpp>
+#include <grlina/storage/traits.hpp>
+
+namespace graded_linalg {
+
+// Obtain matrix types from the interface, without re-exporting template parameters.
+template <typename Matrix>
+using matrix_index_t = decltype(std::declval<const Matrix&>().get_num_rows());
+
+template <typename Matrix>
+using matrix_storage_t = decltype(std::declval<Matrix&>().data);
+
+template <typename Matrix>
+using matrix_column_t = decltype(std::declval<const Matrix&>().get_col(0));
+
+/**
+ * @brief Re-coordinatises the positions in the matrix by counting from top to bottom and right to left.
+ * @param i column-index from the right
+ * @param j row-index
+ * @return index
+ */
+template<typename index>
+index linearise_position_reverse_ext(const index& i, const index& j, const index& ncols, const index& nrows) {
+    return (ncols-1-i)*nrows + j;
+}
+
+/**
+ * @brief Re-coordinatises the positions in the matrix by counting from top to bottom and left to left.
+ * @param i column-index from the right
+ * @param j row-index
+ * @return index
+ */
+template<typename index>
+index linearise_position_ext(const index& i, const index& j, const index& ncols, const index& nrows) {
+    return (i)*nrows + j;
+}
+
+/**
+ * @brief
+ *
+ * @tparam index
+ * @param k
+ * @param ncols
+ * @param nrows
+ * @return std::pair<index, index>
+ */
+template<typename index>
+std::pair<index, index> delinearise_position_reverse(index& k, index& ncols, index& nrows) {
+    return std::make_pair(ncols-1-k/nrows, k%nrows);
+}
+
+// Interface for a matrix
+template<typename COLUMN, typename index, typename DERIVED, typename Storage = vec<COLUMN>>
+class MatrixUtil{
+
+    using CT = Column_traits<COLUMN, index>;
+    using ST = MatrixStorageTraits<COLUMN, index, Storage>;
+
+    public:
+    Storage data; // stores the columns of the matrix
+    // Known ordered subset of the standard basis; square means identity.
+    // Direct coefficient edits through data must clear this flag.
+    bool is_identity = false;
+    std::unordered_map<index,index> pivots; // for the reduction algorithm
+    index get_num_rows() const {return num_rows;};
+    index get_num_cols() const {return num_cols;};
+    void set_num_rows(index m){is_identity = false; num_rows = m;};
+    void set_num_cols(index n){is_identity = false; num_cols = n;};
+    void increase_num_cols(index n){is_identity = false; num_cols += n;};
+    void increase_num_rows(index n){is_identity = false; num_rows += n;};
+
+    protected:
+    index num_cols;
+    index num_rows;
+
+
+    MatrixUtil() {};
+
+    MatrixUtil(index m) : num_cols(m), data() {
+        data.reserve(m);
+    }
+
+    MatrixUtil(index m, index n) : num_cols(m), num_rows(n), data() {
+        data.reserve(m);
+    }
+
+    // Copy constructor
+    MatrixUtil(const MatrixUtil& other) : data(other.data), is_identity(other.is_identity), num_cols(other.num_cols), num_rows(other.num_rows), pivots(other.pivots) {}
+
+    MatrixUtil(index m, index n, vec<COLUMN> d) : num_cols(m), num_rows(n), data(d) {
+        GRLINA_ASSERT(m == d.size());
+    }
+
+
+    protected:
+        MatrixUtil& assign(const MatrixUtil& other) {
+            if (this != &other) {
+                data = other.data;
+                is_identity = other.is_identity;
+                num_cols = other.num_cols;
+                num_rows = other.num_rows;
+                pivots = other.pivots;
+            }
+            return *this;
+        }
+
+        MatrixUtil& assign(MatrixUtil&& other) {
+            if (this != &other) {
+                data = std::move(other.data);
+                is_identity = std::exchange(other.is_identity, false);
+                num_cols = other.num_cols;
+                num_rows = other.num_rows;
+                pivots = std::move(other.pivots);
+            }
+            return *this;
+        }
+
+    public:
+        MatrixUtil& operator=(const MatrixUtil& other) {
+            return assign(other);
+        }
+
+        MatrixUtil& operator=(MatrixUtil&& other) {
+            return assign(std::move(other));
+        }
+
+
+
+    // Move constructor
+    MatrixUtil(MatrixUtil&& other) noexcept : data(std::move(other.data)), is_identity(std::exchange(other.is_identity, false)), num_cols(other.num_cols), num_rows(other.num_rows) {
+        // destreoy the source object?
+
+    }
+
+    MatrixUtil(index m, index n, const std::string& type, const index percent = -1) : num_cols(m), num_rows(n), data() {
+        data.reserve(m);
+        if (type == "Identity") {
+            GRLINA_ASSERT(m == n);
+            for(index i = 0; i < m; i++) {
+                this->append_col( CT::get_standard_vector(i, n) );
+            }
+            is_identity = true;
+        } else if (type == "Random") {
+            float fill = percent/100.0;
+            if (fill == -1) {
+                fill = std::log(n)/n;
+                std::cout << "fill rate: " << fill << std::endl;
+            }
+            for(index i = 0; i < m; i++) {
+                this->append_col( CT::get_random_vector(n, fill) );
+            }
+        }  else {
+                // Check if the type matches "Random" followed by an integer of at most two digits
+            std::regex random_regex(R"(Random\s+(\d{1,2}))");
+            std::smatch match;
+            if (std::regex_match(type, match, random_regex)) {
+                if (match.size() == 2) {
+                    int fill = std::stoi(match[1].str());
+                    for(index i = 0; i < m; i++) {
+                        this->append_col( CT::get_random_vector(n, static_cast<float>(fill)/100 ) );
+                    }
+                } else {
+                    throw std::invalid_argument("Invalid format for Random with an integer: " + type);
+                }
+            } else {
+                throw std::invalid_argument("Unknown matrix type: " + type);
+            }
+        }
+    }
+
+    MatrixUtil(index n, vec<index> indicator) : num_cols(indicator.size()), num_rows(n), data() {
+        data.reserve(indicator.size());
+        for(index i : indicator) {
+            this->append_col( CT::get_standard_vector(i, n) );
+        }
+        is_identity = indicator.empty() || (indicator.front() >= 0 && indicator.back() < n &&
+            std::adjacent_find(indicator.begin(), indicator.end(),
+                [](index a, index b) { return a >= b; }) == indicator.end());
+    }
+
+
+    ~MatrixUtil() = default;
+
+    protected:
+    /**
+     * @brief Set the entry at column i and row j to 1
+     *
+     */
+    void set_entry(index i, index j){
+        is_identity = false;
+        ST::set_entry(data, i, j);
+    }
+
+    /**
+     * @brief Deletes all rows after threshold or from end
+     *
+     * @param threshold
+     * @param from_end
+     */
+    void cull_columns(const index& threshold, bool from_end = true){};
+
+    void delete_columns(const index& threshold, bool from_end = true){
+        GRLINA_ASSERT(threshold <= this->get_num_cols());
+        GRLINA_ASSERT(threshold >= 0);
+
+        resize_data(from_end ? data.size() - threshold : threshold);
+        this->compute_num_cols();
+    };
+
+    public:
+    /**
+     * @brief sets num_cols to th enumber of entries in data. Useful for many subroutines.
+     *
+     */
+    void compute_num_cols(){
+        if(data.size() > 0){
+            num_cols = data.size();
+        } else {
+            num_cols = 0;
+        }
+
+    };
+
+    public:
+    /**
+     * @brief Swaps the columns i and j.
+     *
+     * @param i
+     * @param j
+     */
+    void swap_cols(index i, index j) {
+        if (i != j) is_identity = false;
+        ST::swap_cols(data, i, j);
+    };
+
+
+    decltype(auto) column(index i) const { return ST::column(data, i); }
+    COLUMN get_col(index i) const { return ST::get_col(data, i); }
+    COLUMN take_col(index i) { is_identity = false; return ST::take_col(data, i); }
+    void set_col(index i, const COLUMN& col) { is_identity = false; ST::set_col(data, i, col); }
+    void set_col(index i, COLUMN&& col) { is_identity = false; ST::set_col(data, i, std::move(col)); }
+    void append_col(const COLUMN& col) { is_identity = false; ST::append_col(data, col); }
+    void append_col(COLUMN&& col) { is_identity = false; ST::append_col(data, col); }
+    void clear_col(index i) { is_identity = false; ST::clear_col(data, i); }
+    void append_entry(index i, index entry) { is_identity = false; ST::append_entry(data, i, entry); }
+    void pop_entry(index i) { is_identity = false; ST::pop_entry(data, i); }
+    void resize_data(std::size_t n) { if (n > data.size()) is_identity = false; data.resize(n); }
+    void reserve_data(std::size_t n) { data.reserve(n); }
+    void clear_data() { is_identity = false; data.clear(); }
+    template<class Input> void assign_data(Input&& input) {
+        is_identity = false;
+        data = Storage(std::forward<Input>(input));
+    }
+    template<class Function> void edit_col(index i, Function&& f) {
+        is_identity = false;
+        ST::edit_col(data, i, std::forward<Function>(f));
+    }
+    template<class Function> void transform_columns(Function&& f, bool parallel = false) {
+        is_identity = false;
+        ST::transform_columns(data, std::forward<Function>(f), parallel);
+    }
+    // Column deletion keeps an ordered standard-basis inclusion.
+    void erase_columns(const vec<index>& indices) { ST::erase_columns(data, indices); }
+    void permute_columns(const vec<index>& new_to_old) { is_identity = false; ST::permute_columns(data, new_to_old); }
+    template<class SourceStorage> void assign_transpose(const SourceStorage& source, index count) {
+        is_identity = false;
+        ST::assign_transpose(data, source, count);
+    }
+    void add_column_to(index i, COLUMN& scratch) const { ST::add_column_to(data, i, scratch); }
+
+    /**
+     * @brief Adds column i to column j.
+     */
+    void col_op(index i, index j){
+        is_identity = false;
+        ST::col_op(data, i, j);
+    };
+
+    /**
+     * @brief Adds v to column i.
+     */
+    void add_to_col(index i, const COLUMN& v) { is_identity = false; ST::add_to_col(data, i, v); }
+
+    template<class Range>
+    void add_to_col(index i, const Range& v){
+        is_identity = false;
+        ST::add_to_col(data, i, v);
+    }
+
+    /**
+     * @brief Returns the entry at col i and row j
+     */
+    bool is_nonzero_entry(index i, index j) const {
+        return ST::is_nonzero_entry(data, i, j);
+    };
+
+
+    /**
+     * @brief Returns the index of the last entry in column i.
+     *
+     * @param i
+     * @return index
+     */
+    index col_last(index i) const {
+        return ST::col_last(data, i);
+    };
+
+    public:
+    /**
+     * @brief Prints the matrix to the console. If suppress_description is set to true, it will not print the number of rows and columns.
+     *
+     * @param suppress_description
+     */
+    void print(bool suppress_description = false, bool space = false) const {
+        if(data.size() != num_cols){
+            std::cout << "Data size: " << data.size() << " num_cols: " << num_cols << std::endl;
+        }
+        GRLINA_ASSERT(data.size() == num_cols);
+
+        if(!suppress_description){
+            std::cout << "Cols: " << num_cols << " rows: " << num_rows << std::endl;
+            }
+        for(index i=0;i<num_cols;i++) {
+            if(!suppress_description){
+                std::cout << "Column " << i << ": ";
+            }
+            if(space){
+                std::cout << "     ";
+            }
+            std::cout << data[i] << std::endl;
+        }
+    };
+
+    /**
+     * @brief Checks if the matrix is the zero matrix.
+     *
+     * @return true
+     * @return false
+     */
+    bool is_zero(){
+        for(auto i = 0; i < this->num_cols; i++){
+            if(!ST::is_zero(this->data, i)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @brief Returns true if the selected columns are empty.
+     *
+     * @return true
+     * @return false
+     */
+    bool is_zero(bitset& col_indices){
+        for(auto i = col_indices.find_first(); i != bitset::npos ; i = col_indices.find_next(i)){
+            if(!ST::is_zero(this->data, i)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @brief Checks if the matrix is nonzero
+     *
+     * @return true
+     * @return false
+     */
+    bool is_nonzero(){
+        return !is_zero();
+    }
+
+    /**
+     * @brief Checks if the matrix is nonzero at col_indices
+     *
+     * @return true
+     * @return false
+     */
+    bool is_nonzero(bitset& col_indices){
+        return !is_zero(col_indices);
+    }
+
+    bool is_zero(index i){
+        return ST::is_zero(this->data, i);
+    }
+
+    bool is_nonzero(index i){
+        return !ST::is_zero(this->data, i);
+    }
+
+    protected:
+
+    /**
+     * @brief Sets the pivot to be the first column which has this entry as the latest non-zero entry in the row.
+     */
+    void set_pivots_without_reducing() {
+        pivots.clear();
+        for(index j=0; j<num_cols ; j++) {
+            index p = col_last(j);
+            if( p >= 0) {
+                if(! pivots.count(p)) {
+                    pivots[p]=j;
+                }
+            }
+        }
+    }
+
+    public:
+   /**
+    * @brief Brings Matrix in completly reduced Column Echelon form. Operations go *from* the active column.
+    *
+    */
+    void column_reduction() {
+        for (index j = 0; j < this->num_cols; ++j) {
+            index pivotRow = col_last(j);
+            if (pivotRow != -1) {
+                pivots[pivotRow] = j;
+                for (index otherCol = 0; otherCol < num_cols; ++otherCol) {
+                    if (j != otherCol && is_nonzero_entry(otherCol, pivotRow)) {
+                        col_op(j, otherCol);
+                    }
+                }
+            }
+        }
+    }
+
+
+    public:
+    /**
+     * @brief Michael's column reduction algorithm. Brings Matrix in *non*-completely reduced Column Echelon Form. All column operations go from left to right and go *to* the active column.
+     *
+     * @param delete_zero_columns If set to true, columns with only zero entries will be deleted.
+     */
+    void column_reduction_triangular(bool delete_zero_columns = false) {
+        pivots.clear();
+        for(index j=0; j < this->num_cols; j++) {
+            index p = col_last(j);
+            while( p >= 0) {
+                if(pivots.count(p)) {
+                    index i = pivots[p];
+                    col_op(i, j);
+                    auto new_p = col_last(j);
+                    GRLINA_ASSERT( new_p < p);
+                    p = new_p;
+                } else {
+                    pivots[p]=j;
+                    break;
+                }
+            }
+            if (p == -1 && delete_zero_columns){
+                swap_cols(j, num_cols-1);
+                data.pop_back();
+                num_cols--;
+                j--;
+            }
+        }
+    }
+
+    /**
+     * @brief Michael's column reduction algorithm.
+     * Brings Matrix in *non*-completely reduced Column Echelon Form.
+     * All column operations go from left to right and go *to* the active column.
+     * Only reduces columns with a last entry larger than the threshold.
+     *
+     * @param delete_zero_columns If set to true, columns with only zero entries will be deleted.
+     */
+    void column_reduction_triangular(index threshold, bool delete_zero_columns = false) {
+        pivots.clear();
+        for(index j=0; j < this->num_cols; j++) {
+            index p = col_last(j);
+            while( p >= threshold) {
+                if(pivots.count(p)) {
+                    index i = pivots[p];
+                    col_op(i, j);
+                    auto new_p = col_last(j);
+                    GRLINA_ASSERT( new_p < p);
+                    p = new_p;
+                } else {
+                    pivots[p]=j;
+                    break;
+                }
+            }
+            if (p < threshold && delete_zero_columns){
+                swap_cols(j, num_cols-1);
+                data.pop_back();
+                num_cols--;
+                j--;
+            }
+        }
+    }
+
+    /**
+     * @brief Michael's column reduction algorithm.
+     * Brings Matrix in *non*-completely reduced Column Echelon Form.
+     * All column operations go from left to right and go *to* the active column.
+     * Only reduces the column indices given by the support bitset.add_to
+     *
+     * @param delete_zero_columns If set to true, columns with only zero entries will be deleted.
+     */
+    void column_reduction_triangular(bitset& support, bitset& zero_cols) {
+        GRLINA_ASSERT(support.size() == this->num_cols);
+        GRLINA_ASSERT(zero_cols.size() == this->num_cols);
+        pivots.clear();
+        for(index j = support.find_first(); j < this->num_cols; j = support.find_next(j)) {
+            index p = col_last(j);
+            while( p >= 0) {
+                if(pivots.count(p)) {
+                    index i = pivots[p];
+                    col_op(i, j);
+                    auto new_p = col_last(j);
+                    GRLINA_ASSERT( new_p < p);
+                    p = new_p;
+                } else {
+                    pivots[p]=j;
+                    break;
+                }
+            }
+            if(p == -1){
+                zero_cols.set(j);
+            }
+        }
+    }
+
+
+
+
+    /**
+    * @brief Brings Matrix in reduced Column Echelon form and returns the performed operations if output is set to true.
+    *
+    * @param performed_ops Pass an empty matrix of the same type as the current matrix. The performed operations will be stored in this matrix.
+    * @param comments If set to true, the function will print out the pivot rows and the operations performed.
+    * @param with_swaps If set to true, the function will also perform swaps to bring the matrix in standard form.
+    */
+    void column_reduction_with_memory(DERIVED& performed_ops, bool comments = false, bool with_swaps = false) {
+        for (index col = 0; col < num_cols; ++col) {
+            index pivotRow = col_last(col);
+            if(comments){
+                std::cout << "Column " << col << " has pivot at row " << pivotRow << std::endl;
+            }
+            GRLINA_DEBUG_CHECK(if(pivotRow >= num_rows){
+                // This shouldnt be a mistake, but a warning.
+                throw std::out_of_range("There is an index in the column that is larger than the number of rows at column: " + std::to_string(col) + " and the entry is " + std::to_string(pivotRow) + " and the number of rows is " + std::to_string(num_rows));
+            });
+
+            if (pivotRow != -1) {
+                pivots[pivotRow] = col;
+                if(comments){ std::cout << "pivot at row: " << pivotRow << std::endl; }
+                for (index otherCol = 0; otherCol < num_cols; ++otherCol) {
+                    if(comments){ std::cout << "Checking column " << otherCol << " for " << is_nonzero_entry(otherCol, pivotRow) << std::endl;}
+                    if (col != otherCol && is_nonzero_entry(otherCol, pivotRow)) {
+                        if(comments){ std::cout << "Performing operation from" << col << " to " << otherCol << std::endl; }
+                        col_op(col, otherCol);
+                        performed_ops.col_op(col, otherCol);
+                    }
+                }
+            }
+        }
+        if(comments){
+            std::cout << "pivots are";
+            for(auto it = pivots.begin(); it != pivots.end(); it++){
+                std::cout << it->first << " " << it->second << std::endl;
+            }
+        }
+    }
+
+    /**
+     * @brief Brings Matrix in *non*-completely reduced Column Echelon Form and returns the performed operations.
+     *
+     * @param performed_ops Applies all column operations to this matrix.
+     */
+    void column_reduction_triangular_with_memory(DERIVED& performed_ops) {
+        for(index j=0; j < this->num_cols; j++) {
+            index p = col_last(j);
+            while( p >= 0) {
+                if(pivots.count(p)) {
+                    index i = pivots[p];
+                    col_op(i, j);
+                    performed_ops.col_op(i, j);
+                    auto new_p = col_last(j);
+                    GRLINA_ASSERT( new_p < p);
+                    p = new_p;
+                } else {
+                    pivots[p]=j;
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * @brief Brings Matrix in *non*-completely reduced Column Echelon Form and returns the performed operations.
+     *
+     * @param performed_ops Applies all column operations to this matrix.
+     * @param zero_cols Stores the indices of the columns which are completely zero.
+     */
+    void column_reduction_triangular_with_memory(DERIVED& performed_ops, vec<index>& zero_cols) {
+        for(index j=0; j < this->num_cols; j++) {
+            index p = col_last(j);
+            while( p >= 0) {
+                if(pivots.count(p)) {
+                    index i = pivots[p];
+                    col_op(i, j);
+                    performed_ops.col_op(i, j);
+                    auto new_p = col_last(j);
+                    GRLINA_ASSERT( new_p < p);
+                    p = new_p;
+                } else {
+                    pivots[p]=j;
+                    break;
+                }
+            }
+            if(p == -1){
+                zero_cols.push_back(j);
+            }
+        }
+    }
+
+    /**
+     * @brief Compares the raw data of this matrix to another one, ignoring all other attributes.
+     *
+     * @param other
+     * @return true
+     * @return false
+     */
+    bool equals(MatrixUtil& other, bool output = false){
+        if(num_cols != other.num_cols){
+            if(output){
+                std::cout << "#columns dont match.";
+            }
+        return false;
+        }
+        if(num_rows != other.num_rows){
+            if(output){
+                std::cout << "#rows dont match.";
+            }
+            return false;
+        }
+        for(index i = 0; i< num_cols; i++){
+            if( !ST::columns_equal(data, i, other.data, i) ){
+                if(output){
+                    std::cout << "Column " << i << " does not match.";
+                    std::cout << "This: " << data[i] << "\n Other: " << other.data[i] << std::endl;
+                }
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @brief Compares with another matrix and returns the index of the first column that does not match
+     *  or -1 if they are equal.
+     *
+     * @param other
+     * @return true
+     * @return false
+     */
+    index equals_with_entry_check(MatrixUtil& other, bool output = false){
+
+        for(index i = 0; i< num_cols; i++){
+            if( !ST::columns_equal(data, i, other.data, i) ){
+                if(output){
+                    std::cout << "Column " << i << " does not match.";
+                }
+                return i;
+            }
+        }
+        return -1;
+    }
+
+
+
+    /**
+    * @brief Returns a copy with only the columns at the indices given in colIndices.
+    *
+    * @param colIndices
+    * @return sparseMatrix
+    */
+    DERIVED restricted_domain_copy(vec<index>& colIndices){
+        for(index i : colIndices){
+            GRLINA_ASSERT(i < this->num_cols);
+        }
+        DERIVED result(colIndices.size(), this->num_rows);
+        result.resize_data(colIndices.size());
+        for(index i = 0; i < colIndices.size(); i++){
+            result.set_col(i, this->get_col(colIndices[i]));
+        }
+        return result;
+    }
+
+
+    /**
+    * @brief Returns a copy with only the columns at the indices given in colIndices but adding start.
+    *
+    * @param colIndices
+    * @return sparseMatrix
+    */
+    DERIVED restricted_domain_copy(bitset& colIndices, index start = 0){
+        GRLINA_ASSERT(colIndices.size() + start <= this->num_cols);
+        DERIVED result(colIndices.count(), this->num_rows);
+        result.resize_data(colIndices.count());
+        index col = 0;
+        for(index i = 0; i < colIndices.size(); i++){
+            if(colIndices[i]){
+                result.set_col(col, this->get_col(i+start));
+                col++;
+            }
+        }
+        return result;
+    }
+
+    public:
+    /**
+     * @brief Re-coordinatises the positions in the matrix by counting from top to bottom and right to left.
+     * @param i column-index from the right
+     * @param j row-index
+     * @return index
+     */
+    long linearise_position_reverse(index i, index j) {
+        long result = ((static_cast<long>(this->num_cols))-1-i)*static_cast<long>(this->num_rows) + j;
+        return result;
+    }
+
+
+
+    /**
+     * @brief Inverse function to linearize_position_reverse
+     *
+     * @param k
+     * @return std::pair<index,index>
+     */
+    std::pair<index,index> delinearise_position_reverse(long k) {
+        index n = this->num_cols;
+        index m = this->num_rows;
+        GRLINA_ASSERT( linearise_position_reverse(n-1-k/m,k%m)==k);
+        return std::make_pair(n-1-k/m, k%m);
+    }
+
+
+    /**
+     * @brief Counts the entries in the matrix from left to right and top to bottom.
+     *
+     * @param i column-index
+     * @param j row-index
+     * @return index
+     */
+    index linearise_position(index i, index j) {
+        return i*this->num_cols + j;
+    }
+
+    /**
+     * @brief Inverse function to linearise_position
+     *
+     * @param k
+     * @return std::pair<index,index>
+     */
+    std::pair<index,index> delinearise_position(index k) {
+        index n = this->num_cols;
+        index m = this->num_rows;
+        index i = k/n;
+        index j = k%n;
+        GRLINA_ASSERT( linearise_position(i,j)==k);
+        return std::make_pair(i,j);
+    }
+
+
+    public:
+    /**
+     * @brief Solves the Linear System (data * x) = N_{target} using triangular column-reduction and returns a solution.
+     *
+     * @param N
+     * @param solution Stores the column operations which where used to solve the system.
+     * @param get_ops Indicates if we want to know the solution or just solvability.
+     */
+    bool solve_col_reduction(DERIVED& N, DERIVED&& solution = DERIVED(), bool get_ops = false) {
+        DERIVED pre_performed_ops;
+        if (get_ops){
+            pre_performed_ops = std::move( DERIVED(num_cols, num_cols, "Identity") );
+            this->column_reduction_triangular_with_memory(pre_performed_ops);
+            solution = DERIVED(N.num_cols, this->num_cols);
+            solution.resize_data(static_cast<std::size_t>(N.num_cols));
+        } else {
+            this->column_reduction_triangular();
+        }
+
+        for(index i = 0; i < N.data.size(); i++){
+            auto p = N.col_last(i);
+            while(p >= 0){
+                if(this->pivots.count(p)){
+                    index j = this->pivots[p];
+                    N.add_to_col(i, this->column(j));
+                    if (get_ops){
+                        solution.add_to_col(i, pre_performed_ops.column(j));
+                    }
+                } else {
+                    return false;
+                }
+                p = N.col_last(i);
+            }
+        }
+        return true;
+    }
+
+
+
+    /**
+     * @brief Michaels Column-Reduction Solver, modified to return the correct solution. Also deleted non-functional code.
+     *      This reducer is better than the other one, because it does not require re-transformation when there are many empty rows.
+     *      This is now a function of the object "S" instead of a pure function for no good reason other than trying an object-oriented approach.
+     * @param c the target
+     * @param threshold
+     * @param solution Stores the column operations which where used to solve the system.
+     * @param complete_reduce Indicate if you only want to solve the system until a certain point
+     * @param reduce_S Indicates, if this matrix needs to be reduced. Set to false, if already reduced. Pivots will be computed again.
+     * @param get_ops Indicates if we want to know the solution or just solvability.
+     */
+    bool solve_col_reduction(COLUMN& c, COLUMN& solution, bool complete_reduce = true, bool reduce_S=true, bool get_ops = true) {
+        DERIVED pre_performed_ops(this->num_cols, this->num_cols);
+        pre_performed_ops.clear_data();
+        for (index i = 0; i < this->num_cols; ++i)
+            pre_performed_ops.append_col(CT::get_standard_vector(i, this->num_cols));
+
+        if(reduce_S) {
+            if(get_ops){
+                this->column_reduction_triangular_with_memory(pre_performed_ops);
+            } else {
+                this->column_reduction_triangular();
+            }
+        } else {
+            set_pivots_without_reducing();
+        }
+
+
+        index p = CT::last_entry_index(c);
+        while(p >= 0 || (!complete_reduce)) {
+            if( this->pivots.count(p) ) {
+                index i = pivots[p];
+                this->add_column_to(i, c);
+                if(get_ops){
+                    if(reduce_S){
+                        pre_performed_ops.add_column_to(i, solution);
+                    } else {
+                        CT::set_entry(solution, i);
+                    }
+                }
+                auto p_new = CT::last_entry_index(c);
+                GRLINA_ASSERT(p_new < p);
+                p = p_new;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @brief Returns a basis for the kernel of the matrix via column reduction.
+     *
+     * @return DERIVED
+     */
+    DERIVED kernel() {
+        DERIVED solution = DERIVED(num_cols, num_cols, "Identity");
+        vec<index> basis_indices = vec<index>();
+        this->column_reduction_triangular_with_memory(solution, basis_indices);
+        return solution.restricted_domain_copy(basis_indices);
+    }
+
+
+    /**
+     * @brief Computes A, B, such that this*A = B and B is column-reduced and ordered
+     *
+     * @param performed_ops Applies all column operations to this matrix.
+     */
+    void column_gauss_jordan (DERIVED& performed_ops) {
+        index col_counter = 0;
+        for (index r = 0; r < num_rows; r++) {
+            bool found_pivot = false;
+            for(index c = col_counter; c < num_cols; c++){
+                if(is_nonzero_entry(c, r)){
+                    if(c != col_counter){
+                        swap_cols(col_counter, c);
+                        performed_ops.swap_cols(col_counter, c);
+                    }
+                    found_pivot = true;
+                    pivots[r] = col_counter;
+                    break;
+                }
+            }
+
+            if(found_pivot){
+                for(index c = 0; c < num_cols; c++){
+                    if(c != col_counter && is_nonzero_entry(c, r)){
+                        col_op(col_counter, c);
+                        performed_ops.col_op(col_counter, c);
+                    }
+                }
+                col_counter++;
+            }
+        }
+    }
+
+    /** Solve A^T x = rhs over F2, interpreting stored columns as equations.
+     * Replace rhs with a solution; free variables are zero in the chosen basis.
+     * Gaussian elimination and back substitution reuse the column reducer on
+     * the transpose. The matrix is preserved, and an inconsistent system throws
+     * invalid_argument without changing rhs. Sparse rhs indices must be sorted.
+     */
+    void column_gauss_solver(COLUMN& rhs) const {
+        GRLINA_DEBUG_CHECK(if constexpr (std::is_same_v<COLUMN, bitset>) {
+            if (rhs.size() != static_cast<std::size_t>(this->num_cols))
+                throw std::invalid_argument("Gaussian solver RHS has the wrong dimension");
+        } else if (CT::last_entry_index(rhs) >= this->num_cols) {
+            throw std::invalid_argument("Gaussian solver RHS index is out of range");
+        });
+        auto transposed = static_cast<const DERIVED&>(*this).transposed_copy();
+        COLUMN remaining = rhs, solution;
+        if constexpr (std::is_same_v<COLUMN, bitset>) solution.resize(this->num_rows);
+        if (!transposed.solve_col_reduction(remaining, solution))
+            throw std::invalid_argument("Gaussian linear system has no solution");
+        rhs = std::move(solution);
+    }
+
+    bool is_invertible() {
+        DERIVED copy(static_cast<const DERIVED&>(*this));
+        copy.column_reduction_triangular();
+        for(index i = 0; i < copy.num_cols; i++) {
+            if(!copy.pivots.count(i)){
+                return false;
+            }
+        }
+        return true;
+    }
+    /**
+     * @brief Computes an inverse using column-reduction without changing the matrix.
+     *
+     * @return DERIVED
+     */
+    DERIVED inverse() {
+        GRLINA_DEBUG_CHECK(if( this->num_cols != this->num_rows) {
+            throw std::invalid_argument("Matrix is not square.");
+        });
+        DERIVED result(this->num_cols, this->num_cols, "Identity");
+        DERIVED copy(static_cast<const DERIVED&>(*this));
+        copy.column_gauss_jordan(result);
+        for(index i = 0; i < copy.num_cols; i++) {
+            if(!copy.pivots.count(i)){
+                std::cout << "missing row index i: " << i << std::endl;
+                this->print();
+                std::cout << "was reduced to:";
+                copy.print();
+                throw std::invalid_argument("Matrix might not be invertible.");
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @brief Computes an inverse using column-reduction without changing the matrix.
+     *
+     * @return DERIVED
+     */
+    DERIVED inverse_nocopy() {
+        GRLINA_DEBUG_CHECK(if( this->num_cols != this->num_rows) {
+            throw std::invalid_argument("Matrix is not square.");
+        });
+        DERIVED result(this->num_cols, "Identity");
+        this->column_gauss_jordan(result);
+        for(index i = 0; i < this->num_cols; i++) {
+            if(!this->pivots.count(i)){
+                std::cout << "missing row index i: " << i << std::endl;
+                std::cout << "was reduced to:";
+                this->print();
+                throw std::invalid_argument("Matrix might not be invertible.");
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @brief Appends the columns of another matrix.
+     *
+     * @param other
+     */
+    void append_matrix(const DERIVED& other) {
+        GRLINA_ASSERT(this->num_rows == other.num_rows);
+        for(index i = 0; i < other.num_cols; i++) {
+            this->append_col(other.get_col(i));
+        }
+        this->num_cols += other.num_cols;
+    }
+
+    public:
+
+    /**
+     * @brief Recursively finds a permutation of the column indices such that all diagonal elements are non-zero.
+     *        Matrix needs to be square and invertible for this algorithm.
+     * @return vec<int>
+     */
+    vec<index> rectify_invertible() {
+        if(this->num_cols == 1){
+            return {0};
+        }
+        GRLINA_ASSERT(this->num_cols == this->num_rows);
+        vec<index> minor_indices = vec<index>(this->num_cols-1);
+        vec<index> permutation = vec<index>(this->num_cols);
+
+        // Find a column whose last entry is nonzero and whose associated minor is invertible
+        for(index i = 0; i < this->num_cols; i++){
+            if(this -> col_last(i) == this->num_rows-1){
+                for(index j = 0; j < this->num_cols; j++){
+                    if(j < i){
+                        minor_indices[j] = j;
+                    } else if(j > i){
+                        minor_indices[j-1] = j;
+                    }
+                }
+                DERIVED minor = this->restricted_domain_copy(minor_indices);
+                minor.cull_columns(1);
+                DERIVED minor_copy(minor);
+                //This could be speed up by stoping when the reduction deletes a column completly.
+                //TO-DO: If this algorithm needs to be faster, then change this.
+                minor_copy.column_reduction_triangular();
+                bool minor_is_invertible = true;
+                for(index k = 0; k < minor_copy.num_rows; k++){
+                    if(minor_copy.pivots.count(k) == 0){
+                        minor_is_invertible = false;
+                        break;
+                    }
+                }
+
+                // If the minor is invertible, we can recursively find a permutation for the minor
+                if(minor_is_invertible){
+                    vec<int> minor_permutation = minor.rectify_invertible();
+                    for(index j = 0; j < this->num_cols; j++){
+                        if(j < i){
+                            permutation[j] = minor_permutation[j];
+                        } else if(j > i){
+                            permutation[j] = minor_permutation[j-1];
+                        } else {
+                            permutation[j] = this->num_cols-1;
+                        }
+                    }
+                    return permutation;
+                }
+            }
+        }
+        throw std::invalid_argument("Matrix is not invertible.");
+    }
+
+    /**
+     * @brief Reorder the columns given a permutation as a vector of integers by copying everything.
+     *
+     * @param permutation
+     */
+    void reorder_columns(vec<index> permutation){
+        GRLINA_ASSERT(permutation.size() == this->num_cols);
+        vec<index> new_to_old(permutation.size());
+        for(index i = 0; i < this->num_cols; i++) new_to_old[permutation[i]] = i;
+        permute_columns(new_to_old);
+    }
+
+    /**
+     * @brief Given a set of indices to be ordered, reorder the columns in the same way.
+     *
+     * @param permutation
+     */
+    void reorder_via_comparison(vec<index> compare_against){
+        reorder_columns(sort_by_permutation(compare_against));
+    }
+
+
+    /**
+     * @brief Verifies if all diagonal entries are non-zero.
+     *
+     * @return true
+     * @return false
+     */
+    bool test_diagonal_entries(){
+        for(index i = 0; i < this->num_cols; i++){
+            if(!is_nonzero_entry(i,i)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public:
+
+
+
+
+    /**
+     * @brief Computes a set of row indices whose images under the quotient map form a basis of the cokernel.
+     *          Equivalently, the set of row indices which are not pivots after column-reduction.
+     * @return vec<index>
+     */
+    vec<index> coKernel_basis(const bool& is_reduced = false) {
+        vec<index> basis;
+        if(!is_reduced){
+            column_reduction();
+        }
+        for(index i = 0 ; i < this->num_rows; i++){
+            if(pivots.count(i) == 0){
+                basis.push_back(i);
+            }
+        }
+        return basis;
+    }
+
+    vec<index> coKernel_basis_local(const vec<index>& row_indices, const bool& no_reduction = false) {
+        vec<index> basis;
+        if(!no_reduction){
+            column_reduction();
+        }
+        for(index i : row_indices){
+            if(pivots.count(i) == 0){
+                basis.push_back(i);
+            }
+        }
+        return basis;
+    }
+
+    /**
+     * @brief Computes a set of row indices whose images under the quotient map form a basis of the cokernel.
+     *          Equivalently, the set of row indices which are not pivots after column-reduction.
+     * @param mask
+     * @param row_indices
+     * @return vec<index>
+     */
+    vec<index> coKernel_basis(const vec<index>& mask, const vec<index>& row_indices, const bool& no_reduction = false) {
+        vec<index> basis;
+        if(!no_reduction){
+            column_reduction();
+        }
+        for(index i : mask){
+            if(pivots.count(row_indices[i]) == 0){
+                basis.push_back(i);
+            }
+        }
+        return basis;
+    }
+
+    vec<index> coKernel_basis(const vec<index>& row_indices, const bool& no_reduction = false) {
+        vec<index> basis;
+        if(!no_reduction){
+            column_reduction();
+        }
+        for(index i = 0 ; i < this->num_rows; i++){
+            if(pivots.count(row_indices[i]) == 0){
+                basis.push_back(i);
+            }
+        }
+        return basis;
+    }
+
+
+
+
+    // Adds the matrices together, so that we can treat matrices themselves as vectors and do reduction
+
+    /**
+     * @brief Usual addition of matrices.
+     *
+     * @param other
+     * @return DERIVED
+     */
+    DERIVED operator+(const DERIVED& other) const {
+        // Ensure the matrices have the same dimensions
+        GRLINA_ASSERT(this->num_cols == other.num_cols);
+        GRLINA_ASSERT(this->num_rows == other.num_rows);
+
+        // Create a new DERIVED object to store the result
+        DERIVED result(this->num_cols, this->num_rows);
+        result.resize_data(this->num_cols);
+
+        // Add the columns of the two matrices
+        for (index i = 0; i < this->num_cols; ++i) {
+            auto col = this->get_col(i);
+            other.add_column_to(i, col);
+            result.set_col(i, std::move(col));
+        }
+
+        return result;
+    }
+
+    /**
+     * @brief Adds this matrix to the other matrix in place.
+     *
+     * @param other
+     */
+    void add_matrix_to(MatrixUtil& other){
+        // Ensure the matrices have the same dimensions
+        GRLINA_ASSERT(this->num_cols == other.num_cols);
+        GRLINA_ASSERT(this->num_rows == other.num_rows);
+
+
+        // Add the columns of the two matrices
+        for (index i = 0; i < this->num_cols; ++i) {
+            other.add_to_col(i, this->column(i));
+        }
+    }
+
+    /**
+     * @brief Returns the coordinates of the last non-zero entry for reduction
+     */
+    pair<index> last_entry (){
+        for(index i = num_cols-1; i >= 0; i--){
+            index p = col_last(i);
+            if(p >= 0){
+                return std::make_pair(i, p);
+            }
+        }
+        return std::make_pair(-1, -1);
+    }
+
+}; //MatrixUtil
+
+
+} // namespace graded_linalg
+
+
+#endif

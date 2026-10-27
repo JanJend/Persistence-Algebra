@@ -79,35 +79,35 @@ strict-order helper through the storage accessor; it adds no automatic scan.
 | IDs | Header(s) |
 | --- | --- |
 | CK | [general_checks.hpp](../include/grlina/general_checks.hpp) |
-| G, SORT1–3 | [mat_graded.hpp](../include/grlina/mat_graded.hpp) |
+| G, SORT1–3 | [mat_graded.hpp](../include/grlina/matrices/graded.hpp) |
 | CC, SORT6 | [chain_complex.hpp](../include/grlina/chain_complex.hpp) |
-| M, SORT7 | [mod_module.hpp](../include/grlina/mod_module.hpp) |
+| M, SORT7 | [module/module_base.hpp](../include/grlina/module/module_base.hpp) |
 | H | [hom_core_class.hpp](../include/grlina/hom_core_class.hpp) |
-| S | [mod_submodule.hpp](../include/grlina/mod_submodule.hpp) |
+| S | [module/submodule.hpp](../include/grlina/module/submodule.hpp) |
 | HM | [hom_algorithms.hpp](../include/grlina/hom_algorithms.hpp) |
-| LS, SORT8 | [mat_linear_system.hpp](../include/grlina/mat_linear_system.hpp) |
-| MF | [mat_base.hpp](../include/grlina/mat_base.hpp) |
-| IS | [mod_isomorphism.hpp](../include/grlina/mod_isomorphism.hpp) |
+| LS, SORT8 | [graded_linear_system.hpp](../include/grlina/graded_linear_system.hpp) |
+| MF | [mat_base.hpp](../include/grlina/matrices/base.hpp) |
+| IS | [isomorphism_test.hpp](../include/grlina/isomorphism_test.hpp) |
 | HI | [hom_interface.hpp](../include/grlina/hom_interface.hpp) |
-| MO | [mod_constructions.hpp](../include/grlina/mod_constructions.hpp) |
-| EP | [mod_epsilon.hpp](../include/grlina/mod_epsilon.hpp) |
-| HE | [mod_module.hpp](../include/grlina/mod_module.hpp) |
-| B | [mat_base.hpp](../include/grlina/mat_base.hpp) |
-| SP | [mat_sparse.hpp](../include/grlina/mat_sparse.hpp) |
-| R, SORT4 | [mat_r2.hpp](../include/grlina/mat_r2.hpp) |
-| DM | [mat_dense.hpp](../include/grlina/mat_dense.hpp) |
-| BIT | [bitset_algebra.hpp](../include/grlina/bitset_algebra.hpp) |
-| COL | [mat_columns.hpp](../include/grlina/mat_columns.hpp) |
-| GS | [mat_kernel.hpp](../include/grlina/mat_kernel.hpp) |
+| MO | [module/constructions.hpp](../include/grlina/module/constructions.hpp) |
+| EP | [module/epsilon.hpp](../include/grlina/module/epsilon.hpp) |
+| HE | [module/module_base.hpp](../include/grlina/module/module_base.hpp) |
+| B | [mat_base.hpp](../include/grlina/matrices/base.hpp) |
+| SP | [mat_sparse.hpp](../include/grlina/matrices/sparse.hpp) |
+| R, SORT4 | [mat_r2.hpp](../include/grlina/matrices/r2.hpp) |
+| DM | [mat_dense.hpp](../include/grlina/matrices/dense.hpp) |
+| BIT | [bitset_algebra.hpp](../include/grlina/storage/bitset_algebra.hpp) |
+| COL | [mat_columns.hpp](../include/grlina/storage/columns.hpp) |
+| GS | [graded_kernel.hpp](../include/grlina/graded_kernel.hpp) |
 | Q | [quiver_representations.hpp](../include/grlina/quiver_representations.hpp) |
-| OG | [deg_poset_operations.hpp](../include/grlina/deg_poset_operations.hpp) |
-| DH | [mod_hilbert_plot.hpp](../include/grlina/mod_hilbert_plot.hpp) |
+| OG | [posets/poset_operations.hpp](../include/grlina/posets/poset_operations.hpp) |
+| DH | [invariants/hilbert_plot.hpp](../include/grlina/invariants/hilbert_plot.hpp) |
 | SORT5 | Later | Same issue for partial coordinate colex sorts. | Removed sortedness scans; metadata is assigned, inherited or invalidated without traversal. |
-| T1–2 | [deg_traits.hpp](../include/grlina/deg_traits.hpp), graded/order templates |
+| T1–2 | [posets/traits.hpp](../include/grlina/posets/traits.hpp), graded/order templates |
 | T3–8 | Relevant matrix, module, serialization and constructor templates |
 | IO | File/stream readers and writers in the preceding headers and [graded_linalg.hpp](../include/grlina/graded_linalg.hpp) |
 | N | Removed hooks; see the historical notes in the table |
-| HS, MT, IOM | Restored [hom_algorithms.hpp](../include/grlina/hom_algorithms.hpp), [mod_transformations.hpp](../include/grlina/mod_transformations.hpp), [mat_io.hpp](../include/grlina/mat_io.hpp) |
+| HS, MT, IOM | Restored [hom_algorithms.hpp](../include/grlina/hom_algorithms.hpp), [module/transformations.hpp](../include/grlina/module/transformations.hpp), [matrices/io.hpp](../include/grlina/matrices/io.hpp) |
 
 ## Per-check decisions
 
@@ -202,7 +202,7 @@ strict-order helper through the storage accessor; it adds no automatic scan.
 | S1 | Later | Trusted construction accepts null parents or malformed generator matrices. | Removed Submodule::validate(). |
 | S2 | Later | Caller-supplied generators can use the wrong target basis. | Removed Submodule::validate(). |
 | S3 | Later | Public factories accept null parent pointers. | Changed to debug-only. |
-| S4 | Later | Caller can combine submodules with different parent objects. | Changed to debug-only. |
+| S4 | Later | Caller can combine submodules with different parent objects. | Containment and equality check parent identity in every build; other combination preconditions remain debug-only. |
 | S5 | Later | The requested operation may require an unimplemented graded kernel. | Unsupported-operation errors retained. |
 | HM1 | Later | Manual lifts/presentations can be malformed, but equation checking previously repeated full structural scans in release. | Removed all matrix validation calls. |
 | HM2 | Later | Manually supplied generator lift can have incompatible endpoint bases. | Changed to debug-only. |
@@ -272,7 +272,7 @@ strict-order helper through the storage accessor; it adds no automatic scan.
 | R1 | Legacy | Caller can supply empty snap grids. | Debug-only. |
 | R2 | Mixed | Legacy degree-length assertions plus later full validation cover public malformed matrix input. | Removed full validation; legacy degree-length assertions remain. |
 | R3 | Legacy | Scheduler generates valid intervals; failure would indicate a scheduler bug. | Already absent in the working tree before this audit's edits. |
-| R4 | Legacy / moved | Queued-column grade eligibility follows from the scheduler/reducer contract. | Already moved to mat_kernel.hpp in the starting working tree; remain debug-only. |
+| R4 | Legacy / moved | Queued-column grade eligibility follows from the scheduler/reducer contract. | Already moved to graded_kernel.hpp in the starting working tree; remain debug-only. |
 | R5 | Legacy (Nov 2025) | Caller can request zero grid points. | Existing zero-grid diagnostic/skip retained; it prevents an undefined grid calculation and does not scan data. |
 | DM1 | Legacy | String constructor can receive an unsupported matrix type. | Existing factory dispatch error retained. |
 | DM2 | Legacy | Public dense column count can disagree with storage length. | Debug-only. |
@@ -337,10 +337,10 @@ strict-order helper through the storage accessor; it adds no automatic scan.
 The removed `runtime_matrices` directory left active root headers and build
 rules pointing at nonexistent files. The repair reuses the committed generic
 storage, SCC metadata, geometry, chain-basis, Hom-space and module-transformation
-helpers at root-level include paths. The subsequent CSC repair consolidates
-storage, column views, storage traits and the matrix alias in the single header
-`include/grlina/mat_csc.hpp`. Raw offset validation is debug-only, including
-its ordering scan. Current coordinate/grid tests use `mat_coord.hpp` and
+helpers at root-level include paths. CSC storage, column views and storage traits
+live in `include/grlina/storage/csc.hpp`; the matrix alias lives alongside
+`SparseMatrix` in `include/grlina/matrices/sparse.hpp`. Raw offset validation is
+debug-only, including its ordering scan. Current coordinate/grid tests use `mat_coord.hpp` and
 `mat_grid.hpp` with compile-time dimensions; Gaussian tests retain the sparse
 and dense backends.
 Grid submodule shifts and epsilon diagonals use physical coordinates instead of

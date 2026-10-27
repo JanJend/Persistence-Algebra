@@ -20,18 +20,24 @@
 #ifndef GRLINA_HOM_ALGORITHMS_HPP
 #define GRLINA_HOM_ALGORITHMS_HPP
 
-#include <grlina/mat_graded.hpp>
-#include <grlina/mat_linear_system.hpp>
-#include <grlina/mat_grid.hpp>
-#include "grlina/mat_r2.hpp"
-#include "grlina/mat_sparse.hpp"
+#include <grlina/matrices/graded.hpp>
+#include <grlina/graded_linear_system.hpp>
+#include <grlina/matrices/grid.hpp>
+#include "grlina/matrices/r2.hpp"
+#include "grlina/matrices/sparse.hpp"
 #include <cstdlib>
 #include <utility>
 #include <random>
 #include <vector>
 #include <boost/timer/timer.hpp>
+#include <grlina/matrices/matrix_algorithms.hpp>
+#include <grlina/graded_kernel.hpp>
 
 namespace graded_linalg {
+
+template<typename index>
+using Hom_space_temp = std::pair< SparseMatrix<index>, vec<std::pair<index,index>> >;
+
 
 /** Optional check for manually supplied f0; trusted constructors need not call it.
  * Returns f1 with target_presentation*f1 = f0*source_presentation, or nullopt.
@@ -123,9 +129,9 @@ vec<DERIVED> hom_space_basis_new(
         source.compute_rows_forward();
         auto lifts = hom_space_basis_new(source, target, use_hom_exactness, info,
                                          reduce_lift_duplicates);
-        auto axes = grid_A.grids;
+        auto axes = grid_A.grid_;
         for (std::size_t axis = 0; axis < axes.size(); ++axis)
-            axes[axis].insert(axes[axis].end(), grid_B.grids[axis].begin(), grid_B.grids[axis].end());
+            axes[axis].insert(axes[axis].end(), grid_B.grid_[axis].begin(), grid_B.grid_[axis].end());
         vec<DERIVED> result;
         result.reserve(lifts.size());
         for (const auto& lift : lifts) {
@@ -937,13 +943,13 @@ Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index, DERIVED, Stor
 namespace graded_linalg {
 template<class Matrix>
 auto hom_space_optimised_impl(const Matrix& A, const Matrix& B,
-    const vec<typename Matrix::index_type>& row_indices_A = vec<typename Matrix::index_type>(), const vec<typename Matrix::index_type>& row_indices_B = vec<typename Matrix::index_type>(),
+    const vec<matrix_index_t<Matrix>>& row_indices_A = vec<matrix_index_t<Matrix>>(), const vec<matrix_index_t<Matrix>>& row_indices_B = vec<matrix_index_t<Matrix>>(),
     const bool info = false)  {
-    using index = typename Matrix::index_type;
+    using index = matrix_index_t<Matrix>;
     using D = matrix_geometry_degree_t<Matrix>;
-    using StoredDT = Degree_traits<typename Matrix::degree_type>;
+    using StoredDT = Degree_traits<matrix_degree_t<Matrix>>;
     const bool shared_grid = [&] {
-        if constexpr (matrix_grid_backed_v<Matrix>) return A.grids == B.grids;
+        if constexpr (matrix_grid_backed_v<Matrix>) return A.grid_ == B.grid_;
         else return true;
     }();
     auto source_above_target = [&](const auto& source_degree, const auto& target_degree) {
@@ -968,8 +974,12 @@ auto hom_space_optimised_impl(const Matrix& A, const Matrix& B,
     // TO-DO: Right now we compute map_at_degree possibly multiple times! This could be optimised.
     for(index i = 0; i < A.get_num_rows(); i++) {
         // Compute the target space B_alpha for each generator of A to minimise the number of variables.
-        auto [B_alpha, rows_alpha] = B.map_at_degree_pair(shared_grid ? typename Matrix::degree_type(A.row_degrees[i])
-            : query_matrix_degree(B, geometric_degree(A, A.row_degrees[i])), false);
+        auto [B_alpha, rows_alpha] = [&] {
+            if constexpr (matrix_grid_backed_v<Matrix>)
+                return B.map_at_grid_degree_pair(shared_grid ? matrix_degree_t<Matrix>(A.row_degrees[i])
+                    : query_matrix_degree(B, geometric_degree(A, A.row_degrees[i])), false);
+            else return B.map_at_degree_pair(A.row_degrees[i], false);
+        }();
         vec<index> basislift;
         if(row_indices_B.size() != 0){
             basislift = B_alpha.coKernel_basis(rows_alpha, row_indices_B );
@@ -1059,14 +1069,14 @@ auto hom_space_no_opt_impl(
     const Matrix& A,
     const Matrix& B,
     const bool reduce = true,
-    const vec<typename Matrix::index_type>& row_indices_A = vec<typename Matrix::index_type>(), 
-    const vec<typename Matrix::index_type>& row_indices_B = vec<typename Matrix::index_type>(), 
+    const vec<matrix_index_t<Matrix>>& row_indices_A = vec<matrix_index_t<Matrix>>(),
+    const vec<matrix_index_t<Matrix>>& row_indices_B = vec<matrix_index_t<Matrix>>(),
     const bool info = false)  {
-    using index = typename Matrix::index_type;
+    using index = matrix_index_t<Matrix>;
     using D = matrix_geometry_degree_t<Matrix>;
-    using StoredDT = Degree_traits<typename Matrix::degree_type>;
+    using StoredDT = Degree_traits<matrix_degree_t<Matrix>>;
     const bool shared_grid = [&] {
-        if constexpr (matrix_grid_backed_v<Matrix>) return A.grids == B.grids;
+        if constexpr (matrix_grid_backed_v<Matrix>) return A.grid_ == B.grid_;
         else return true;
     }();
     auto source_above_target = [&](const auto& source_degree, const auto& target_degree) {

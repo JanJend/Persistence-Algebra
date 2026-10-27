@@ -1,6 +1,7 @@
-#include <grlina/mat_coord.hpp>
-#include <grlina/mod_modules.hpp>
-#include <grlina/mat_linear_system.hpp>
+#include <grlina/invariants/hilbert_function.hpp>
+#include <grlina/matrices/coord.hpp>
+#include <grlina/hom_interface.hpp>
+#include <grlina/graded_linear_system.hpp>
 
 #include <array>
 #include <cassert>
@@ -11,6 +12,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 using namespace graded_linalg;
 using Matrix = R2GradedSparseMatrix<int>;
@@ -33,14 +35,16 @@ static_assert(!Degree<int>);
 #endif
 
 struct NotAGradedMatrix {
-    using degree_type = r2degree;
-    using index_type = int;
+    vec<r2degree> col_degrees;
+    array<int> data;
+    int get_num_rows() const;
 };
 static_assert(!is_graded_sparse_matrix_v<NotAGradedMatrix>);
 
 struct InvalidMatrixDegree {
-    using degree_type = int;
-    using index_type = int;
+    vec<int> col_degrees;
+    array<int> data;
+    int get_num_rows() const;
 };
 static_assert(!is_graded_sparse_matrix_v<InvalidMatrixDegree>);
 
@@ -213,8 +217,8 @@ static void test_poset_without_optional_operations() {
     assert(matrix.compatibly_sorted);
     assert((matrix.col_degrees == vec<D>{D::left, D::right}));
     Module<ForkGradedMatrix> module(matrix);
-    assert(module.support_degrees() == support);
-    const auto values = module.hilbert_function(support);
+    assert(support_degrees(module) == support);
+    const auto values = hilbert_function(module, support);
     assert(values[0].dimension == 1 && values[1].dimension == 0 && values[2].dimension == 0);
     matrix.cancel_local_pairs();
     assert(matrix.get_num_cols() == 2); // No relation has the same degree as a generator.
@@ -375,7 +379,7 @@ static void test_correct_minimization() {
     Matrix minimized = original;
     minimized.minimize();
     assert_cancellation_result(minimized);
-    assert(!minimized.rows_computed);
+    assert(minimized.rows_computed && minimized._rows == original._rows);
     minimized.compute_rows_forward();
     assert(minimized._rows == array<int>{{0}});
     assert(minimized.dim_at({0.0, 0.0}) == 1);
@@ -535,59 +539,59 @@ static void test_existing_scc_files() {
 
 static void test_module_hilbert_function_and_editing() {
     TestModule module(interval_presentation());
-    assert(module.number_of_generators() == 1);
-    assert(module.number_of_relations() == 1);
-    assert(module.dimension_at({0.0, 0.0}) == 1);
-    assert(module.dimension_at({1.0, 1.0}) == 0);
-    auto grid = module.hilbert_function_on_induced_grid();
+    assert(module.num_of_gens() == 1);
+    assert(module.num_of_rels() == 1);
+    assert(dimension_at(module, {0.0, 0.0}) == 1);
+    assert(dimension_at(module, {1.0, 1.0}) == 0);
+    auto grid = hilbert_function_on_induced_grid(module);
     assert(grid.x_grid.size() == 2);
     assert(grid.y_grid.size() == 2);
     assert(grid.maximum == 1);
 
     module.compute_projective_resolution();
-    assert(module.projective_resolution().size() == 2);
+    assert(module.proj_res_.size() == 2);
     module.shift({1.0, 1.0});
-    assert(module.projective_resolution().size() == 2);
+    assert(module.proj_res_.size() == 2);
     assert((module.presentation().row_degrees.front() == r2degree{-1.0, -1.0}));
-    (void)module.mutable_presentation();
-    assert(module.projective_resolution().size() == 1);
+    module.add_relation({0}, {1.0, 1.0});
+    assert(module.proj_res_.size() == 1);
 }
 
 static void test_homology_module() {
     Matrix injective = interval_presentation();
     Matrix no_incoming(0, 1, array<int>{}, vec<r2degree>{}, injective.col_degrees);
     auto zero_homology = homology_module(ChainComplex<Matrix>({injective, no_incoming}));
-    assert(zero_homology.number_of_generators() == 0);
-    assert(zero_homology.number_of_relations() == 0);
+    assert(zero_homology.num_of_gens() == 0);
+    assert(zero_homology.num_of_rels() == 0);
 
     Matrix zero_differential(1, 1, array<int>{{}},
                              vec<r2degree>{{0.0, 0.0}},
                              vec<r2degree>{{0.0, 0.0}});
     auto free_homology = homology_module(ChainComplex<Matrix>({zero_differential}));
-    assert(free_homology.number_of_generators() == 1);
-    assert(free_homology.number_of_relations() == 0);
-    assert(free_homology.dimension_at({0.0, 0.0}) == 1);
+    assert(free_homology.num_of_gens() == 1);
+    assert(free_homology.num_of_rels() == 0);
+    assert(dimension_at(free_homology, {0.0, 0.0}) == 1);
 
     Matrix identity_boundary(1, 1, array<int>{{0}},
                              vec<r2degree>{{0.0, 0.0}},
                              zero_differential.col_degrees);
     auto killed_homology = homology_module(
         ChainComplex<Matrix>({zero_differential, identity_boundary}));
-    assert(killed_homology.number_of_generators() == 0);
-    assert(killed_homology.number_of_relations() == 0);
+    assert(killed_homology.num_of_gens() == 0);
+    assert(killed_homology.num_of_rels() == 0);
 
     Matrix fold(2, 1, array<int>{{0}, {0}},
                 vec<r2degree>{{0.0, 0.0}, {0.0, 0.0}},
                 vec<r2degree>{{0.0, 0.0}});
     auto one_dimensional_kernel = homology_module(ChainComplex<Matrix>({fold}));
-    assert(one_dimensional_kernel.number_of_generators() == 1);
-    assert(one_dimensional_kernel.number_of_relations() == 0);
+    assert(one_dimensional_kernel.num_of_gens() == 1);
+    assert(one_dimensional_kernel.num_of_rels() == 0);
     Matrix kernel_boundary(1, 2, array<int>{{0, 1}},
                            vec<r2degree>{{0.0, 0.0}}, fold.col_degrees);
     auto killed_nontrivial_kernel = homology_module(
         ChainComplex<Matrix>({fold, kernel_boundary}));
-    assert(killed_nontrivial_kernel.number_of_generators() == 0);
-    assert(killed_nontrivial_kernel.number_of_relations() == 0);
+    assert(killed_nontrivial_kernel.num_of_gens() == 0);
+    assert(killed_nontrivial_kernel.num_of_rels() == 0);
 }
 
 static void test_submodules_and_morphisms() {
@@ -595,21 +599,21 @@ static void test_submodules_and_morphisms() {
     auto zero = Submodule<Matrix>::zero(module);
     auto whole = Submodule<Matrix>::whole(module);
     assert(zero.is_zero());
-    assert(whole.number_of_generators() == 1);
+    assert(whole.num_of_gens() == 1);
     auto sum = zero.sum(whole);
-    assert(sum.number_of_generators() == 1);
-    assert(whole.presented_module().dimension_at({0.0, 0.0}) == 1);
-    assert(zero.quotient_module().dimension_at({0.0, 0.0}) == 1);
-    assert(whole.quotient_module().dimension_at({0.0, 0.0}) == 0);
+    assert(sum.num_of_gens() == 1);
+    assert(dimension_at(whole.presented_module(), {0.0, 0.0}) == 1);
+    assert(dimension_at(zero.quotient_module(), {0.0, 0.0}) == 1);
+    assert(dimension_at(whole.quotient_module(), {0.0, 0.0}) == 0);
     auto intersection = whole.intersection(sum);
-    assert(intersection.number_of_generators() == 1);
-    assert(intersection.presented_module().dimension_at({0.0, 0.0}) == 1);
+    assert(intersection.num_of_gens() == 1);
+    assert(dimension_at(intersection.presented_module(), {0.0, 0.0}) == 1);
 
     Matrix identity(1, 1, "Identity");
     identity.row_degrees = module->presentation().row_degrees;
     identity.col_degrees = module->presentation().row_degrees;
     ModuleMorphism<Matrix> map(module, module, identity);
-    assert(map.image().number_of_generators() == 1);
+    assert(map.image().num_of_gens() == 1);
     assert(map.kernel().is_zero());
     auto composite = map.compose(map);
     assert(composite.generator_lift().data == identity.data);
@@ -629,7 +633,7 @@ static void test_submodules_and_morphisms() {
     relation_lift.row_degrees = resolved->presentation().col_degrees;
     relation_lift.col_degrees = resolved->presentation().col_degrees;
     ModuleMorphism<Matrix> lifted_map(resolved, resolved, {identity, relation_lift});
-    assert(lifted_map.lifts().size() == 2);
+    assert(lifted_map.resolution_maps().size() == 2);
 }
 
 static void test_module_hom_adapter() {

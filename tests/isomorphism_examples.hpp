@@ -1,9 +1,10 @@
 #pragma once
-#include <grlina/mod_isomorphism.hpp>
+#include <grlina/isomorphism_test.hpp>
 #include <cmath>
 #include <map>
 #include <numeric>
 #include <random>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 namespace iso_test {
 using namespace graded_linalg;

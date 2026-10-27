@@ -21,8 +21,8 @@ inline Benchmark_noop_timer test_timer_1, test_timer_2;
 #include <multicritical/free_resolution.hpp>
 #endif
 
-#include <grlina/mat_coord.hpp>
-#include <grlina/mat_upset.hpp>
+#include <grlina/matrices/coord.hpp>
+#include <grlina/matrices/upset.hpp>
 #include <chrono>
 #include <cstdint>
 #include <cstring>

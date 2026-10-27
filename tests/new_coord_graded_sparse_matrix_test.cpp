@@ -1,10 +1,12 @@
-#include <grlina/mat_coord.hpp>
-#include <grlina/mat_r2.hpp>
+#include <grlina/matrices/coord.hpp>
+#include <grlina/matrices/r2.hpp>
 #include <cassert>
 #include <cstdint>
 #include <limits>
 #include <random>
 #include <sstream>
+#include <grlina/matrices/matrix_algorithms.hpp>
+#include <grlina/graded_kernel.hpp>
 
 using namespace graded_linalg;
 
@@ -22,7 +24,7 @@ static int binary_rank(const vec<std::uint64_t>& columns) {
 
 template<class Matrix>
 static auto column_degrees(const Matrix& matrix) {
-    if constexpr (Matrix::grid_backed) return matrix.real_col_degrees();
+    if constexpr (matrix_grid_backed_v<Matrix>) return matrix.real_col_degrees();
     else return matrix.col_degrees;
 }
 
@@ -32,8 +34,8 @@ static void check_kernel(const Matrix& source, const Matrix& kernel) {
     using DT = Degree_traits<Degree>;
     auto original = column_degrees(source), degrees = column_degrees(kernel);
     assert(kernel.get_num_rows() == source.get_num_cols());
-    if constexpr (Matrix::grid_backed) {
-        assert(kernel.grids == source.grids);
+    if constexpr (matrix_grid_backed_v<Matrix>) {
+        assert(kernel.grid_ == source.grid_);
         assert(kernel.real_row_degrees() == original);
     } else assert(kernel.row_degrees == original);
 
@@ -204,7 +206,7 @@ static void legacy_kernel_comparison() {
 template<std::size_t Dimension>
 static void koszul_kernels() {
     using Matrix = CoordGradedSparseMatrix<double, Dimension, int>;
-    using Degree = typename Matrix::degree_type;
+    using Degree = matrix_degree_t<Matrix>;
     vec<Degree> degrees(Dimension);
     for (std::size_t a = 0; a < Dimension; ++a) degrees[a][a] = 1;
     Matrix differential(Dimension, 1, array<int>(Dimension, {0}), degrees, {Degree{}});
@@ -232,7 +234,7 @@ static void muphasa_three_parameter_kernels() {
         auto grid_kernel = grid.graded_kernel();
         check_kernel(original_grid, grid_kernel);
         assert(grid.data == original_grid.data && grid.col_degrees == original_grid.col_degrees);
-        assert(grid.row_degrees == original_grid.row_degrees && grid.grids == original_grid.grids);
+        assert(grid.row_degrees == original_grid.row_degrees && grid.grid_ == original_grid.grid_);
         assert(grid_kernel.data == kernel.data && grid_kernel.real_col_degrees() == kernel.col_degrees);
         return kernel;
     };
@@ -303,7 +305,7 @@ static void local_cancellation() {
     assert((example.row_degrees == vec<Degree>{{0, 0}}));
     assert((elements.data == array<int>{{0}, {}, {}, {0}}));
     assert(elements.col_degrees == element_degrees);
-    assert(!example.rows_computed && !elements.rows_computed);
+    assert(example.rows_computed && elements.rows_computed);
     assert(example.compatibly_sorted);
 
     // The equal-degree row is not the physical column tail. Surviving rows

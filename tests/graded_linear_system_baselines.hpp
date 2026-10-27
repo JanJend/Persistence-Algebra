@@ -1,14 +1,16 @@
 /** Reference solvers for correctness comparisons and timing; not library code. */
 #pragma once
-#include <grlina/mat_linear_system.hpp>
+#include <grlina/graded_linear_system.hpp>
 #include <chrono>
+#include <grlina/matrices/matrix_algorithms.hpp>
+#include <grlina/graded_kernel.hpp>
 
 namespace graded_linalg::test {
 
 // The original per-column implementation, retained as a benchmark baseline.
 template<class Matrix>
 std::optional<Matrix> column_by_column_solver(const Matrix& A, const Matrix& B) {
-    using index = typename Matrix::index_type;
+    using index = matrix_index_t<Matrix>;
     using Degree = matrix_geometry_degree_t<Matrix>;
     Matrix X = empty_matrix_like(A, B.get_num_cols(), A.get_num_cols());
     set_geometric_degrees(X, geometric_col_degrees(B), geometric_col_degrees(A));
@@ -38,7 +40,7 @@ std::optional<Matrix> column_by_column_solver(const Matrix& A, const Matrix& B) 
 // call alone; callers also time construction and extraction for a fair solve.
 template<class Matrix>
 std::optional<Matrix> full_kernel_solver(const Matrix& A, const Matrix& B, double* kernel_ms = nullptr) {
-    using index = typename Matrix::index_type;
+    using index = matrix_index_t<Matrix>;
     using Degree = matrix_geometry_degree_t<Matrix>;
     const index a_count = A.get_num_cols();
     auto a_degrees = geometric_col_degrees(A);

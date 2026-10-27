@@ -1,7 +1,12 @@
-#include <grlina/mod_modules.hpp>
-#include <grlina/mat_grid.hpp>
+#include <grlina/invariants/hilbert_function.hpp>
+#include <grlina/module/epsilon.hpp>
+#include <grlina/module/transformations.hpp>
+#include <grlina/hom_interface.hpp>
+#include <grlina/matrices/grid.hpp>
 #include <sstream>
 #include <stdexcept>
+#include <grlina/matrices/matrix_algorithms.hpp>
+#include <grlina/quiver_representations.hpp>
 
 using namespace graded_linalg;
 using Mat = R2GradedSparseMatrix<int>;
@@ -77,17 +82,22 @@ void same_algebra_in_both_modes() {
     Mat presentation(2, 2, {{0}, {1}}, {{1,1}, {2,2}}, {{1,1}, {0,0}});
     Mod module(presentation);
     module.minimize();
-    expect(module.number_of_generators() == 1 && module.number_of_relations() == 1);
-    expect(module.dimension_at({0,0}) == 1 && module.dimension_at({2,2}) == 0);
+    expect(module.num_of_gens() == 1 && module.num_of_rels() == 1);
+    expect(dimension_at(module, {0,0}) == 1 && dimension_at(module, {2,2}) == 0);
     module.compute_projective_resolution();
-    expect(module.projective_resolution().is_chain_complex());
+    expect(module.proj_res_.is_chain_complex());
 
     auto parent = std::make_shared<Mod>(Mat(0, 2, {}, {}, {{0,0}, {1,1}}));
     auto whole = parent->whole_submodule();
     auto zero = parent->zero_submodule();
     expect(whole.contains(zero) && !zero.contains(whole));
+    // Parent identity is required even when diagnostic checks are disabled.
+    auto foreign_parent = std::make_shared<Mod>(parent->presentation());
+    auto foreign_zero = foreign_parent->zero_submodule();
+    rejects([&] { (void)whole.contains(foreign_zero); });
+    rejects([&] { (void)whole.equals(foreign_zero); });
     whole.compute_presentation();
-    expect(whole.dimension_at({1,1}) == 2);
+    expect(dimension_at(whole, {1,1}) == 2);
     auto maps = End_2d_0(parent, {1,1});
     expect(maps.size() == 1 && maps[0].check_lifts());
     expect(maps[0].generator_lift().data == array<int>({{1}, {}}));
@@ -102,7 +112,7 @@ void same_algebra_in_both_modes() {
     std::stringstream encoded;
     module.to_stream(encoded);
     Mod decoded(encoded);
-    expect(decoded.dimension_at({0,0}) == 1 && decoded.dimension_at({2,2}) == 0);
+    expect(dimension_at(decoded, {0,0}) == 1 && dimension_at(decoded, {2,2}) == 0);
 }
 
 void caller_preconditions_follow_policy() {
@@ -134,7 +144,7 @@ void restored_adapters_work_in_both_modes() {
     using Grid = GridGradedSparseMatrix<double, 2, int>;
     Grid matrix(Coord(1, 1, {{0}}, {{3,5}}, {{1,2}}));
     auto owner = std::make_shared<const Module<Grid>>(matrix);
-    expect(owner->dimension_at({1,2}) == 1 && owner->dimension_at({3,5}) == 0);
+    expect(dimension_at(*owner, {1,2}) == 1 && dimension_at(*owner, {3,5}) == 0);
     auto image = epsilon_image(owner, 0.5);
     expect(image.generator_map().generator_lift().real_col_degrees() == vec<r2degree>{{1.5,2.5}});
     std::stringstream stream;
@@ -142,7 +152,7 @@ void restored_adapters_work_in_both_modes() {
     auto decoded = ChainComplex<Grid>::from_stream(stream);
     expect(decoded[0].real_col_degrees() == matrix.real_col_degrees());
     expect(decoded[0].real_row_degrees() == matrix.real_row_degrees());
-    auto grid = owner->hilbert_function_on_grid({1,3}, {2,5});
+    auto grid = hilbert_function_on_grid(*owner, {1,3}, {2,5});
     expect(grid.values == array<int>({{1,1}, {1,0}}));
 
     auto unsorted = std::make_shared<const Mod>(
@@ -150,7 +160,7 @@ void restored_adapters_work_in_both_modes() {
     auto sorted = sort_module_with_maps(unsorted);
     expect(sorted.forward.check_lifts() && sorted.backward.check_lifts());
     auto minimized = minimize_module_with_maps(sorted.transformed);
-    expect(minimized.transformed->number_of_relations() == 1);
+    expect(minimized.transformed->num_of_rels() == 1);
     expect(minimized.forward.check_lifts() && minimized.backward.check_lifts());
 }
 

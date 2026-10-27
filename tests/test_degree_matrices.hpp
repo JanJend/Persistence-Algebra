@@ -1,7 +1,7 @@
 /** Custom degree matrices without a graded kernel, for capability tests. */
 #pragma once
-#include <grlina/deg_coordinate.hpp>
-#include <grlina/mat_graded.hpp>
+#include <grlina/posets/coordinate.hpp>
+#include <grlina/matrices/graded.hpp>
 
 namespace graded_linalg {
 

@@ -2,11 +2,16 @@
 // checked separately; acknowledge their cost here to keep algebra tests quiet.
 #define GRLINA_CSC_COMPILE_WARNINGS 0
 #define GRLINA_CSC_RUNTIME_WARNINGS 0
-#include <grlina/mat_csc.hpp>
-#include <grlina/mod_modules.hpp>
+#include <grlina/invariants/hilbert_function.hpp>
+#include <grlina/matrices/sparse.hpp>
+#include <grlina/module/constructions.hpp>
+#include <grlina/hom_interface.hpp>
 #include <cassert>
 #include <sstream>
 #include <type_traits>
+#include <grlina/matrices/matrix_algorithms.hpp>
+#include <grlina/quiver_representations.hpp>
+#include <grlina/graded_kernel.hpp>
 
 using namespace graded_linalg;
 using Base = CSCMatrix<int>;
@@ -18,6 +23,33 @@ static_assert(std::is_base_of_v<Base, Mat>);
 static_assert(std::is_base_of_v<SparseMatrix<int>, R2GradedSparseMatrix<int>>);
 static_assert(std::is_same_v<decltype(std::declval<const Mod&>().presentation()), const Mat&>);
 static_assert(std::is_same_v<decltype(std::declval<Mat>().graded_kernel()), Mat>);
+
+template<class Storage>
+void make_graded_filters_entries() {
+    using Matrix = R2GradedSparseMatrix<int, Storage>;
+    const array<int> columns{{}, {0, 1, 2, 3, 4}, {0, 1, 2, 3, 4},
+                             {0, 1, 2, 3, 4}, {}, {1, 2, 3}, {}};
+    const vec<r2degree> col_degrees{{0, 0}, {1, 1}, {-1, -1}, {3, 3},
+                                    {0, 0}, {2, 0}, {0, 0}};
+    const vec<r2degree> row_degrees{{0, 0}, {2, 0}, {0, 2}, {1, 1}, {3, 3}};
+    const array<int> expected{{}, {0, 3}, {}, {0, 1, 2, 3, 4}, {}, {1}, {}};
+    Matrix matrix(7, 5, columns, col_degrees, row_degrees);
+    const auto original = matrix;
+    assert(!matrix.is_graded_matrix());
+
+    // Consecutive removals, whole-column removals, retained and empty columns.
+    // Running twice must preserve the result; shared CSC copies stay unchanged.
+    for (int pass = 0; pass < 2; ++pass) {
+        matrix.make_graded();
+        assert(matrix.is_graded_matrix());
+        assert(matrix.get_num_cols() == 7 && matrix.get_num_rows() == 5);
+        assert(matrix.col_degrees == col_degrees && matrix.row_degrees == row_degrees);
+        for (int i = 0; i < 7; ++i) {
+            assert(matrix.get_col(i) == expected[i]);
+            assert(original.get_col(i) == columns[i]);
+        }
+    }
+}
 
 void storage_and_const_io() {
     vec<std::size_t> offsets{0, 2, 2, 3};
@@ -52,8 +84,8 @@ void storage_and_const_io() {
     const Mod module(parsed);
     const Mod copy = module;
     assert(module.presentation().data.shares_storage_with(copy.presentation().data));
-    assert(module.number_of_entries() == 3);
-    assert(module.number_of_generators() == 3);
+    assert(module.presentation().num_of_entries() == 3);
+    assert(module.num_of_gens() == 3);
     std::stringstream module_scc;
     module.to_stream(module_scc);
     const Mod reloaded(module_scc);
@@ -77,18 +109,18 @@ void shared_graded_algorithms() {
     assert(kernel.get_col(0) == vec<int>({0, 1}));
 
     Mod module(original);
-    assert(module.dimension_at({0, 0}) == 1);
-    assert(module.dimension_at({1, 1}) == 0);
+    assert(dimension_at(module, {0, 0}) == 1);
+    assert(dimension_at(module, {1, 1}) == 0);
     auto fibre = module.local_presentation_at({1, 1});
     static_assert(std::is_same_v<decltype(fibre.first), Base>);
     vec<int> which;
-    auto relations = module.relations_at({1, 1}, which);
+    auto relations = module.presentation().map_at_degree({1, 1}, which);
     assert(relations.get_num_cols() == 2);
     module.compute_projective_resolution();
     std::stringstream stream;
     module.to_stream(stream);
     Mod roundtrip(stream);
-    assert(roundtrip.dimension_at({0, 0}) == 1);
+    assert(dimension_at(roundtrip, {0, 0}) == 1);
 
     auto transpose = original.transposed_copy();
     static_assert(std::is_same_v<decltype(transpose), Mat>);
@@ -138,19 +170,21 @@ void module_constructions() {
     assert(quotient.check_lifts());
     assert(module_hom_space_basis<Mat>(free, interval).size() == 1);
     auto sum = direct_sum<Mat>(free, interval);
-    assert(sum.module->dimension_at({0, 0}) == 2);
-    assert(sum.module->dimension_at({1, 1}) == 1);
+    assert(dimension_at(*sum.module, {0, 0}) == 2);
+    assert(dimension_at(*sum.module, {1, 1}) == 1);
     assert(sum.inclusion_left.check_lifts() && sum.projection_right.check_lifts());
     auto twice = quotient + quotient;
     assert(twice.generator_lift().get_col(0).empty());
     assert(twice.check_lifts());
     auto k = kernel(quotient);
     assert(k.inclusion.check_lifts());
-    assert(k.module->dimension_at({0, 0}) == 0);
-    assert(k.module->dimension_at({1, 1}) == 1);
+    assert(dimension_at(*k.module, {0, 0}) == 0);
+    assert(dimension_at(*k.module, {1, 1}) == 1);
 }
 
 int main() {
+    make_graded_filters_entries<vec<vec<int>>>();
+    make_graded_filters_entries<CSCStorage<int>>();
     storage_and_const_io();
     shared_graded_algorithms();
     module_constructions();

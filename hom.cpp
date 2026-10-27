@@ -1,3 +1,4 @@
+#include <grlina/invariants/hilbert_function.hpp>
 #include <grlina/graded_linalg.hpp>
 #include <iostream>
 #include <filesystem>
@@ -143,13 +144,13 @@ int main(int argc, char** argv) {
     R2Module<int> A(input_path_A.string());
     R2Module<int> B(input_path_B.string());
     if(info){
-        std::cout << "Dimensions of A: " << A.number_of_generators() << " x " << A.number_of_relations() << std::endl;
-        std::cout << "Dimensions of B: " << B.number_of_generators() << " x " << B.number_of_relations() << std::endl;
-        auto hilbert = B.hilbert_function_on_induced_grid();
+        std::cout << "Dimensions of A: " << A.num_of_gens() << " x " << A.num_of_rels() << std::endl;
+        std::cout << "Dimensions of B: " << B.num_of_gens() << " x " << B.num_of_rels() << std::endl;
+        auto hilbert = hilbert_function_on_induced_grid(B);
         std::cout << "Thickness of B: " << hilbert.maximum << std::endl;
     }
     bool nano = false;
-    if(A.number_of_generators() < 200){
+    if(A.num_of_gens() < 200){
         // nano = true;
     }
     int dim = compute_hom_space(A, B, type, info, nano);

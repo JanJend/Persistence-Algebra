@@ -2,8 +2,8 @@
 
 // Consolidated upstream conversion with grlina coordinate and upset degrees.
 
-#include <grlina/mat_coord.hpp>
-#include <grlina/mat_upset.hpp>
+#include <grlina/matrices/coord.hpp>
+#include <grlina/matrices/upset.hpp>
 #include <cassert>
 #include <cstdint>
 #include <limits>

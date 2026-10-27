@@ -3,6 +3,7 @@
 
 #include <boost/timer/timer.hpp>
 #include <cassert>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 using namespace graded_linalg;
 // using namespace boost::timer;

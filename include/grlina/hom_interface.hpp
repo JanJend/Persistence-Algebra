@@ -5,8 +5,9 @@
 #include <vector>
 
 #include <grlina/hom_algorithms.hpp>
-#include <grlina/mod_submodule.hpp>
-#include <grlina/mat_base.hpp>
+#include <grlina/module/submodule.hpp>
+#include <grlina/matrices/base.hpp>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 namespace graded_linalg {
 

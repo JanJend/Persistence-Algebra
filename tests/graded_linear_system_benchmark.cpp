@@ -5,7 +5,7 @@
 //                                      [uniform|mixed|late_basis|nonunique|all=all]
 //                                      [OLD_MAX_N=MAX_N]
 #include "graded_linear_system_baselines.hpp"
-#include <grlina/mat_grid.hpp>
+#include <grlina/matrices/grid.hpp>
 #include <chrono>
 #include <cmath>
 #include <iomanip>
@@ -13,6 +13,7 @@
 #include <limits>
 #include <random>
 #include <stdexcept>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 using namespace graded_linalg;
 using Matrix = GridGradedSparseMatrix<double, 2, int>;
@@ -43,10 +44,10 @@ double median(vec<double> values) {
     return values.size()%2 ? values[middle] : (values[middle-1]+values[middle])/2;
 }
 
-enum Method { column_method, kernel_method, direct_method };
+enum Method { column_method, kernel_method, direct_method, solvability_method };
 
 struct Timings {
-    std::array<double, 3> milliseconds;
+    std::array<double, 4> milliseconds;
     double kernel_only;
     int column_exact_match; // -1 when the column-by-column baseline was skipped
     bool kernel_exact_match;
@@ -72,18 +73,25 @@ Timings run(int n, int repeats, const std::string& family, int old_maximum) {
     const Matrix A(static_cast<int>(columns.size()), n, columns, a_degrees, vec<Degree>(n, Degree{0,0}));
     const Matrix B(n, n, rhs_columns, b_degrees, vec<Degree>(n, Degree{0,0}));
     const auto original_a = A.data, original_b = B.data;
-    std::array<vec<double>, 3> times;
+    std::array<vec<double>, 4> times;
     vec<double> kernel_only_times;
     bool column_exact_match = true, kernel_exact_match = true;
     for (int repetition = 0; repetition < repeats; ++repetition) {
         std::array<std::optional<Matrix>, 3> solutions;
-        vec<Method> methods{kernel_method, direct_method};
+        vec<Method> methods{kernel_method, direct_method, solvability_method};
         if (n <= old_maximum) methods.push_back(column_method);
         // Rotate order to reduce bias from warm caches and clock changes.
         for (std::size_t offset = 0; offset < methods.size(); ++offset) {
             const Method method = methods[(offset+repetition)%methods.size()];
             double kernel_only = 0;
             const auto start = Clock::now();
+            if (method == solvability_method) {
+                const bool solvable = graded_linear_system_is_solvable(A, B);
+                times[method].push_back(std::chrono::duration<double, std::milli>(Clock::now()-start).count());
+                require(solvable, "Solvability check rejected a solvable system");
+                require(A.data == original_a && B.data == original_b, "Solvability check changed an input");
+                continue;
+            }
             solutions[method] = method == column_method ? test::column_by_column_solver(A, B) :
                                 method == kernel_method ? test::full_kernel_solver(A, B, &kernel_only) :
                                 solve_graded_linear_system(A, B);
@@ -115,7 +123,7 @@ Timings run(int n, int repeats, const std::string& family, int old_maximum) {
         }
     }
     Timings result{{}, median(kernel_only_times), n <= old_maximum ? int(column_exact_match) : -1, kernel_exact_match};
-    for (Method method : {column_method, kernel_method, direct_method})
+    for (Method method : {column_method, kernel_method, direct_method, solvability_method})
         result.milliseconds[method] = times[method].empty() ? std::numeric_limits<double>::quiet_NaN() : median(times[method]);
     return result;
 }
@@ -136,15 +144,16 @@ int main(int argc, char** argv) {
                   << "case,n,a_cols,b_cols,repeats,column_ms,kernel_ms,direct_ms,kernel_only_ms,"
                      "column_speedup,kernel_speedup,column_growth,kernel_growth,direct_growth,"
                      "column_exponent,kernel_exponent,direct_exponent,column_ms_per_n4,"
-                     "kernel_ms_per_n3,direct_ms_per_n3,column_exact_match,kernel_exact_match,ax_matches\n";
+                     "kernel_ms_per_n3,direct_ms_per_n3,column_exact_match,kernel_exact_match,ax_matches,"
+                     "solvability_ms,solvability_growth,solvability_exponent,solvability_ms_per_n3\n";
         for (const std::string family : {"uniform", "mixed", "late_basis", "nonunique"}) {
             if (selection != "all" && selection != family) continue;
-            std::array<double, 3> previous{};
+            std::array<double, 4> previous{};
             for (int n = 32; n <= maximum; n *= 2) {
                 const auto timings = run(n, repeats, family, old_maximum);
                 const auto& t = timings.milliseconds;
-                std::array<double, 3> growth;
-                for (Method method : {column_method, kernel_method, direct_method})
+                std::array<double, 4> growth;
+                for (Method method : {column_method, kernel_method, direct_method, solvability_method})
                     growth[method] = previous[method] ? t[method]/previous[method] : std::numeric_limits<double>::quiet_NaN();
                 std::cout << family << ',' << n << ',' << (family == "late_basis" || family == "nonunique" ? 2*n : n)
                           << ',' << n << ',' << repeats << ',' << t[column_method] << ',' << t[kernel_method] << ','
@@ -154,7 +163,9 @@ int main(int argc, char** argv) {
                 for (Method method : {column_method, kernel_method, direct_method}) std::cout << ',' << std::log2(growth[method]);
                 std::cout << ',' << t[column_method]/std::pow(double(n),4) << ',' << t[kernel_method]/std::pow(double(n),3)
                           << ',' << t[direct_method]/std::pow(double(n),3) << ',' << timings.column_exact_match << ','
-                          << timings.kernel_exact_match << ",1" << std::endl;
+                          << timings.kernel_exact_match << ",1," << t[solvability_method] << ','
+                          << growth[solvability_method] << ',' << std::log2(growth[solvability_method]) << ','
+                          << t[solvability_method]/std::pow(double(n),3) << std::endl;
                 previous = t;
             }
         }

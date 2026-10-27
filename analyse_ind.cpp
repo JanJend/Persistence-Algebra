@@ -1,3 +1,4 @@
+#include <grlina/invariants/hilbert_function.hpp>
 #include <grlina/graded_linalg.hpp>
 #include <iostream>
 #include <filesystem>
@@ -105,7 +106,7 @@ void compute_end(std::filesystem::path input_path) {
     R2Module<int> A(input_path.string());
     int dim = compute_hom_space(A, A, -1, false);
     std::cout << "Dimension of hom-space: " << dim << std::endl;
-    auto hilbert = A.hilbert_function_on_induced_grid();
+    auto hilbert = hilbert_function_on_induced_grid(A);
     std::cout << "thickness: " << hilbert.maximum << std::endl;
 }
 
@@ -202,20 +203,20 @@ void compute_decomp_end(std::filesystem::path input_path, bool hom_timed) {
             
             if(type == "free" || type == "cyclic" || type == "interval"){
                 R2Module<int> A(input_file);
-                int_gens += A.number_of_relations();
-                max_gen = std::max(max_gen, A.number_of_relations());
+                int_gens += A.num_of_rels();
+                max_gen = std::max(max_gen, A.num_of_rels());
             } else {
                 R2Module<int> A(input_file);
-                non_int_gens += A.number_of_relations();
-                max_gen = std::max(max_gen, A.number_of_relations());
-                non_int_dims.push_back(std::make_pair(std::make_pair(A.number_of_generators(), A.number_of_relations()), std::make_pair(0,0)));
+                non_int_gens += A.num_of_rels();
+                max_gen = std::max(max_gen, A.num_of_rels());
+                non_int_dims.push_back(std::make_pair(std::make_pair(A.num_of_gens(), A.num_of_rels()), std::make_pair(0,0)));
                 int dim;
-                auto hilbert = A.hilbert_function_on_induced_grid();
-                if(A.number_of_generators() < 100){
+                auto hilbert = hilbert_function_on_induced_grid(A);
+                if(A.num_of_gens() < 100){
                     dim = compute_hom_space(A, A, -1, false, false);
                 } else {
                     if(hom_timed){
-                        std::cout << "Noninterval of size " << A.number_of_generators() << "x" << A.number_of_relations()
+                        std::cout << "Noninterval of size " << A.num_of_gens() << "x" << A.num_of_rels()
                         << " and thickness: " << hilbert.maximum << std::endl;
                     }
                     dim = compute_hom_space(A, A, -1, hom_timed, hom_timed);

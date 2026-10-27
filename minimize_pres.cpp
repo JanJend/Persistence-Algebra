@@ -1,7 +1,8 @@
-#include "grlina/mat_r2.hpp"
+#include "grlina/matrices/r2.hpp"
 #include <grlina/graded_linalg.hpp>
 #include <iostream>
 #include <filesystem>
+#include <grlina/matrices/matrix_algorithms.hpp>
 
 using namespace graded_linalg;
 

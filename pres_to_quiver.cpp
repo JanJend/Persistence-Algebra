@@ -1,6 +1,7 @@
 #include <grlina/graded_linalg.hpp>
 #include <iostream>
 #include <filesystem>
+#include <grlina/quiver_representations.hpp>
 
 using namespace graded_linalg;
 
