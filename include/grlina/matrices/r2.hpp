@@ -151,35 +151,16 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
      * @brief Sorts the row degrees, stores the permutation used and transforms the entries of the sparse col vectors accordingly.
      *
      */
-    void sort_rows_colexicographically() {
-        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->row_degrees, Degree_traits<r2degree>::colex_lambda());
-        vec<index> reverse = vec<index>(permutation.size());
-        for (index i = 0; i < permutation.size(); ++i) {
-            reverse[permutation[i]] = i;
-        }
-        this->transform_data(reverse);
-        this->sort_data();
-
-        this->compatibly_sorted = this->col_degrees.size() <= 1;
+    void sort_rows_colexicographically(R2GradedSparseMatrix* elements = nullptr, const vec<R2GradedSparseMatrix*>& images = {}) {
+        this->sort_rows(TraitLinearOrder<r2degree>{Degree_traits<r2degree>::colex_lambda()}, elements, images);
     }
 
-    vec<index> sort_rows_colexicographically_with_output() {
-        vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->row_degrees, Degree_traits<r2degree>::colex_lambda());
-        vec<index> reverse = vec<index>(permutation.size());
-        for (index i = 0; i < permutation.size(); ++i) {
-            reverse[permutation[i]] = i;
-        }
-        this->transform_data(reverse);
-        this->sort_data();
-
-        this->compatibly_sorted = this->col_degrees.size() <= 1;
-        return permutation;
+    vec<index> sort_rows_colexicographically_with_output(R2GradedSparseMatrix* elements = nullptr,
+                                                       const vec<R2GradedSparseMatrix*>& images = {}) {
+        return this->sort_rows_with_permutation(TraitLinearOrder<r2degree>{Degree_traits<r2degree>::colex_lambda()},
+                                                elements, images).new_to_old;
     }
 
-    /**
-     * @brief Sorts the column degrees, stores the permutation used and then reorders the date with the same permutation.
-     *
-     */
     void sort_columns_colexicographically() {
         vec<index> permutation = sort_and_get_permutation<r2degree, index>(this->col_degrees, Degree_traits<r2degree>::colex_lambda());
         this->permute_columns(permutation);
@@ -195,8 +176,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         return permutation;
     }
 
-    void sort_colexicographically() {
-        this->sort_compatibly(TraitLinearOrder<r2degree>{Degree_traits<r2degree>::colex_lambda()});
+    void sort_colexicographically(R2GradedSparseMatrix* elements = nullptr, const vec<R2GradedSparseMatrix*>& images = {}) {
+        this->sort_compatibly(TraitLinearOrder<r2degree>{Degree_traits<r2degree>::colex_lambda()}, elements, images);
     }
 
     private:
@@ -367,7 +348,8 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     * by snapping all degrees to the next larger degree in x_grid x y_grid
     * (Highly inefficient implementation)
      */
-    void snap_to_grid(const vec<double>& new_x_grid, const vec<double>& new_y_grid) {
+    void snap_to_grid(const vec<double>& new_x_grid, const vec<double>& new_y_grid,
+                      const vec<R2GradedSparseMatrix*>& images = {}) {
         GRLINA_ASSERT(!new_x_grid.empty() && !new_y_grid.empty());
         this->compatibly_sorted = false;
         index m = new_x_grid.size();
@@ -391,10 +373,11 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
                 this->row_degrees[i] = {new_x_grid[snapped.first], new_y_grid[snapped.second]};
             }
         }
+        for (auto* image : images) if (image) image->col_degrees = this->row_degrees;
         this->delete_columns(columns_to_remove);
-        this->delete_rows(rows_to_remove);
-        this->sort_compatibly();
-        this->minimize();
+        this->delete_rows(rows_to_remove, nullptr, images);
+        this->sort_compatibly(nullptr, images);
+        this->minimize(nullptr, images);
     }
 
     void print_grid(){
@@ -519,7 +502,7 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         return grid;
     }
 
-    void snap_to_equidistant_grid(int n, bool end_inclusive = false) {
+    void snap_to_equidistant_grid(int n, bool end_inclusive = false, const vec<R2GradedSparseMatrix*>& images = {}) {
         pair<r2degree> box = this->bounding_box();
         if(n == 0){
             std::cerr << "Error: Cannot snap to an equidistant grid with 0 points." << std::endl;
@@ -536,11 +519,11 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
                 new_x_grid.push_back(box.first[0] + i * step[0]);
                 new_y_grid.push_back(box.first[1] + i * step[1]);
             }
-            this->snap_to_grid(new_x_grid, new_y_grid);
+            this->snap_to_grid(new_x_grid, new_y_grid, images);
         }
     }
 
-    void cut_above(double x_cutoff, double y_cutoff){
+    void cut_above(double x_cutoff, double y_cutoff, const vec<R2GradedSparseMatrix*>& images = {}){
         auto box = this->bounding_box();
         r2degree diagonal = box.second - box.first;
         auto max_degree_x = box.first[0] + x_cutoff * diagonal[0];
@@ -560,10 +543,10 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
         }
 
         this->delete_columns(cols_to_remove);
-        this->delete_rows(rows_to_remove);
+        this->delete_rows(rows_to_remove, nullptr, images);
     };
 
-    void bound_support(r2degree bound) {
+    void bound_support(r2degree bound, const vec<R2GradedSparseMatrix*>& images = {}) {
         vec<index> rows_to_remove;
         for(index i = 0; i < this->get_num_rows(); i++){
             if(this->row_degrees[i][0] > bound[0] || this->row_degrees[i][1] > bound[1]){
@@ -575,9 +558,9 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
                                     r2degree{this->row_degrees[i][0], bound[1]});
             }
         }
-        this->delete_rows(rows_to_remove);
-        this->sort_compatibly();
-        this->minimize();
+        this->delete_rows(rows_to_remove, nullptr, images);
+        this->sort_compatibly(nullptr, images);
+        this->minimize(nullptr, images);
     }
 
 }; // R2GradedSparseMatrix

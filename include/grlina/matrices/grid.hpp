@@ -36,6 +36,7 @@ struct GridGradedSparseMatrix
     using Base = CoordGradedSparseMatrix<Index, Dimension, Index, Self>;
     using D = CoordinateDegree<Index, Dimension>;
     using GridD = CoordinateDegree<Scalar, Dimension>;
+    using degree_type = GridD;
     using Grid = std::array<vec<Scalar>, Dimension>;
 
     // D is an integer degree; GridD is its image under the grid.
@@ -224,9 +225,9 @@ struct GridGradedSparseMatrix
     }
 
     using Base::cancel_local_pairs;
-    void cancel_local_pairs(Self* elements = nullptr) {
+    void cancel_local_pairs(Self* elements = nullptr, const vec<Self*>& images = {}) {
         if (elements) merge_grids(*this, *elements);
-        Base::cancel_local_pairs(elements);
+        Base::cancel_local_pairs(elements, images);
     }
     void shift(const GridD& amount) {
         for (std::size_t a = 0; a < Dimension; ++a)
@@ -313,15 +314,32 @@ struct GridGradedSparseMatrix
     auto induced_quiver_rep(vec<GridD> vertices = {}, array<Index> edges = {});
     std::pair<GridD, GridD> bounding_box() const { return to_coordinates().bounding_box(); }
     vec<GridD> get_equidistant_grid(const int& n) const { return to_coordinates().get_equidistant_grid(n); }
-    void snap_to_grid(Grid axes) {
+    // Coordinate conversion must carry outgoing images as well as the presentation.
+    template <typename Operation>
+    void apply_in_coordinates(Operation operation, const vec<Self*>& images) {
         auto coordinates = to_coordinates();
-        coordinates.snap_to_grid(axes);
+        using Coordinates = decltype(coordinates);
+        vec<Coordinates> image_copies;
+        image_copies.reserve(images.size());
+        for (auto* image : images) if (image) image_copies.push_back(image->to_coordinates());
+        vec<Coordinates*> pointers;
+        for (auto& image : image_copies) pointers.push_back(&image);
+        operation(coordinates, pointers);
         *this = Self(coordinates);
+        std::size_t i = 0;
+        for (auto* image : images) if (image) *image = Self(image_copies[i++]);
+    }
+    void snap_to_grid(Grid axes, const vec<Self*>& images = {}) {
+        apply_in_coordinates([&](auto& coordinates, const auto& outgoing) {
+            coordinates.snap_to_grid(axes, outgoing);
+        }, images);
         reindex_grid(std::move(axes));
     }
     template <std::size_t N = Dimension, std::enable_if_t<N == 2, int> = 0>
-    void snap_to_grid(const vec<Scalar>& x, const vec<Scalar>& y) { snap_to_grid(Grid{x, y}); }
-    void snap_to_equidistant_grid(int n, bool end_inclusive = false) {
+    void snap_to_grid(const vec<Scalar>& x, const vec<Scalar>& y, const vec<Self*>& images = {}) {
+        snap_to_grid(Grid{x, y}, images);
+    }
+    void snap_to_equidistant_grid(int n, bool end_inclusive = false, const vec<Self*>& images = {}) {
         if (n <= 0) return;
         auto box = bounding_box();
         Grid axes;
@@ -329,22 +347,26 @@ struct GridGradedSparseMatrix
             Scalar step = n == 1 ? Scalar{} : (box.second[a] - box.first[a]) / Scalar(end_inclusive ? n - 1 : n);
             for (int i = 0; i < n; ++i) axes[a].push_back(box.first[a] + Scalar(i) * step);
         }
-        snap_to_grid(std::move(axes));
+        snap_to_grid(std::move(axes), images);
     }
-    void cut_above(const std::array<double, Dimension>& cutoffs) {
+    void cut_above(const std::array<double, Dimension>& cutoffs, const vec<Self*>& images = {}) {
         auto axes = grid_;
-        auto coordinates = to_coordinates();
-        coordinates.cut_above(cutoffs);
-        *this = Self(coordinates);
+        apply_in_coordinates([&](auto& coordinates, const auto& outgoing) {
+            coordinates.cut_above(cutoffs, outgoing);
+        }, images);
         reindex_grid(std::move(axes));
     }
     template <std::size_t N = Dimension, std::enable_if_t<N == 2, int> = 0>
-    void cut_above(double x, double y) { cut_above(std::array<double, Dimension>{x, y}); }
-    void bound_support(const GridD& bound) {
-        include_real_degrees({bound});
-        Base::bound_support(grid_degree(bound));
+    void cut_above(double x, double y, const vec<Self*>& images = {}) {
+        cut_above(std::array<double, Dimension>{x, y}, images);
     }
-    void bound_support_at_grid_degree(const D& bound) { Base::bound_support(bound); }
+    void bound_support(const GridD& bound, const vec<Self*>& images = {}) {
+        include_real_degrees({bound});
+        Base::bound_support(grid_degree(bound), images);
+    }
+    void bound_support_at_grid_degree(const D& bound, const vec<Self*>& images = {}) {
+        Base::bound_support(bound, images);
+    }
 
     void set_real_degrees(const vec<GridD>& columns, const vec<GridD>& rows) {
         Grid axes;
@@ -365,9 +387,12 @@ struct GridGradedSparseMatrix
         for (std::size_t a = 0; a < Dimension; ++a) result[a] = grid_[a][degree[a]];
         return result;
     }
-    GridD real_col_degree(Index column) const { return real_degree(this->col_degrees[column]); }
+    /** Actual coordinates; row_degrees and col_degrees continue to store indices. */
+    degree_type row_degree(Index row) const { return real_degree(this->row_degrees[row]); }
+    degree_type col_degree(Index column) const { return real_degree(this->col_degrees[column]); }
+    GridD real_col_degree(Index column) const { return col_degree(column); }
     GridD real_column_degree(Index column) const { return real_col_degree(column); }
-    GridD real_row_degree(Index row) const { return real_degree(this->row_degrees[row]); }
+    GridD real_row_degree(Index row) const { return row_degree(row); }
     vec<GridD> real_col_degrees() const { return decode_degrees(this->col_degrees); }
     vec<GridD> real_column_degrees() const { return real_col_degrees(); }
     vec<GridD> real_row_degrees() const { return decode_degrees(this->row_degrees); }
@@ -460,17 +485,6 @@ private:
 // matrix's stored degree unchanged. For example, a grid matrix can store {2, 1}
 // for the actual degree {10.0, 7.0}. Indices from different grids cannot be compared
 // directly, so shared algorithms (e.g. the graded linear solver) use these helpers.
-//
-// Serialization needs the same actual degree type, so reuse its type selection.
-// The default template argument requires col_degrees to exist. This lets overloads
-// using this alias be skipped for non-matrix arguments (e.g. End_2d_0(module, ...))
-// instead of causing an error inside MatrixSerializedDegree.
-template <typename Matrix, typename = matrix_degree_t<Matrix>>
-using matrix_geometry_degree_t = typename MatrixSerializedDegree<Matrix>::type;
-
-// A compile-time flag: only the selected if constexpr branch is compiled.
-template <typename Matrix>
-inline constexpr bool matrix_grid_backed_v = MatrixSerializedDegree<Matrix>::grid;
 
 // Create a zero matrix of the requested shape, preserving the reference grid.
 template <typename Matrix>
@@ -486,21 +500,21 @@ Matrix empty_matrix_like(const Matrix& reference, matrix_index_t<Matrix> columns
 
 // Convert one stored degree to its actual value.
 template <typename Matrix, typename Degree>
-matrix_geometry_degree_t<Matrix> geometric_degree(const Matrix& matrix, const Degree& degree) {
+typename Matrix::degree_type geometric_degree(const Matrix& matrix, const Degree& degree) {
     if constexpr (matrix_grid_backed_v<Matrix>) return matrix.real_degree(degree);
-    else return matrix_degree_t<Matrix>(degree);
+    else return base_degree<Matrix>(degree);
 }
 
 // Return a copy of all row degrees as actual values.
 template <typename Matrix>
-std::vector<matrix_geometry_degree_t<Matrix>> geometric_row_degrees(const Matrix& matrix) {
+std::vector<typename Matrix::degree_type> geometric_row_degrees(const Matrix& matrix) {
     if constexpr (matrix_grid_backed_v<Matrix>) return matrix.real_row_degrees();
     else return {matrix.row_degrees.begin(), matrix.row_degrees.end()};
 }
 
 // Return a copy of all column degrees as actual values.
 template <typename Matrix>
-std::vector<matrix_geometry_degree_t<Matrix>> geometric_col_degrees(const Matrix& matrix) {
+std::vector<typename Matrix::degree_type> geometric_col_degrees(const Matrix& matrix) {
     if constexpr (matrix_grid_backed_v<Matrix>) return matrix.real_col_degrees();
     else return {matrix.col_degrees.begin(), matrix.col_degrees.end()};
 }
@@ -509,8 +523,8 @@ std::vector<matrix_geometry_degree_t<Matrix>> geometric_col_degrees(const Matrix
 // Keep existing grid points as well as any new points needed by these degrees.
 template <typename Matrix>
 void set_geometric_degrees(Matrix& matrix,
-                          const std::vector<matrix_geometry_degree_t<Matrix>>& columns,
-                          const std::vector<matrix_geometry_degree_t<Matrix>>& rows) {
+                          const std::vector<typename Matrix::degree_type>& columns,
+                          const std::vector<typename Matrix::degree_type>& rows) {
     if constexpr (matrix_grid_backed_v<Matrix>) {
         auto axes = matrix.grid_;
         matrix.set_real_degrees(columns, rows);
@@ -527,7 +541,7 @@ void set_geometric_degrees(Matrix& matrix,
 // Convert an actual query point to stored coordinates. On a grid, each coordinate
 // becomes the last axis index at or below the point (-1 below the first point).
 template <typename Matrix>
-auto query_matrix_degree(const Matrix& matrix, const matrix_geometry_degree_t<Matrix>& degree) {
+auto query_matrix_degree(const Matrix& matrix, const typename Matrix::degree_type& degree) {
     if constexpr (matrix_grid_backed_v<Matrix>) return matrix.query_degree(degree);
     else return degree;
 }

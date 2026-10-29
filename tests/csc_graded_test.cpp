@@ -51,6 +51,34 @@ void make_graded_filters_entries() {
     }
 }
 
+template<class Storage>
+void empty_presentation_io() {
+    using Matrix = R2GradedSparseMatrix<int, Storage>;
+    const Matrix zero(0, 0);
+    std::stringstream direct_scc, module_scc;
+    zero.to_stream(direct_scc);
+    assert(direct_scc.str() == "scc2020\n2\n0 0 0\n");
+    const Matrix parsed(direct_scc);
+    assert(parsed.get_num_cols() == 0 && parsed.get_num_rows() == 0);
+
+    Module<Matrix>(zero).to_stream(module_scc);
+    assert(module_scc.str() == direct_scc.str());
+    const Module<Matrix> reloaded(module_scc);
+    assert(reloaded.presentation().get_num_cols() == 0 && reloaded.num_of_gens() == 0);
+
+    std::ostringstream body;
+    zero.to_stream(body, false);
+    assert(body.str().empty());
+
+    // A map into the zero space may still have columns to serialize.
+    const Matrix no_rows(1, 0, {{}}, {{1, 2}}, {});
+    std::stringstream columns_scc;
+    no_rows.to_stream(columns_scc);
+    const Matrix columns_parsed(columns_scc);
+    assert(columns_parsed.get_num_rows() == 0 && columns_parsed.get_num_cols() == 1);
+    assert(columns_parsed.col_degrees == no_rows.col_degrees);
+}
+
 void storage_and_const_io() {
     vec<std::size_t> offsets{0, 2, 2, 3};
     vec<int> entries{0, 2, 1};
@@ -109,8 +137,8 @@ void shared_graded_algorithms() {
     assert(kernel.get_col(0) == vec<int>({0, 1}));
 
     Mod module(original);
-    assert(dimension_at(module, {0, 0}) == 1);
-    assert(dimension_at(module, {1, 1}) == 0);
+    assert(module.dimension_at({0, 0}) == 1);
+    assert(module.dimension_at({1, 1}) == 0);
     auto fibre = module.local_presentation_at({1, 1});
     static_assert(std::is_same_v<decltype(fibre.first), Base>);
     vec<int> which;
@@ -120,7 +148,7 @@ void shared_graded_algorithms() {
     std::stringstream stream;
     module.to_stream(stream);
     Mod roundtrip(stream);
-    assert(dimension_at(roundtrip, {0, 0}) == 1);
+    assert(roundtrip.dimension_at({0, 0}) == 1);
 
     auto transpose = original.transposed_copy();
     static_assert(std::is_same_v<decltype(transpose), Mat>);
@@ -170,19 +198,21 @@ void module_constructions() {
     assert(quotient.check_lifts());
     assert(module_hom_space_basis<Mat>(free, interval).size() == 1);
     auto sum = direct_sum<Mat>(free, interval);
-    assert(dimension_at(*sum.module, {0, 0}) == 2);
-    assert(dimension_at(*sum.module, {1, 1}) == 1);
+    assert(sum.module->dimension_at({0, 0}) == 2);
+    assert(sum.module->dimension_at({1, 1}) == 1);
     assert(sum.inclusion_left.check_lifts() && sum.projection_right.check_lifts());
     auto twice = quotient + quotient;
     assert(twice.generator_lift().get_col(0).empty());
     assert(twice.check_lifts());
     auto k = kernel(quotient);
     assert(k.inclusion.check_lifts());
-    assert(dimension_at(*k.module, {0, 0}) == 0);
-    assert(dimension_at(*k.module, {1, 1}) == 1);
+    assert(k.module->dimension_at({0, 0}) == 0);
+    assert(k.module->dimension_at({1, 1}) == 1);
 }
 
 int main() {
+    empty_presentation_io<vec<vec<int>>>();
+    empty_presentation_io<CSCStorage<int>>();
     make_graded_filters_entries<vec<vec<int>>>();
     make_graded_filters_entries<CSCStorage<int>>();
     storage_and_const_io();

@@ -22,6 +22,12 @@ values. Use `dim_at_grid_degree(indices)` or
 `append_column_at_grid_degree(column, indices)` for stored indices. This rule
 also applies when `Scalar` and `Index` are the same integer type.
 
+All graded matrices expose `degree_type`, `row_degree(i)`, and `col_degree(j)`
+for actual degrees. Ordinary matrices return their stored degree; grid matrices
+decode the stored indices through their grid. `base_degree<Matrix>` is the type
+stored in `row_degrees` and `col_degrees`; `Matrix::degree_type` is the actual
+degree type. These types coincide for ordinary matrices.
+
 ### Optional CSC matrix storage
 
 Include `<grlina/matrices/sparse.hpp>` for `CSCMatrix`, the sparse matrix alias
@@ -55,7 +61,8 @@ Other matrix types use the generic storage traits.
 
 Matrix templates use their template parameter names directly. Generic code can
 obtain types from the matrix interface with `matrix_index_t<Matrix>`,
-`matrix_storage_t<Matrix>`, `matrix_column_t<Matrix>`, and `matrix_degree_t<Matrix>`.
+`matrix_storage_t<Matrix>`, `matrix_column_t<Matrix>`, `base_degree<Matrix>`, and
+`typename Matrix::degree_type`.
 
 CSC uses a contiguous row-index array and a `std::size_t` column-offset array.
 Matrix copies share these two buffers; a write detaches them first. Degree arrays,
@@ -468,14 +475,13 @@ include/grlina/
 ├── module/
 │   ├── module_base.hpp       # Module, resolutions, Hilbert queries and homology
 │   ├── submodule.hpp         # Submodule, parent/generator maps and matrix adapters
-│   ├── transformations.hpp   # Sorting/minimization with transported maps
 │   ├── constructions.hpp     # Sums, quotients, pullbacks and pushouts with maps
 │   └── epsilon.hpp           # Epsilon images and kernels
 ├── isomorphism_test.hpp       # Exact module isomorphism decisions
 ├── quiver_representations.hpp # Quiver types, I/O and presentation conversion
 ├── invariants/
 │   ├── hilbert_plot.hpp      # Hilbert function PNG visualization
-│   └── landscape.hpp         # Rank landscapes and R2 CSV/SVG export
+│   └── landscape.hpp         # Rank landscapes, PNG bytes and R2 CSV/SVG export
 ├── proj_chain_complex.hpp    # ChainComplex, SCC I/O and ChainBasisMaps
 ├── graded_linalg.hpp         # Aggregate library API
 ├── general.hpp               # Timing, files, containers, sorting and formatting
@@ -557,11 +563,14 @@ Each tool reads from a file path passed as the first argument and writes to stdo
 ### Computing a persistence landscape
 
 ```cpp
+#define STB_IMAGE_WRITE_IMPLEMENTATION // in one .cpp, before any grlina include
 #include <grlina/invariants/landscape.hpp>
 using namespace graded_linalg;
 
 Module<R2Matrix<>> module("presentation_or_resolution.scc");
 Landscape landscape(module); // 1% resolution; degree bounds enlarged by 20%
+auto png = landscape.image(1, 800, 600); // layer 1 as PNG bytes; no file created
+// save_png(png, "landscape.png"); // explicitly save when wanted
 landscape.save("landscape", 3); // barcode CSV, grid CSV, and SVG with three layers
 
 Landscape cropped(module, {0, 0, 1, 1}, 0.01); // xmin,ymin,xmax,ymax; relative resolution
@@ -581,7 +590,18 @@ Betti-degree bounds for a minimal presentation. Constant axes use a unit span.
 with bounds/direction/resolution metadata and `slice,offset,birth,death` rows.
 Empty slices have blank endpoints; infinite deaths are retained. It also writes
 the sampled `landscape.csv` (`x,y,layer,value`) and labelled `landscape.svg` views.
-Only saving materializes a grid. Bounds never clip bars or the module itself.
+Only rendering/exporting materializes a grid. Bounds never clip bars or the module itself.
+
+`image(layer = 1, width = 800, height = 600)` returns PNG bytes for one
+1-based layer, sampled from the cached barcodes at each pixel. It performs no
+matrix reductions and keeps the existing interpolation error bound. Width and
+height count heatmap pixels; labels add 265 horizontal and 185 vertical pixels.
+Heights use a linear white-to-blue colour scale. Layers above those present in
+the barcodes give zero images. The bytes can be passed to Jupyter's
+`IPython.display.Image(data=png_bytes)`, just like Hilbert images. Define
+`STB_IMAGE_WRITE_IMPLEMENTATION` before any grlina include in one translation
+unit that supplies the PNG encoder; numerical queries and CSV/SVG exports do
+not require it.
 
 This follows [Vipond's diagonal-slice construction, Proposition 41](https://jmlr.org/papers/volume21/19-054/19-054.pdf).
 The standalone `landscape_at` remains available for exact individual queries
@@ -657,7 +677,7 @@ int main() {
     module.to_stream(out);
 
     r2degree alpha = {1.5, 2.0};
-    std::cout << "dim at (1.5, 2.0) = " << dimension_at(module, alpha) << "\n";
+    std::cout << "dim at (1.5, 2.0) = " << module.dimension_at(alpha) << "\n";
 }
 ```
 

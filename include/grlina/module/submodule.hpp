@@ -45,15 +45,16 @@ private:
     void minimize_parent_impl(bool remove_extra_relations) {
         Matrix presentation = parent()->presentation();
         Matrix generators = generator_matrix();
-        auto rows = presentation.sort_rows_with_permutation();
-        generators.permute_rows_graded(rows.old_to_new);
-        presentation.sort_columns_lexicographically();
-        presentation.compatibly_sorted = true;
-        presentation.cancel_local_pairs(&generators);
+        auto cycles = parent()->cycles;
+        vec<Matrix*> images;
+        if (cycles) images.push_back(&*cycles);
+        presentation.sort_compatibly(&generators, images);
+        presentation.cancel_local_pairs(&generators, images);
         presentation.column_reduction_graded_w_deletion();
         auto minimized_parent = std::make_shared<module_type>(std::move(presentation));
         if (remove_extra_relations) minimized_parent->presentation().remove_redundant_relations();
         minimized_parent->inj_res_ = parent()->inj_res_;
+        minimized_parent->cycles = std::move(cycles);
         generator_map_ = make_generator_map(std::move(minimized_parent), std::move(generators));
         this->proj_res_.clear();
         this->res_complete_ = false;
@@ -113,14 +114,14 @@ public:
     /** Move generator degrees forward by a nonnegative amount, keeping the
      * parent fixed. This is multiplication by x^amount, not a module twist.
      */
-    void shift_generators(const matrix_geometry_degree_t<Matrix>& amount) {
-        static_assert(has_degree_add_v<matrix_geometry_degree_t<Matrix>>,
+    void shift_generators(const typename Matrix::degree_type& amount) {
+        static_assert(has_degree_add_v<typename Matrix::degree_type>,
                       "Shifting submodule generators requires Degree_traits::add(amount, degree)");
-        using Degree = matrix_degree_t<Matrix>;
+        using Degree = base_degree<Matrix>;
         Matrix generators = generator_matrix();
         if constexpr (matrix_grid_backed_v<Matrix>) {
             auto columns = geometric_col_degrees(generators);
-            for (auto& degree : columns) Degree_traits<matrix_geometry_degree_t<Matrix>>::add(amount, degree);
+            for (auto& degree : columns) Degree_traits<typename Matrix::degree_type>::add(amount, degree);
             set_geometric_degrees(generators, columns, geometric_row_degrees(generators));
         } else for (auto& degree : generators.col_degrees) Degree_traits<Degree>::add(amount, degree);
         replace_generator_map(std::move(generators), generator_map_.id_matrix());
@@ -180,7 +181,7 @@ public:
             while (pivot != -1) {
                 index_type reducer = -1;
                 for (auto relation : relations_by_pivot[pivot])
-                    if (Degree_traits<matrix_geometry_degree_t<Matrix>>::smaller_equal(
+                    if (Degree_traits<typename Matrix::degree_type>::smaller_equal(
                             geometric_degree(presentation, presentation.col_degrees[relation]),
                             geometric_degree(generators, generators.col_degrees[g]))) {
                         reducer = relation;
@@ -215,7 +216,7 @@ public:
                 index_type c = -1, r = -1;
                 for (index_type j = 0; j < syzygies.get_num_cols() && c == -1; ++j)
                     for (index_type i : syzygies.data[j])
-                        if (i >= relations && Degree_traits<matrix_degree_t<Matrix>>::equals(
+                        if (i >= relations && Degree_traits<base_degree<Matrix>>::equals(
                                 syzygies.col_degrees[j], syzygies.row_degrees[i])) {
                             c = j; r = i; break;
                         }
@@ -316,25 +317,39 @@ public:
         module_type::compute_projective_resolution();
     }
 
-    void sort_compatibly() override {
-        sort_compatibly(TraitLinearOrder<matrix_degree_t<Matrix>>{
-            Degree_traits<matrix_degree_t<Matrix>>::lex_lambda()});
+    void sort_compatibly(Matrix* elements = nullptr, vec<Matrix*> images = {}) override {
+        sort_compatibly(TraitLinearOrder<base_degree<Matrix>>{
+            Degree_traits<base_degree<Matrix>>::lex_lambda()}, elements, std::move(images));
     }
 
-    template <typename Compare>
-    void sort_compatibly(Compare compare) {
+    template <typename Compare, std::enable_if_t<std::is_convertible_v<Compare,
+        std::function<bool(const base_degree<Matrix>&, const base_degree<Matrix>&)>>, int> = 0>
+    void sort_compatibly(Compare compare, Matrix* elements = nullptr, vec<Matrix*> images = {}) {
         Matrix generators = generator_matrix();
-        generators.sort_columns(compare);
-        module_type::sort_compatibly(compare);
+        if (this->has_presentation()) {
+            images.push_back(&generators);
+            module_type::sort_compatibly(compare, elements, std::move(images));
+        } else {
+            auto permutation = generators.sort_columns_with_permutation(compare);
+            if (elements) elements->permute_rows_graded(permutation.old_to_new);
+            for (auto* image : images) if (image) image->permute_columns_graded(permutation.new_to_old);
+        }
         generator_map_ = make_generator_map(parent(), std::move(generators));
     }
 
-    void minimize_presentation(bool /*sort_if_needed*/ = true) override {
-        compute_presentation(true);
+    void minimize_presentation(bool sort_if_needed = true, Matrix* elements = nullptr,
+                               vec<Matrix*> images = {}) override {
+        if (!elements && images.empty()) { compute_presentation(true); return; }
+        if (!this->has_presentation()) compute_presentation();
+        Matrix generators = generator_matrix();
+        images.push_back(&generators);
+        module_type::minimize_presentation(sort_if_needed, elements, std::move(images));
+        generator_map_ = make_generator_map(parent(), std::move(generators));
     }
 
-    void minimize_resolution(bool sort_if_needed = true) override {
-        minimize_presentation(sort_if_needed);
+    void minimize_resolution(bool sort_if_needed = true, Matrix* elements = nullptr,
+                             vec<Matrix*> images = {}) override {
+        minimize_presentation(sort_if_needed, elements, std::move(images));
         this->compute_projective_resolution();
     }
 
@@ -399,14 +414,14 @@ Submodule<Matrix> Module<Matrix>::zero_submodule() const {
  */
 template <typename Matrix>
 Submodule<Matrix> submodule_generated_at(std::shared_ptr<const Module<Matrix>> parent,
-                                       const matrix_geometry_degree_t<Matrix>& degree) {
+                                       const typename Matrix::degree_type& degree) {
     GRLINA_DEBUG_CHECK(if (!parent) throw std::invalid_argument("A generated submodule requires a parent"));
     const Matrix& presentation = parent->presentation();
     auto basis = presentation.basislift_at(degree);
     Matrix generators = empty_matrix_like(presentation, static_cast<matrix_index_t<Matrix>>(basis.size()), presentation.get_num_rows());
     for (matrix_index_t<Matrix> j = 0; j < generators.get_num_cols(); ++j)
         generators.set_col(j, {basis[j]});
-    set_geometric_degrees(generators, std::vector<matrix_geometry_degree_t<Matrix>>(generators.get_num_cols(), degree),
+    set_geometric_degrees(generators, std::vector<typename Matrix::degree_type>(generators.get_num_cols(), degree),
                                              geometric_row_degrees(presentation));
     return Submodule<Matrix>(std::move(parent), std::move(generators));
 }

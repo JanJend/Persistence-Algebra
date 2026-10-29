@@ -42,7 +42,7 @@ Matrix presentation(2, 1, 3, {{0}, {0}},
 Matrix empty_five_parameter_map(0, 0, 5);
 presentation.sort_compatibly();
 Module<Matrix> module(presentation);
-auto dimension = dimension_at(module, Degree{0, 0, 0}); // 1
+auto dimension = module.dimension_at(Degree{0, 0, 0}); // 1
 ```
 
 The new matrix derives from the existing `SparseMatrix<Index, Storage>`,

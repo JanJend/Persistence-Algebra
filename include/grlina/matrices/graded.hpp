@@ -44,19 +44,26 @@ template <typename D, typename index, typename DERIVED, typename Storage = vec<v
 #endif
 struct GradedSparseMatrix;
 
+/** Type stored in row_degrees and col_degrees; grid matrices store index tuples. */
 template <typename Matrix>
-using matrix_degree_t = typename decltype(std::declval<Matrix&>().col_degrees)::value_type;
+using base_degree = typename decltype(std::declval<Matrix&>().col_degrees)::value_type;
+
+template <typename Matrix, typename = void>
+inline constexpr bool matrix_grid_backed_v = false;
+
+template <typename Matrix>
+inline constexpr bool matrix_grid_backed_v<Matrix, std::void_t<typename Matrix::GridD>> = true;
 
 /** Compile-time check for the graded-matrix CRTP contract used by module code. */
 template <typename Matrix, typename = void>
 struct is_graded_sparse_matrix : std::false_type {};
 
 template <typename Matrix>
-struct is_graded_sparse_matrix<Matrix, std::void_t<matrix_degree_t<Matrix>,
+struct is_graded_sparse_matrix<Matrix, std::void_t<base_degree<Matrix>,
                                                 matrix_index_t<Matrix>,
                                                 matrix_storage_t<Matrix>,
-                                                std::enable_if_t<is_degree_v<matrix_degree_t<Matrix>>>>>
-    : std::is_base_of<GradedSparseMatrix<matrix_degree_t<Matrix>,
+                                                std::enable_if_t<is_degree_v<base_degree<Matrix>>>>>
+    : std::is_base_of<GradedSparseMatrix<base_degree<Matrix>,
                                        matrix_index_t<Matrix>,
                                        Matrix, matrix_storage_t<Matrix>>, Matrix> {};
 
@@ -83,6 +90,8 @@ template <typename D, typename index, typename DERIVED, typename Storage>
 #endif
 struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
 
+    using degree_type = D;
+
     static_assert(is_degree_v<D>, "Degree_traits must provide poset comparisons and a linear extension");
 
     static_assert(std::is_integral_v<index> && std::is_signed_v<index> &&
@@ -91,6 +100,10 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
 
     vec<D> col_degrees;
     vec<D> row_degrees;
+
+    /** Actual degrees; grid matrices provide accessors that decode their indices. */
+    const degree_type& row_degree(index i) const { return row_degrees[i]; }
+    const degree_type& col_degree(index j) const { return col_degrees[j]; }
 
     /** Both degree lists are sorted by a compatible order. Sorting or explicit
      * order checks set this flag; direct degree edits must update it.
@@ -390,8 +403,15 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
         this->num_rows = this->row_degrees.size();
     }
 
-    void cull_columns(const index& threshold, bool from_end) {
-
+    void cull_columns(const index& threshold, bool from_end, DERIVED* elements = nullptr,
+                      const vec<DERIVED*>& generator_images = {}) {
+        if (elements) elements->cull_columns(threshold, from_end);
+        if (!generator_images.empty()) {
+            vec<index> removed;
+            const auto count = from_end ? this->num_rows - threshold : threshold;
+            for (index i = count; i < this->num_rows; ++i) removed.push_back(i);
+            for (auto* image : generator_images) if (image) image->delete_columns(removed);
+        }
         SparseMatrix<index, Storage>::cull_columns(threshold, from_end);
         this->row_degrees.resize(this->num_rows);
     }
@@ -407,14 +427,8 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
         // Set the precision for floating-point output
         out << std::fixed << std::setprecision(17);
 
-        if(row_degrees.size() == 0){
-            std::cerr << "No rows in this matrix." << std::endl;
-            return;
-        }
-
-        int dimension = Degree_traits<D>::position(this->row_degrees[0]).size();
         if(header) {
-            out << "scc2020\n" << dimension << std::endl;
+            out << "scc2020\n" << Degree_traits<D>::poset_id << std::endl;
             out << this->get_num_cols() << " " << this->get_num_rows() << " 0" << std::endl;
         }
         for(index i = 0; i < this->get_num_cols(); i++){
@@ -619,9 +633,20 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
      *
      * @param indices
      */
-    void delete_rows(vec<index>& indices) {
+    void delete_rows(vec<index>& indices, DERIVED* elements = nullptr,
+                     const vec<DERIVED*>& generator_images = {}) {
+        if (elements) elements->delete_rows(indices);
+        for (auto* images : generator_images) if (images) images->delete_columns(indices);
         SparseMatrix<index, Storage>::delete_rows(indices);
         vec_deletion(row_degrees, indices);
+    }
+
+    /** Reorder columns and their degrees together (new index -> old index). */
+    void permute_columns_graded(const vec<index>& new_to_old) {
+        auto degrees = col_degrees;
+        this->permute_columns(new_to_old);
+        for (index j = 0; j < this->num_cols; ++j) col_degrees[j] = degrees[new_to_old[j]];
+        compatibly_sorted = false;
     }
 
 
@@ -645,34 +670,33 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
 
     /** Sort rows by an arbitrary compatible linear order. */
     template <typename Compare>
-    void sort_rows(Compare compare) {
-        vec<index> permutation = sort_and_get_permutation<D, index>(this->row_degrees, compare);
+    void sort_rows(Compare compare, DERIVED* elements = nullptr,
+                   const vec<DERIVED*>& generator_images = {}) {
+        auto degrees = row_degrees;
+        vec<index> permutation = sort_and_get_permutation<D, index>(degrees, compare);
         vec<index> reverse(permutation.size());
         for (index i = 0; i < static_cast<index>(permutation.size()); ++i) {
             reverse[permutation[i]] = i;
         }
-        this->transform_data(reverse);
-        this->sort_data();
+        permute_rows_graded(reverse, elements, generator_images);
 
         compatibly_sorted = col_degrees.size() <= 1;
     }
 
     /** Sort rows and columns by the same compatible linear order. */
-    template <typename Compare>
-    void sort_compatibly(Compare compare) {
+    template <typename Compare, std::enable_if_t<std::is_convertible_v<Compare,
+        std::function<bool(const D&, const D&)>>, int> = 0>
+    void sort_compatibly(Compare compare, DERIVED* elements = nullptr,
+                         const vec<DERIVED*>& generator_images = {}) {
         auto columns = sort_and_get_permutation<D, index>(col_degrees, compare);
         this->permute_columns(columns);
-        auto rows = sort_and_get_permutation<D, index>(row_degrees, compare);
-        vec<index> old_to_new(rows.size());
-        for (index i = 0; i < this->num_rows; ++i) old_to_new[rows[i]] = i;
-        this->transform_data(old_to_new);
-        this->sort_data();
+        sort_rows(compare, elements, generator_images);
         compatibly_sorted = true;
     }
 
     /** Sort with the mandatory linear order supplied by Degree_traits. */
-    void sort_compatibly() {
-        sort_compatibly(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()});
+    void sort_compatibly(DERIVED* elements = nullptr, const vec<DERIVED*>& generator_images = {}) {
+        sort_compatibly(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()}, elements, generator_images);
     }
 
     struct SortingPermutation {
@@ -694,20 +718,23 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
     SortingPermutation sort_columns_with_permutation() {
         return sort_columns_with_permutation(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()});
     }
-    template <typename Compare>
-    SortingPermutation sort_rows_with_permutation(Compare compare) {
+    template <typename Compare, std::enable_if_t<std::is_convertible_v<Compare,
+        std::function<bool(const D&, const D&)>>, int> = 0>
+    SortingPermutation sort_rows_with_permutation(Compare compare, DERIVED* elements = nullptr,
+                                                 const vec<DERIVED*>& generator_images = {}) {
         auto degrees = row_degrees;
         auto new_to_old = sort_and_get_permutation<D, index>(degrees, compare);
         vec<index> old_to_new(new_to_old.size());
         for (index i = 0; i < static_cast<index>(new_to_old.size()); ++i)
             old_to_new[new_to_old[i]] = i;
-        permute_rows_graded(old_to_new);
+        permute_rows_graded(old_to_new, elements, generator_images);
 
         compatibly_sorted = col_degrees.size() <= 1;
         return {std::move(old_to_new), std::move(new_to_old)};
     }
-    SortingPermutation sort_rows_with_permutation() {
-        return sort_rows_with_permutation(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()});
+    SortingPermutation sort_rows_with_permutation(DERIVED* elements = nullptr,
+                                                  const vec<DERIVED*>& generator_images = {}) {
+        return sort_rows_with_permutation(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()}, elements, generator_images);
     }
 
     /**
@@ -741,8 +768,8 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
      * @brief Sorts the rows lexicographically by degree, then transforms the data accordingly.
      *
      */
-    void sort_rows_lexicographically(){
-        sort_rows(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()});
+    void sort_rows_lexicographically(DERIVED* elements = nullptr, const vec<DERIVED*>& generator_images = {}) {
+        sort_rows(TraitLinearOrder<D>{Degree_traits<D>::lex_lambda()}, elements, generator_images);
     }
 
     /**
@@ -750,22 +777,20 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
      *
      * @return vec<index>
      */
-    vec<index> sort_rows_lexicographically_with_output(){
-        vec<index> permutation = sort_and_get_permutation<D, index>(this->row_degrees, Degree_traits<D>::lex_lambda());
-        // Need inverse of permutation
-        vec<index> reverse = vec<index>(permutation.size());
-        for (int i = 0; i < permutation.size(); ++i) {
-            reverse[permutation[i]] = i;
-        }
-        this->transform_data(reverse);
-        this->sort_data();
-
-        compatibly_sorted = col_degrees.size() <= 1;
-        return permutation;
+    vec<index> sort_rows_lexicographically_with_output(DERIVED* elements = nullptr,
+                                                      const vec<DERIVED*>& generator_images = {}) {
+        return sort_rows_with_permutation(elements, generator_images).new_to_old;
     }
 
-    void permute_rows_graded(const vec<index>& permutation) {
+    void permute_rows_graded(const vec<index>& permutation, DERIVED* elements = nullptr,
+                             const vec<DERIVED*>& generator_images = {}) {
         GRLINA_ASSERT(permutation.size() == this->get_num_rows());
+        if (elements) elements->permute_rows_graded(permutation);
+        if (!generator_images.empty()) {
+            vec<index> new_to_old(permutation.size());
+            for (index i = 0; i < this->num_rows; ++i) new_to_old[permutation[i]] = i;
+            for (auto* images : generator_images) if (images) images->permute_columns_graded(new_to_old);
+        }
         this->transform_data(permutation);
         this->sort_data();
         vec<D> new_row_degrees(this->get_num_rows());
@@ -812,8 +837,11 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
      * use a temporary row ordering, preserving the order of surviving bases.
      * This is valid for every degree poset and needs no kernel algorithm.
      */
-    void cancel_local_pairs(DERIVED* elements = nullptr) {
-        cancel_local_pairs(elements, nullptr, [](auto&, auto&) {});
+    void cancel_local_pairs(DERIVED* elements = nullptr, const vec<DERIVED*>& generator_images = {}) {
+        // Surviving target generators keep their original representatives.
+        cancel_local_pairs(elements, nullptr, [&](auto&, auto& rows) {
+            for (auto* images : generator_images) if (images) images->delete_columns(rows);
+        });
     }
 
     /** Also transport source basis images and report paired indices once.
@@ -982,24 +1010,24 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
     }
 
     /** Standard minimization: local cancellation, then graded-kernel relations. */
-    void minimize() {
+    void minimize(DERIVED* elements = nullptr, const vec<DERIVED*>& generator_images = {}) {
         if constexpr (!has_matrix_graded_kernel<DERIVED>::value) {
             // Jan: supply the graded kernel to enable full presentation minimization.
             throw std::logic_error("minimize requires a poset-specific graded_kernel; use semi_minimize for local pairs");
         } else {
-            cancel_local_pairs();
+            static_cast<DERIVED*>(this)->cancel_local_pairs(elements, generator_images);
             remove_redundant_relations();
         }
     }
 
     /** Optional cheap reduction before the same complete minimization. */
-    void minimize_variant() {
+    void minimize_variant(DERIVED* elements = nullptr, const vec<DERIVED*>& generator_images = {}) {
         GRLINA_DEBUG_CHECK(if (!compatibly_sorted)
             throw std::invalid_argument("minimize_variant requires compatibly sorted rows and columns"));
         if constexpr (!has_matrix_graded_kernel<DERIVED>::value) {
             throw std::logic_error("minimize_variant requires a poset-specific graded_kernel");
         } else {
-            cancel_local_pairs();
+            static_cast<DERIVED*>(this)->cancel_local_pairs(elements, generator_images);
             column_reduction_graded_w_deletion();
             remove_redundant_relations();
         }
@@ -1106,8 +1134,8 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
     }
 
     /** Backwards-compatible name for local pair cancellation. */
-    void semi_minimize() {
-        this->cancel_local_pairs();
+    void semi_minimize(DERIVED* elements = nullptr, const vec<DERIVED*>& generator_images = {}) {
+        static_cast<DERIVED*>(this)->cancel_local_pairs(elements, generator_images);
     }
 
 

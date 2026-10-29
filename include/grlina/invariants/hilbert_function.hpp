@@ -1,58 +1,105 @@
-/** @file invariants/hilbert_function.hpp @brief Hilbert values, grids and Euler evaluation. */
+/** @file invariants/hilbert_function.hpp
+ * @brief Module dimensions, induced-grid Hilbert functions and PNG images.
+ *
+ * Numerical queries never build or change a resolution. A stored complete
+ * resolution enables Euler counting; otherwise we reduce local presentations.
+ * Images reuse the induced-grid table and sample it at equidistant pixels.
+ */
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <numeric>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <vector>
 #include <grlina/module/module_base.hpp>
+#include <grlina/invariants/hilbert_plot.hpp>
 
 namespace graded_linalg {
+namespace hilbert_detail {
 
-template <typename Degree, typename Index>
-struct HilbertValue { Degree degree; Index dimension; };
+template <typename Degree> inline constexpr bool two_parameters = false;
+template <typename Scalar>
+inline constexpr bool two_parameters<CoordinateDegree<Scalar, 2>> = true;
 
-template <typename Index>
-struct R2HilbertGrid {
-    vec<double> x_grid;
-    vec<double> y_grid;
+} // namespace hilbert_detail
+
+/** A two-parameter Hilbert function tabulated on a Cartesian grid.
+ * values[x][y] is the integer dimension at (x_grid[x], y_grid[y]).
+ * For an induced/stored grid this represents the full function: use the
+ * greatest grid coordinate <= the query on each axis, or zero below an axis.
+ * A table on explicitly supplied axes stores only those samples; omitted
+ * change coordinates cannot be recovered from that table alone.
+ */
+template <typename Scalar, typename Index>
+struct HilbertFunction {
+    vec<Scalar> x_grid;
+    vec<Scalar> y_grid;
     array<Index> values;
-    Index maximum = 0;
+    Index maximum = 0; // Thickness when this is the full induced-grid table.
+
+    /** Resample by coordinate predecessors, without algebraic computation.
+     * Query coordinates can have another scalar type (e.g. fractional pixels
+     * for a module with integer degrees). Empty axes produce empty dimensions.
+     */
+    template <typename QueryScalar>
+    HilbertFunction<QueryScalar, Index> on_grid(const vec<QueryScalar>& xs,
+                                               const vec<QueryScalar>& ys) const {
+        hilbert_detail::validate_axis(xs);
+        hilbert_detail::validate_axis(ys);
+        hilbert_detail::validate_axis(x_grid);
+        hilbert_detail::validate_axis(y_grid);
+        if (values.size() != x_grid.size() ||
+            std::any_of(values.begin(), values.end(), [&](const auto& row) { return row.size() != y_grid.size(); }))
+            throw std::invalid_argument("Hilbert dimensions must match the coordinate axes");
+        HilbertFunction<QueryScalar, Index> result{xs, ys};
+        result.values.assign(xs.size(), vec<Index>(ys.size(), 0));
+        // One binary search per axis coordinate, rather than per pixel.
+        vec<std::size_t> x_ends, y_ends;
+        for (auto x : xs)
+            x_ends.push_back(std::upper_bound(x_grid.begin(), x_grid.end(), x) - x_grid.begin());
+        for (auto y : ys)
+            y_ends.push_back(std::upper_bound(y_grid.begin(), y_grid.end(), y) - y_grid.begin());
+        for (std::size_t x = 0; x < xs.size(); ++x)
+            for (std::size_t y = 0; y < ys.size(); ++y)
+                if (x_ends[x] && y_ends[y]) {
+                    const auto value = values[x_ends[x] - 1][y_ends[y] - 1];
+                    result.values[x][y] = value;
+                    result.maximum = std::max(result.maximum, value);
+                }
+        return result;
+    }
 };
 
+/** Enumerate free-generator births with signs +F0, -F1, +F2, ... .
+ * This does not sum at a query point. Matrix accessors decode grid indices.
+ */
 template <typename Matrix, typename Visitor>
 void visit_euler_degrees(const ChainComplex<Matrix>& resolution, Visitor visit) {
     using index = matrix_index_t<Matrix>;
     GRLINA_DEBUG_CHECK(if (resolution.empty()) throw std::logic_error("Euler characteristic requires a resolution"));
-    for (const auto& degree : resolution[0].row_degrees) visit(geometric_degree(resolution[0], degree), index{1});
+    for (index i = 0; i < resolution[0].get_num_rows(); ++i)
+        visit(resolution[0].row_degree(i), index{1});
     index sign = -1;
     for (const auto& differential : resolution.differentials()) {
-        for (const auto& degree : differential.col_degrees) visit(geometric_degree(differential, degree), sign);
+        for (index j = 0; j < differential.get_num_cols(); ++j)
+            visit(differential.col_degree(j), sign);
         sign = -sign;
     }
 }
 
-template <typename Matrix>
-matrix_index_t<Matrix> euler_dimension_at(
-    const ChainComplex<Matrix>& resolution, const matrix_geometry_degree_t<Matrix>& location) {
-    matrix_index_t<Matrix> result = 0;
-    visit_euler_degrees(resolution, [&](const auto& degree, auto sign) {
-        if (Degree_traits<matrix_geometry_degree_t<Matrix>>::smaller_equal(degree, location)) result += sign;
-    });
-    return result;
-}
-
-/** Signed birth histogram followed by a two-dimensional prefix sum.
- * O(B(log X + log Y) + XY), with B the total number of free summands.
- * lower_bound also handles grids that omit some resolution birth coordinates.
+/** Evaluate a complete, exact two-parameter resolution on sorted Cartesian axes.
+ * Return values[x][y] = dim M(xs[x], ys[y]). Deposit each signed birth at
+ * the first sample >= it, then take a 2D prefix sum. Births need not be samples.
+ * O(B(log X + log Y) + XY), for B free summands and X, Y axis lengths.
  */
-template <typename Matrix>
-std::vector<std::vector<matrix_index_t<Matrix>>> euler_grid_r2(
-    const ChainComplex<Matrix>& resolution, const std::vector<double>& xs,
-    const std::vector<double>& ys) {
+template <typename Matrix, typename Scalar>
+array<matrix_index_t<Matrix>> euler_grid_r2(const ChainComplex<Matrix>& resolution,
+                                          const vec<Scalar>& xs, const vec<Scalar>& ys) {
     using index = matrix_index_t<Matrix>;
-    std::vector<std::vector<index>> values(xs.size(), std::vector<index>(ys.size(), 0));
+    array<index> values(xs.size(), vec<index>(ys.size(), 0));
     visit_euler_degrees(resolution, [&](const auto& degree, index sign) {
         const auto x = std::lower_bound(xs.begin(), xs.end(), degree[0]) - xs.begin();
         const auto y = std::lower_bound(ys.begin(), ys.end(), degree[1]) - ys.begin();
@@ -68,31 +115,28 @@ std::vector<std::vector<matrix_index_t<Matrix>>> euler_grid_r2(
     return values;
 }
 
-/** Sweep arbitrary R2 query points in x and keep signed y-prefix counts in
- * a Fenwick tree. Preserve the caller's order and repeated query points.
- * O((B+Q) log(B+Q)) time, O(B+Q) memory; no Cartesian grid is materialized.
+/** Sweep arbitrary two-parameter queries in x, maintaining signed y-prefix
+ * counts in a Fenwick tree. Preserve query order and duplicates.
+ * O((B+Q) log(B+Q)) time, O(B+Q) memory, without a Cartesian table.
  */
 template <typename Matrix>
-std::vector<matrix_index_t<Matrix>> euler_queries_r2(
-    const ChainComplex<Matrix>& resolution,
-    const std::vector<matrix_geometry_degree_t<Matrix>>& locations) {
+vec<matrix_index_t<Matrix>> euler_queries_r2(const ChainComplex<Matrix>& resolution,
+    const vec<typename Matrix::degree_type>& locations) {
     using index = matrix_index_t<Matrix>;
-    using degree_type = matrix_geometry_degree_t<Matrix>;
-    std::vector<index> result(locations.size(), 0);
+    using degree_type = typename Matrix::degree_type;
+    vec<index> result(locations.size(), 0);
     if (locations.empty()) return result;
-    std::vector<std::pair<degree_type, index>> events;
+    vec<std::pair<degree_type, index>> events;
     visit_euler_degrees(resolution, [&](const auto& degree, index sign) { events.emplace_back(degree, sign); });
-    std::sort(events.begin(), events.end(), [](const auto& a, const auto& b) {
-        return a.first[0] < b.first[0];
-    });
-    std::vector<double> ys;
+    std::sort(events.begin(), events.end(), [](const auto& a, const auto& b) { return a.first[0] < b.first[0]; });
+    vec<typename degree_type::value_type> ys;
     for (const auto& location : locations) ys.push_back(location[1]);
     std::sort(ys.begin(), ys.end());
     ys.erase(std::unique(ys.begin(), ys.end()), ys.end());
-    std::vector<std::size_t> order(locations.size());
+    vec<std::size_t> order(locations.size());
     std::iota(order.begin(), order.end(), 0);
     std::sort(order.begin(), order.end(), [&](auto a, auto b) { return locations[a][0] < locations[b][0]; });
-    std::vector<index> tree(ys.size() + 1, 0);
+    vec<index> tree(ys.size() + 1, 0);
     std::size_t next = 0;
     for (auto q : order) {
         while (next < events.size() && events[next].first[0] <= locations[q][0]) {
@@ -106,41 +150,42 @@ std::vector<matrix_index_t<Matrix>> euler_queries_r2(
     return result;
 }
 
-/** Dimension of the module fibre, using a complete resolution when available. */
 template <typename Matrix>
-matrix_index_t<Matrix> dimension_at(
-    const Module<Matrix>& module, const matrix_geometry_degree_t<Matrix>& degree) {
-    if (module.res_complete_)
-        return euler_dimension_at(module.proj_res_, degree);
-    const auto& presentation = module.presentation();
-    auto local = presentation.map_at_degree_pair(degree, true).first;
-    return static_cast<matrix_index_t<Matrix>>(local.coKernel_basis().size());
+auto Module<Matrix>::dimension_at(const degree_type& degree) const -> index_type {
+    if (!has_presentation()) return 0;
+    if (res_complete_) {
+        index_type result = 0;
+        visit_euler_degrees(proj_res_, [&](const auto& birth, auto sign) {
+            if (Degree_traits<degree_type>::smaller_equal(birth, degree)) result += sign;
+        });
+        return result;
+    }
+    auto local = local_presentation_at(degree).first;
+    return static_cast<index_type>(local.coKernel_basis().size());
 }
 
 template <typename Matrix>
-std::vector<HilbertValue<matrix_geometry_degree_t<Matrix>, matrix_index_t<Matrix>>>
-hilbert_function(const Module<Matrix>& module,
-                 const std::vector<matrix_geometry_degree_t<Matrix>>& locations) {
-    using degree_type = matrix_geometry_degree_t<Matrix>;
-    std::vector<HilbertValue<degree_type, matrix_index_t<Matrix>>> result;
-    result.reserve(locations.size());
-    if constexpr (std::is_same_v<degree_type, r2degree>) {
-        if (module.res_complete_) {
-            const auto dimensions = euler_queries_r2(module.proj_res_, locations);
-            for (std::size_t i = 0; i < locations.size(); ++i) result.push_back({locations[i], dimensions[i]});
-            return result;
-        }
-    }
-    for (const auto& degree : locations) result.push_back({degree, dimension_at(module, degree)});
+auto Module<Matrix>::dimension_at(const vec<degree_type>& degrees) const -> vec<index_type> {
+    if constexpr (hilbert_detail::two_parameters<degree_type>)
+        if (res_complete_ && has_presentation()) return euler_queries_r2(proj_res_, degrees);
+    vec<index_type> result;
+    result.reserve(degrees.size());
+    for (const auto& degree : degrees) result.push_back(dimension_at(degree));
     return result;
 }
 
+/** Distinct presentation degrees (not the entire mathematical support). */
 template <typename Matrix>
-std::vector<matrix_geometry_degree_t<Matrix>> support_degrees(const Module<Matrix>& module) {
-    using degree_type = matrix_geometry_degree_t<Matrix>;
-    auto result = geometric_row_degrees(module.presentation());
-    const auto columns = geometric_col_degrees(module.presentation());
-    result.insert(result.end(), columns.begin(), columns.end());
+vec<typename Matrix::degree_type> support_degrees(const Module<Matrix>& module) {
+    using degree_type = typename Matrix::degree_type;
+    vec<degree_type> result;
+    if (!module.has_presentation()) return result;
+    const auto& presentation = module.presentation();
+    result.reserve(presentation.get_num_rows() + presentation.get_num_cols());
+    for (matrix_index_t<Matrix> i = 0; i < presentation.get_num_rows(); ++i)
+        result.push_back(presentation.row_degree(i));
+    for (matrix_index_t<Matrix> j = 0; j < presentation.get_num_cols(); ++j)
+        result.push_back(presentation.col_degree(j));
     std::sort(result.begin(), result.end(), Degree_traits<degree_type>::lex_lambda());
     result.erase(std::unique(result.begin(), result.end(), [](const auto& lhs, const auto& rhs) {
         return Degree_traits<degree_type>::equals(lhs, rhs);
@@ -148,62 +193,85 @@ std::vector<matrix_geometry_degree_t<Matrix>> support_degrees(const Module<Matri
     return result;
 }
 
+/** Cartesian axes on which the module can change. Grid matrices retain their
+ * full stored axes, including coordinates unused by the presentation degrees.
+ */
 template <typename Matrix>
-std::vector<HilbertValue<matrix_geometry_degree_t<Matrix>, matrix_index_t<Matrix>>>
-hilbert_function_on_support(const Module<Matrix>& module) {
-    return hilbert_function(module, support_degrees(module));
+auto induced_grid(const Module<Matrix>& module) {
+    using degree_type = typename Matrix::degree_type;
+    static_assert(hilbert_detail::two_parameters<degree_type>, "Hilbert grids require two coordinate parameters");
+    using scalar = typename degree_type::value_type;
+    std::array<vec<scalar>, 2> axes;
+    if (!module.has_presentation()) return axes;
+    if constexpr (matrix_grid_backed_v<Matrix>) {
+        return module.presentation().coordinate_grid();
+    } else {
+        for (const auto& degree : support_degrees(module)) {
+            axes[0].push_back(degree[0]);
+            axes[1].push_back(degree[1]);
+        }
+        for (auto& axis : axes) {
+            std::sort(axis.begin(), axis.end());
+            axis.erase(std::unique(axis.begin(), axis.end()), axis.end());
+        }
+        return axes;
+    }
 }
 
-/** Query sorted, unique Cartesian axes, which need not contain all births. */
 template <typename Matrix>
-R2HilbertGrid<matrix_index_t<Matrix>> hilbert_function_on_grid(
-    const Module<Matrix>& module, const vec<double>& xs, const vec<double>& ys) {
-    using degree_type = matrix_geometry_degree_t<Matrix>;
-    using index_type = matrix_index_t<Matrix>;
-    static_assert(std::is_same_v<degree_type, r2degree> || matrix_grid_backed_v<Matrix>,
-                  "This grid helper is only available for R2 modules");
-    if constexpr (matrix_grid_backed_v<Matrix>)
-        static_assert(std::tuple_size_v<degree_type> == 2, "Hilbert grid requires two parameters");
-    R2HilbertGrid<index_type> result;
-    result.x_grid = xs;
-    result.y_grid = ys;
-    if (module.res_complete_) {
-        result.values = euler_grid_r2(module.proj_res_, xs, ys);
-        for (const auto& row : result.values)
-            for (auto value : row) result.maximum = std::max(result.maximum, value);
-        return result;
+auto Module<Matrix>::hilbert_function() const {
+    const auto axes = induced_grid(*this);
+    HilbertFunction<typename degree_type::value_type, index_type> result{axes[0], axes[1]};
+    if (res_complete_ && has_presentation()) {
+        result.values = euler_grid_r2(proj_res_, axes[0], axes[1]);
+    } else {
+        result.values.assign(axes[0].size(), vec<index_type>(axes[1].size(), 0));
+        for (std::size_t x = 0; x < axes[0].size(); ++x)
+            for (std::size_t y = 0; y < axes[1].size(); ++y)
+                result.values[x][y] = dimension_at(degree_type{axes[0][x], axes[1][y]});
     }
-    // Evaluate the presentation when no complete resolution is stored.
-    result.values.assign(xs.size(), vec<index_type>(ys.size(), 0));
-    for (std::size_t x = 0; x < xs.size(); ++x) {
-        for (std::size_t y = 0; y < ys.size(); ++y) {
-            degree_type degree{static_cast<typename degree_type::value_type>(xs[x]),
-                               static_cast<typename degree_type::value_type>(ys[y])};
-            result.values[x][y] = dimension_at(module, degree);
-            result.maximum = std::max(result.maximum, result.values[x][y]);
-        }
-    }
+    for (const auto& row : result.values)
+        for (auto value : row) result.maximum = std::max(result.maximum, value);
     return result;
 }
 
-/** Hilbert function on the full presentation-induced Cartesian grid. */
 template <typename Matrix>
-R2HilbertGrid<matrix_index_t<Matrix>> hilbert_function_on_induced_grid(const Module<Matrix>& module) {
-    using degree_type = matrix_geometry_degree_t<Matrix>;
-    static_assert(std::is_same_v<degree_type, r2degree> || matrix_grid_backed_v<Matrix>,
-                  "This helper is only available for R2 modules");
-    if constexpr (matrix_grid_backed_v<Matrix>)
-        static_assert(std::tuple_size_v<degree_type> == 2, "Hilbert grid requires two parameters");
-    vec<double> xs, ys;
-    for (const auto& degree : support_degrees(module)) {
-        xs.push_back(degree[0]);
-        ys.push_back(degree[1]);
+template <typename Degree>
+auto Module<Matrix>::hilbert_function(const vec<typename Degree::value_type>& xs,
+                                     const vec<typename Degree::value_type>& ys) const {
+    hilbert_detail::validate_axis(xs);
+    hilbert_detail::validate_axis(ys);
+    if (xs.empty() || ys.empty()) {
+        HilbertFunction<typename Degree::value_type, index_type> result{xs, ys};
+        result.values.assign(xs.size(), vec<index_type>(ys.size(), 0));
+        return result;
     }
-    std::sort(xs.begin(), xs.end());
-    xs.erase(std::unique(xs.begin(), xs.end()), xs.end());
-    std::sort(ys.begin(), ys.end());
-    ys.erase(std::unique(ys.begin(), ys.end()), ys.end());
-    return hilbert_function_on_grid(module, xs, ys);
+    return hilbert_function().on_grid(xs, ys);
+}
+
+template <typename Matrix>
+vec<unsigned char> Module<Matrix>::hilbert_function_image(std::size_t width, std::size_t height,
+                                                         double padding) const {
+    if (!std::isfinite(padding) || padding < 0)
+        throw std::invalid_argument("Hilbert image padding must be finite and nonnegative");
+    const auto function = hilbert_function();
+    auto bounds = [padding](const auto& axis) {
+        const long double low = axis.empty() ? 0 : axis.front();
+        const long double high = axis.empty() ? 0 : axis.back();
+        const auto margin = (high > low ? high - low : 2) * padding;
+        vec<long double> result{low - margin};
+        if (high + margin > result.front()) result.push_back(high + margin);
+        return result;
+    };
+    return graded_linalg::hilbert_function_image(function, bounds(function.x_grid),
+                                                 bounds(function.y_grid), width, height);
+}
+
+template <typename Matrix>
+template <typename Degree>
+vec<unsigned char> Module<Matrix>::hilbert_function_image(const vec<typename Degree::value_type>& xs,
+    const vec<typename Degree::value_type>& ys, std::size_t width, std::size_t height) const {
+    return graded_linalg::hilbert_function_image(hilbert_function(), xs, ys, width, height);
 }
 
 } // namespace graded_linalg

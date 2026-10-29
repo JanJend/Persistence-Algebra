@@ -154,10 +154,12 @@ incorrect even though the represented module is unchanged.
 
 `compute_projective_resolution()` extends the stored maps without rebasing them
 and computes kernels until the terminal map is injective. It then records
-completeness. `dimension_at(module, degree)` uses signed chain-group counts for complete
+completeness. `module.dimension_at(degree)` uses signed chain-group counts for complete
 resolutions and local presentation evaluation otherwise.
-`invariants/hilbert_function.hpp` contains the Hilbert value/grid types and all
-Hilbert free functions. `Module` has no Hilbert members or include dependency.
+`invariants/hilbert_function.hpp` defines the module's dimension/Hilbert members
+and the scalar-templated `HilbertFunction` table. The module header includes these
+definitions. `hilbert_function()` returns numerical data; `hilbert_function_image()`
+returns PNG bytes in memory, with explicit file saving through `save_png`.
 The degree-only routines cover generic point evaluation, incremental R2 query sweeps, and
 R2 Cartesian-grid prefix sums. Grid queries use the stored completeness flag and
 leave the resolution unchanged, using local evaluation when the flag is false.

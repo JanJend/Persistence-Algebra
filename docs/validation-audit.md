@@ -107,7 +107,7 @@ strict-order helper through the storage accessor; it adds no automatic scan.
 | T3–8 | Relevant matrix, module, serialization and constructor templates |
 | IO | File/stream readers and writers in the preceding headers and [graded_linalg.hpp](../include/grlina/graded_linalg.hpp) |
 | N | Removed hooks; see the historical notes in the table |
-| HS, MT, IOM | Restored [hom_algorithms.hpp](../include/grlina/hom_algorithms.hpp), [module/transformations.hpp](../include/grlina/module/transformations.hpp), [matrices/io.hpp](../include/grlina/matrices/io.hpp) |
+| HS, MT, IOM | Restored [hom_algorithms.hpp](../include/grlina/hom_algorithms.hpp), [module/module_base.hpp](../include/grlina/module/module_base.hpp), [matrices/io.hpp](../include/grlina/matrices/io.hpp) |
 
 ## Per-check decisions
 

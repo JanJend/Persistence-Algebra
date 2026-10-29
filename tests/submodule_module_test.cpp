@@ -33,13 +33,13 @@ void test_in_place_module_storage() {
     assert(as_module.has_presentation() && S->has_presentation());
     assert(S->presentation().row_degrees == G.col_degrees);
     assert(S->num_of_gens() == as_module.num_of_gens());
-    assert(dimension_at(*S, {0,0}) == 0 && dimension_at(*S, {1,1}) == 1);
-    assert(dimension_at(*S, {2,2}) == 0);
+    assert(S->dimension_at({0,0}) == 0 && S->dimension_at({1,1}) == 1);
+    assert(S->dimension_at({2,2}) == 0);
     as_module.compute_projective_resolution();
     assert(S->res_complete_);
     assert(S->proj_res_.is_chain_complex());
     assert(S->generator_map().generator_lift().data == G.data && S->parent().get() == parent.get());
-    assert(hilbert_function_on_induced_grid(*S).maximum == 1);
+    assert(S->hilbert_function().maximum == 1);
 
     std::shared_ptr<const Mod> module_pointer = S;
     assert(Homomorphism<Mat>::identity(module_pointer).check_lifts());
@@ -47,16 +47,16 @@ void test_in_place_module_storage() {
     Sub nested(module_pointer, Mat(1, 2, {{0}}, {{1,1}}, S->presentation().row_degrees));
     nested.compute_projective_resolution(); // automatically constructs its presentation
     assert(nested.res_complete_);
-    assert(dimension_at(nested, {1,1}) == 1 && dimension_at(nested, {2,2}) == 0);
+    assert(nested.dimension_at({1,1}) == 1 && nested.dimension_at({2,2}) == 0);
 
     std::stringstream encoded;
     S->to_stream(encoded);
     Mod decoded(encoded);
-    assert(dimension_at(decoded, {1,1}) == 1 && dimension_at(decoded, {2,2}) == 0);
+    assert(decoded.dimension_at({1,1}) == 1 && decoded.dimension_at({2,2}) == 0);
     Sub copied = *S;
     Sub moved = std::move(copied);
     assert(moved.res_complete_ && moved.parent() == S->parent());
-    assert(dimension_at(moved, {1,1}) == 1);
+    assert(moved.dimension_at({1,1}) == 1);
     assert(parent->presentation().data == parent_presentation.data);
     assert(parent->proj_res_.size() == parent_resolution_size);
     assert(parent->res_complete_);
@@ -76,8 +76,8 @@ void test_canonical_submodule_members() {
         assert(whole.contains(zero) && !zero.contains(whole));
         parent.reset();
         assert(!lifetime.expired());
-        assert(dimension_at(whole.presented_module(), {0,0}) == 2);
-        assert(dimension_at(whole.presented_module(), {2,2}) == 1);
+        assert(whole.presented_module().dimension_at({0,0}) == 2);
+        assert(whole.presented_module().dimension_at({2,2}) == 1);
         assert(zero.is_zero());
     }
     assert(lifetime.expired());
@@ -122,7 +122,7 @@ void test_shared_generator_basis() {
     assert(S.generator_map().check_lifts() && !S.res_complete_);
     S.compute_projective_resolution();
     assert(S.res_complete_);
-    assert(dimension_at(S, {1,1}) == 1);
+    assert(S.dimension_at({1,1}) == 1);
 
     const Sub fresh(parent, G);
     auto value = fresh.presented_module(false);
@@ -141,11 +141,11 @@ void test_invalidation_and_automatic_resolution() {
     assert(!S.has_presentation() && !S.inj_res_.empty());
     assert(S.generator_map().generator_lift().data == array<int>({{1}}));
     S.compute_projective_resolution();
-    assert(S.res_complete_ && dimension_at(S, {2,2}) == 1);
+    assert(S.res_complete_ && S.dimension_at({2,2}) == 1);
     S.minimize_generators(false);
     assert(!base.has_presentation());
     S.compute_presentation();
-    assert(base.num_of_gens() == 1 && dimension_at(base, {0,0}) == 1);
+    assert(base.num_of_gens() == 1 && base.dimension_at({0,0}) == 1);
     // Plain modules already have their supplied presentation.
     Mod ordinary(Mat(1, 1, {{0}}, {{0,0}}, {{0,0}}));
     ordinary.minimize_presentation();
@@ -160,7 +160,7 @@ void test_zero_without_kernel_and_polymorphic_destruction() {
     auto zero = Submodule<Higher>::zero(parent);
     zero.compute_projective_resolution();
     assert(zero.has_presentation() && zero.res_complete_);
-    assert((zero.num_of_gens() == 0 && dimension_at(zero, CoordinateDegree<double, 4>{0,0,0,0}) == 0));
+    assert((zero.num_of_gens() == 0 && zero.dimension_at(CoordinateDegree<double, 4>{0,0,0,0}) == 0));
     auto whole = Submodule<Higher>::whole(parent);
     whole.compute_presentation(); // The whole submodule reuses the known parent.
     assert(whole.generator_map().domain().get() == static_cast<const Module<Higher>*>(&whole));
@@ -181,7 +181,7 @@ void test_zero_without_kernel_and_polymorphic_destruction() {
         std::unique_ptr<Mod> owned = std::make_unique<DestructionProbe>(
             free, Mat(1, 1, {{0}}, {{0,0}}, {{0,0}}), destroyed);
         owned->compute_projective_resolution();
-        assert(dimension_at(*owned, {0,0}) == 1);
+        assert(owned->dimension_at({0,0}) == 1);
     }
     assert(destroyed);
 }
@@ -202,8 +202,8 @@ void test_generator_map_homomorphism() {
 
     assert(inclusion.check_lifts() && inclusion.kernel(false).is_zero());
     assert(inclusion.domain()->num_of_gens() == 3);
-    assert(dimension_at(*inclusion.domain(), {1,1}) == 2);
-    assert(dimension_at(*inclusion.domain(), {2,2}) == 1);
+    assert(inclusion.domain()->dimension_at({1,1}) == 2);
+    assert(inclusion.domain()->dimension_at({2,2}) == 1);
     assert(inclusion.image(false).equals(S));
 
     auto eta = Hom::canonical_shift(parent, {1,1});

@@ -88,10 +88,10 @@ void scalar_domains_and_precision() {
 
 template <typename Matrix>
 void storage_and_runtime_dimensions() {
-    using Degree = matrix_degree_t<Matrix>;
+    using Degree = base_degree<Matrix>;
     static_assert(is_graded_sparse_matrix_v<Matrix>);
     static_assert(has_matrix_graded_kernel<Matrix>::value);
-    static_assert(std::is_same_v<matrix_degree_t<Matrix>, DynamicDegree<double>>);
+    static_assert(std::is_same_v<base_degree<Matrix>, DynamicDegree<double>>);
     Matrix two(2, 2, 2, {{0, 1}, {1}}, {{2, 1}, {2, 2}}, {{0, 0}, {1, 0}});
     Matrix three(0, 0, 3), five(0, 0, 5);
     assert(two.parameter_count() == 2 && three.parameter_count() == 3);
@@ -126,7 +126,7 @@ void storage_and_runtime_dimensions() {
 
 template <typename Matrix>
 void permutations_and_edits() {
-    using Degree = matrix_degree_t<Matrix>;
+    using Degree = base_degree<Matrix>;
     const Matrix original(3, 3, 2, {{0, 2}, {1}, {0, 1}},
                           {{3, 2}, {2, 1}, {2, 1}}, {{1, 0}, {0, 0}, {1, 0}});
     auto sorted = original;
@@ -174,7 +174,7 @@ void permutations_and_edits() {
 
 template <typename Matrix>
 void algebra_and_local_queries() {
-    using Degree = matrix_degree_t<Matrix>;
+    using Degree = base_degree<Matrix>;
     Matrix left(2, 2, 3, {{0}, {0, 1}}, {{1, 0, 0}, {0, 1, 0}},
                 {{0, 0, 0}, {0, 0, 0}});
     Matrix right(1, 2, 3, {{0, 1}}, {{1, 1, 0}}, {{1, 0, 0}, {0, 1, 0}});
@@ -222,29 +222,29 @@ void algebra_and_local_queries() {
 
 template <typename Matrix>
 void module_and_chain_complex() {
-    using Degree = matrix_degree_t<Matrix>;
+    using Degree = base_degree<Matrix>;
     using Mod = Module<Matrix>;
     Matrix presentation(2, 1, 2, {{0}, {0}}, {{1, 0}, {0, 1}}, {{0, 0}});
     Mod module(presentation);
-    assert(dimension_at(module, Degree{0, 0}) == 1);
-    assert(dimension_at(module, Degree{1, 1}) == 0);
+    assert(module.dimension_at(Degree{0, 0}) == 1);
+    assert(module.dimension_at(Degree{1, 1}) == 0);
     assert(support_degrees(module) == vec<Degree>({{0, 0}, {0, 1}, {1, 0}}));
     std::stringstream module_text;
     module.to_stream(module_text);
     Mod restored(module_text);
     assert(restored.presentation().parameter_count() == 2);
-    assert(dimension_at(restored, Degree{0, 0}) == 1);
+    assert(restored.dimension_at(Degree{0, 0}) == 1);
     restored.compute_projective_resolution();
     assert(restored.res_complete_);
-    const auto hilbert_values = hilbert_function(restored, {Degree{0, 0}, Degree{1, 1}});
-    assert(hilbert_values[0].dimension == 1 && hilbert_values[1].dimension == 0);
+    const auto hilbert_values = restored.dimension_at({Degree{0, 0}, Degree{1, 1}});
+    assert(hilbert_values[0] == 1 && hilbert_values[1] == 0);
     restored.add_relation({0}, Degree{0.5, 0.5});
     assert(restored.num_of_rels() == 3);
-    assert(dimension_at(restored, Degree{0.75, 0.75}) == 0);
+    assert(restored.dimension_at(Degree{0.75, 0.75}) == 0);
     const auto complete_empty = Mod::from_projective_resolution(
         ChainComplex<Matrix>({Matrix(0, 0, 3)}), ResolutionCompleteness::complete);
     assert(complete_empty.res_complete_);
-    assert(dimension_at(complete_empty, Degree{0, 0, 0}) == 0);
+    assert(complete_empty.dimension_at(Degree{0, 0, 0}) == 0);
 
     // The repeated degree in C1 must receive the same stable permutation in d1 and d2.
     Matrix d1(3, 2, 2, {{0}, {1}, {0}}, {{1, 0}, {0, 1}, {1, 0}}, {{0, 0}, {0, 0}});
@@ -281,7 +281,7 @@ void module_and_chain_complex() {
 
 template <typename Matrix>
 void three_parameter_kernels_and_resolution() {
-    using Degree = matrix_degree_t<Matrix>;
+    using Degree = base_degree<Matrix>;
     Matrix presentation(3, 1, 3, {{0}, {0}, {0}},
                         {{0.25, -2, -3}, {-1, 0.5, -3}, {-1, -2, 1.75}},
                         {{-1, -2, -3}});
@@ -302,14 +302,14 @@ void three_parameter_kernels_and_resolution() {
     assert(terminal.get_num_cols() == 0 && terminal.parameter_count() == 3);
 
     Module<Matrix> module(presentation);
-    assert(dimension_at(module, Degree{-1, -2, -3}) == 1);
-    assert(dimension_at(module, Degree{0.25, 0.5, 1.75}) == 0);
+    assert(module.dimension_at(Degree{-1, -2, -3}) == 1);
+    assert(module.dimension_at(Degree{0.25, 0.5, 1.75}) == 0);
     module.compute_projective_resolution();
     assert(module.res_complete_);
     assert(module.proj_res_.size() == 3);
     assert(module.proj_res_.is_chain_complex());
-    assert(dimension_at(module, Degree{-1, -2, -3}) == 1);
-    assert(dimension_at(module, Degree{0.25, 0.5, 1.75}) == 0);
+    assert(module.dimension_at(Degree{-1, -2, -3}) == 1);
+    assert(module.dimension_at(Degree{0.25, 0.5, 1.75}) == 0);
 }
 
 template <typename Matrix>

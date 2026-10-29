@@ -14,7 +14,6 @@
 #include <grlina/hom_algorithms.hpp>
 #include <grlina/module/module_base.hpp>
 #include <grlina/module/submodule.hpp>
-#include <grlina/module/transformations.hpp>
 #include <grlina/hom_interface.hpp>
 #include <grlina/module/constructions.hpp>
 #include <grlina/module/epsilon.hpp>

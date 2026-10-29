@@ -116,42 +116,145 @@ and drops the added differential. This exposes redundant terminal generators as
 contractible pairs while preserving the represented module and exactness below
 truncation. Extending a truncation requires a graded-kernel implementation.
 
-## Euler-characteristic Hilbert queries
+## Hilbert functions and notebook images
 
-Include `grlina/invariants/hilbert_function.hpp` for the free functions
-`dimension_at(module, degree)`, `hilbert_function(module, locations)`,
-`hilbert_function_on_support(module)`, `support_degrees(module)`, and the R2 grid
-helpers. Their types and computations live outside `Module`.
+The public operations are members of `Module`; their definitions and numerical
+helpers live in `grlina/invariants/hilbert_function.hpp`. The module header also
+includes these definitions, so existing numerical callers need no extra include.
 
-`dimension_at` uses the alternating sum of free chain-group generators born at
-or below the queried degree when `res_complete_` is true.
-Otherwise a point query retains the local-presentation method and does not
-compute a resolution just for that point.
+```cpp
+using namespace graded_linalg;
+int dimension = module.dimension_at({0.5, 1.0});
+auto dimensions = module.dimension_at(vec<r2degree>{{0,0}, {1,1}});
+auto function = module.hilbert_function();
+auto sampled = module.hilbert_function({0.0, 0.5, 2.0}, {0.0, 1.0});
+int thickness = function.maximum;
+```
 
-Completeness is distinct from merely storing several differentials. Use
-`ResolutionCompleteness::complete` when supplying a known full projective
-resolution, or set `res_complete_ = true` after reading one.
-The guarantee is trusted, like exactness. Unmarked sequences are treated as
-truncated, including those whose terminal free group is zero. SCC itself has
-no completeness marker. Computed resolutions are marked complete. Module
-generator/relation edits and support bounding invalidate the guarantee; direct edits
-require updating the flag. Sorting, shifts and full-resolution minimization
-preserve it.
+`HilbertFunction<Scalar, Index>` owns `x_grid`, `y_grid`, `values` and `maximum`.
+`values[x][y]` is the integer dimension at `(x_grid[x], y_grid[y])`; coordinates
+retain the matrix's actual scalar type, including integer and float coordinates.
+With no explicit axes, the function uses all presentation-induced coordinates.
+For a grid matrix it uses the full stored coordinate grid, including unused
+coordinates. Its maximum is the module's thickness. An explicitly sampled table's
+maximum is only the maximum among its samples.
 
-R2 `hilbert_function_on_induced_grid(module)` and `hilbert_function_on_grid(module, xs, ys)`
-use a signed birth histogram and two-dimensional prefix sums when
-`res_complete_` is true. Call `compute_projective_resolution()` explicitly to
-enable this path.
-The axes of an explicit grid must be sorted and unique. For B total free
-summands and an X-by-Y grid this takes O(B(log X + log Y) + XY), excluding the
-one-time resolution computation. Arbitrary R2 location lists use an incremental
-x-sweep and y-prefix counts when the resolution is complete; output order and
-repeated locations are preserved. Generic point queries use the poset comparison.
+Axes must be finite and sorted; repeated coordinates are allowed. Empty axes are allowed for numerical
+queries. Explicit grid queries compute the induced table once and resample by the
+greatest coordinate less than or equal to each query, independently on each axis.
+The dimension is zero when either query coordinate precedes its first induced
+coordinate. `function.on_grid(xs, ys)` reuses an existing table without performing
+algebra; when that table contains only coarse samples, omitted changes cannot be
+recovered from it. Point-list queries preserve order and duplicates and return
+only the integer dimensions. Use an explicit `vec<degree_type>` for an empty or
+single-element batch to distinguish it from a single degree.
 
-Grid queries leave the stored resolution unchanged. Incomplete modules use
-local presentation evaluations. A supplied complete resolution still enables Euler
-queries even when that matrix type cannot compute its own kernel. Cartesian-grid
-helpers remain R2-specific; generic point/list queries work with other degree traits.
+Numerical queries never compute or modify a projective resolution. If
+`res_complete_` is true, the dimension is the alternating sum of free generators
+born at or below the degree. On a two-parameter grid, signed birth events and 2D
+prefix sums take O(B(log X + log Y) + XY), for B free summands and X, Y axis
+lengths. Complete two-parameter point-list queries use an x-sweep and Fenwick
+prefix counts. Otherwise dimensions come from local presentations; generic
+point/list queries also work for other posets and numbers of parameters.
+
+Completeness is distinct from storing several differentials. Use
+`ResolutionCompleteness::complete` when supplying a known complete exact
+resolution. `compute_projective_resolution()` establishes completeness explicitly;
+queries never infer it from a terminal zero group. SCC has no completeness
+marker. Generator/relation edits and support bounding invalidate completeness;
+sorting, shifts and full-resolution minimization preserve it. Direct matrix edits
+require updating the flag yourself.
+
+For PNG output, define `STB_IMAGE_WRITE_IMPLEMENTATION` **before any grlina
+include** in one translation unit. Numerical queries do not require an encoder
+implementation. Images return bytes and create no file:
+
+```cpp
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <grlina/invariants/hilbert_function.hpp>
+
+// Width and height count heatmap pixels; labels add 265 x 185 pixels.
+auto png = module.hilbert_function_image(800, 600); // 5% padding by default
+auto cropped = module.hilbert_function_image({0.0, 2.0}, {0.0, 1.0}, 800, 600);
+graded_linalg::save_png(png, "hilbert.png"); // only this explicitly creates a file
+
+// Reuse numerical work for further images or resolutions.
+auto function = module.hilbert_function();
+auto another_png = graded_linalg::hilbert_function_image(function, 1000, 800);
+```
+
+Automatic viewing bounds are the induced/stored grid's bounds, padded on both
+sides. A constant axis uses a total reference span of 2, giving a margin of 0.1
+with default padding. Explicit axes restrict the picture to their endpoints,
+without padding. Images always sample the full induced table at equidistant
+pixels, preserving changes omitted by the supplied plotting axes. A singleton
+axis displays its one coordinate. Free and zero modules are supported. Width
+and height must each be at least two. The standalone renderer uses its numerical
+table's bounds without padding; optional shared positive minimum/maximum
+arguments provide comparable logarithmic colour scales.
+
+The `hilbert_image` executable connects this API to a notebook without Python
+bindings or temporary PNG files. It explicitly completes the resolution for
+fast Euler evaluation. Build it with programs enabled:
+
+```sh
+cmake -S Persistence-Algebra -B build -DGRLINA_BUILD_PROGRAMS=ON
+cmake --build build --target hilbert_image
+```
+
+```python
+import subprocess
+from IPython.display import Image, display
+
+png = subprocess.run(
+    ["./build/hilbert_image", "input.scc", "800", "600"],
+    check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+).stdout
+display(Image(data=png))
+
+# Only when a separate image file is wanted:
+# from pathlib import Path
+# Path("hilbert.png").write_bytes(png)
+```
+
+Debug builds name the executable `hilbert_image_debug`. Diagnostics use standard
+error; standard output contains only the PNG bytes.
+
+Append `--bounds xmin ymin xmax ymax` to select a plotting window, and
+`--scale min max` to share a positive logarithmic colour range between images.
+Both options can be combined with the requested heatmap width and height.
+
+Landscapes offer the same in-memory PNG output, with a 1-based layer selector:
+
+```cpp
+// Define STB_IMAGE_WRITE_IMPLEMENTATION before any grlina include in one .cpp.
+#include <grlina/invariants/landscape.hpp>
+graded_linalg::Landscape landscape(module);
+auto png = landscape.image(1, 800, 600); // layer, heatmap width, heatmap height
+// graded_linalg::save_png(png, "landscape.png"); // only when explicitly wanted
+```
+
+This samples the cached landscape at each pixel, performs no further matrix
+reductions, and preserves its interpolation error bound. Colours are linear in
+height; the visible range is the landscape's existing bounds. The returned bytes
+work with the same Python `Image(data=png_bytes)` call. The existing
+`landscape.save(prefix, layers)` CSV/SVG exports are unchanged.
+
+Build `landscape_image` alongside `hilbert_image` to use this from Python:
+
+```python
+png = subprocess.run(
+    ["./build/landscape_image", "input.scc", "500", "500", "--layer", "1"],
+    check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+).stdout
+display(Image(data=png))
+```
+
+Optional `--bounds xmin ymin xmax ymax`, `--direction vx vy`, and
+`--resolution relative_spacing` select the landscape's window, positive direction,
+and relative slice spacing (default 0.01). Heatmap dimensions control rendering
+separately. The executable constructs the cached landscape once, calls `image`,
+and returns PNG bytes on standard output without creating files.
 
 ## SCC I/O
 
@@ -188,8 +291,8 @@ using Module = graded_linalg::R2Module<int>;
 
 Module module("input.scc");
 module.minimize();
-int dimension = dimension_at(module, {0.5, 1.0});
-auto hilbert = hilbert_function_on_induced_grid(module);
+int dimension = module.dimension_at({0.5, 1.0});
+auto hilbert = module.hilbert_function();
 module.compute_projective_resolution();
 module.to_file("resolution.scc");
 ```
@@ -221,7 +324,7 @@ No separate module object is needed for a submodule's own presentation/resolutio
 auto image = f.image();
 image.compute_presentation();         // stores its own d1 in the Module base
 image.compute_projective_resolution(); // completes/stores its own resolution
-auto dimension = dimension_at(image, {0.5, 1.0});
+auto dimension = image.dimension_at({0.5, 1.0});
 image.to_file("image-resolution.scc");
 ```
 
@@ -527,29 +630,48 @@ Arbitrary generator/relation edits and support bounding still invalidate it; a
 quotient does not inherit the original module's injective resolution. Grid snapping
 and cutting transform each stored injective map as described above.
 
-### Basis transformations and cycle representatives (NEW)
+### Optional cycle representatives and direct coordinate updates
 
-`grlina/module/transformations.hpp` provides `sort_module_with_maps(M)` and
-`minimize_module_with_maps(M)`. Each returns `original`, `transformed`,
-`forward` (original to transformed), and `backward` (transformed to original),
-including lifts on every stored projective group. `M` is unchanged. Passing a
-shared owner preserves its endpoint identity; a stack reference supplies an
-owned snapshot. The two maps are inverse on the module, though cancelled
-generators mean their matrices need not be inverses on the old free groups.
-Independently stored injective resolutions are retained in their existing bases.
+`homology_module(C, q, minimize = true, keep_cycles = false)` returns a `Module`.
+When requested, its `std::optional<Matrix> cycles` has one column per presentation
+generator, expressed in the original `C_q` coordinates. Its image lies in the
+cycle group; it is a lift from the free generators, not a map from homology to
+cycles. An engaged optional with zero columns represents requested zero homology.
+The construction includes relations among kernel generators, also for nonfree
+kernels. Degree zero is supported, including an empty complex.
 
-For `f: M -> N`, transport to transformed presentations with
-`change_M.backward.compose(f).compose(change_N.forward)`; `compose` applies
-its receiver first. Keep the endpoint modules unchanged while these maps exist.
+Sorting and minimization update stored cycles directly. Module methods accept
+an optional incoming matrix (`elements`) and a list of outgoing matrices
+(`images`). Incoming matrices have one row per module generator; outgoing
+matrices have one column per generator. The existing matrix algorithms apply
+coordinate changes to these matrices during reduction. No inverse matrix or
+final matrix multiplication is needed. For example:
 
-`homology_with_cycles(C, q, minimize)` returns an owning `module` and `cycles`:
-the latter maps its actual generator basis into the original `C_q` coordinates.
-It tracks representatives through minimization. Both this helper and
-`homology_module` include relations among kernel generators, which are essential
-when a kernel is not free, and support `q = 0`. For an empty complex, `H_0` is
-the zero module for the matrix's degree type. A chain map can act
-on these representatives; solve against the target representatives modulo
-boundaries to obtain its induced homology map.
+```cpp
+M.minimize(true, &incoming, {&outgoing});
+M.sort_compatibly(&incoming, {&outgoing});
+```
+
+Initialize `outgoing` to the identity on the old generator degrees to obtain
+the new-to-old generator map; initialize `incoming` to identity for the
+old-to-new map. Use distinct matrices with matching generator bases. These
+arguments are optional and ignored by ordinary calls; no tracking matrices are
+allocated unless the caller supplies them. Cycle storage is always updated
+when present, including when other outgoing maps are supplied.
+
+Generator deletion, support bounding, cutting and grid snapping carry the same
+column changes into cycles. Snapping updates the cycle source degrees while
+retaining the original ambient chain coordinates. Shifting shifts both degree
+lists of the cycle matrix, interpreting its target as the shifted chain group.
+Relation-only edits preserve the representatives, but arbitrary quotients or
+relation edits no longer claim to compute homology of the original complex.
+Direct mutation through `presentation()` or `proj_res_` bypasses module-level
+cycle maintenance; pass accompanying matrices to the lower-level operations.
+
+Submodules do not store separate cycle matrices. Their representatives are
+`parent.cycles * inclusion.generator_lift()`. Parent minimization transports
+both the parent cycles and the inclusion. New categorical constructions do not
+automatically acquire cycle storage.
 
 The removed runtime storage-conversion API is no longer available. Current grid
 matrices use vector columns; R2 matrices can use `CSCStorage<Index>`.

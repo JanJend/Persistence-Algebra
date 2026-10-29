@@ -17,7 +17,7 @@
 
 using namespace graded_linalg;
 using Matrix = GridGradedSparseMatrix<double, 2, int>;
-using Degree = matrix_geometry_degree_t<Matrix>;
+using Degree = typename Matrix::degree_type;
 using Clock = std::chrono::steady_clock;
 
 void require(bool condition, const char* message) {

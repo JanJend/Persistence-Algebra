@@ -206,7 +206,7 @@ static void legacy_kernel_comparison() {
 template<std::size_t Dimension>
 static void koszul_kernels() {
     using Matrix = CoordGradedSparseMatrix<double, Dimension, int>;
-    using Degree = matrix_degree_t<Matrix>;
+    using Degree = base_degree<Matrix>;
     vec<Degree> degrees(Dimension);
     for (std::size_t a = 0; a < Dimension; ++a) degrees[a][a] = 1;
     Matrix differential(Dimension, 1, array<int>(Dimension, {0}), degrees, {Degree{}});

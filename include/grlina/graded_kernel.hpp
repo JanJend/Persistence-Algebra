@@ -120,7 +120,7 @@ struct has_kernel_empty_like<Matrix, std::void_t<
 template <class Matrix>
 Matrix z2_graded_kernel(Matrix& matrix) {
     using Index = matrix_index_t<Matrix>;
-    using Degree = matrix_degree_t<Matrix>;
+    using Degree = base_degree<Matrix>;
     using Coordinate = typename Degree::value_type;
     static_assert(std::tuple_size_v<Degree> == 2, "Kernel degrees must have two coordinates");
     static_assert(std::is_integral_v<Coordinate>, "Kernel degree coordinates must be integers");
@@ -199,7 +199,7 @@ Matrix z2_graded_kernel(Matrix& matrix) {
 template <class Matrix>
 Matrix z3_graded_kernel(const Matrix& matrix) {
     using Index = matrix_index_t<Matrix>;
-    using Degree = matrix_degree_t<Matrix>;
+    using Degree = base_degree<Matrix>;
     using DT = Degree_traits<Degree>;
     using CT = Column_traits<vec<Index>, Index>;
     static_assert(std::tuple_size_v<Degree> == 3, "Kernel degrees must have three coordinates");

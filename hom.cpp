@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
     if(info){
         std::cout << "Dimensions of A: " << A.num_of_gens() << " x " << A.num_of_rels() << std::endl;
         std::cout << "Dimensions of B: " << B.num_of_gens() << " x " << B.num_of_rels() << std::endl;
-        auto hilbert = hilbert_function_on_induced_grid(B);
+        auto hilbert = B.hilbert_function();
         std::cout << "Thickness of B: " << hilbert.maximum << std::endl;
     }
     bool nano = false;

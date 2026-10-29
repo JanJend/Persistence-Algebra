@@ -13,8 +13,8 @@
 using namespace graded_linalg;
 
 template<class Matrix>
-Matrix matrix(array<int> columns, vec<matrix_geometry_degree_t<Matrix>> degrees,
-              vec<matrix_geometry_degree_t<Matrix>> rows) {
+Matrix matrix(array<int> columns, vec<typename Matrix::degree_type> degrees,
+              vec<typename Matrix::degree_type> rows) {
     auto result = GradedMatrixIO<Matrix>::make_matrix(
         static_cast<int>(columns.size()), static_cast<int>(rows.size()));
     result.resize_data(columns.size());
@@ -31,7 +31,7 @@ void check(const Matrix& A, const Matrix& B, bool solvable) {
     assert(X.has_value() == solvable);
     assert((solve_graded_linear_system<Matrix, false>(A, B) == solvable));
     assert(graded_linear_system_is_solvable(A, B) == solvable);
-    if constexpr (std::tuple_size<matrix_geometry_degree_t<Matrix>>::value == 2) {
+    if constexpr (std::tuple_size<typename Matrix::degree_type>::value == 2) {
         auto movable_a = A, movable_b = B;
         auto moved = solve_bigraded_linear_system(std::move(movable_a), std::move(movable_b));
         assert(moved.has_value() == solvable);
@@ -75,7 +75,7 @@ void check(const Matrix& A, const Matrix& B, bool solvable) {
     const auto a_degrees = geometric_col_degrees(A), b_degrees = geometric_col_degrees(B);
     for (int j = 0; j < X->get_num_cols(); ++j)
         for (int k : X->column(j))
-            assert(Degree_traits<matrix_geometry_degree_t<Matrix>>::smaller_equal(a_degrees[k], b_degrees[j]));
+            assert(Degree_traits<typename Matrix::degree_type>::smaller_equal(a_degrees[k], b_degrees[j]));
     auto product = A * *X;
     for (int j = 0; j < B.get_num_cols(); ++j) assert(product.get_col(j) == B.get_col(j));
 }
@@ -97,7 +97,7 @@ void bigraded_solver_without_matrix_copies() {
 
 template<class Matrix>
 void graded_checks() {
-    using D = matrix_geometry_degree_t<Matrix>;
+    using D = typename Matrix::degree_type;
     const vec<D> rows{{0,0}, {0,0}};
     // Late columns precede their early alternatives in the original basis.
     // The graded reduction must preserve that basis and the RHS order.
@@ -159,7 +159,7 @@ void graded_checks() {
 
 template<class Matrix>
 void randomized_checks(std::size_t dimensions) {
-    using D = matrix_geometry_degree_t<Matrix>;
+    using D = typename Matrix::degree_type;
     D zero{};
     std::mt19937 random(20261009u + static_cast<unsigned>(dimensions));
     for (int sample = 0; sample < 200; ++sample) {
@@ -226,7 +226,7 @@ void solvability_without_output_matrix() {
 
 void upset_solvability_checks() {
     using Matrix = UpsetGradedSparseMatrix<double, int>;
-    using D = matrix_geometry_degree_t<Matrix>;
+    using D = typename Matrix::degree_type;
     const vec<D> rows(2, D{{0,0}});
     const auto A = matrix<Matrix>({{0}, {1}}, {D{{1,0}}, D{{0,1}}}, rows);
     assert(graded_linear_system_is_solvable(A, matrix<Matrix>({{0,1}}, {D{{1,1}}}, rows)));

@@ -3,7 +3,7 @@
 #define GRLINA_CSC_RUNTIME_WARNINGS 0
 #include <grlina/invariants/hilbert_function.hpp>
 #include <grlina/runtime_matrices/packed_csc.hpp>
-#include <grlina/module/transformations.hpp>
+#include <grlina/module/submodule.hpp>
 #include <grlina/runtime_matrices/class_coord_graded_sparse_matrix.hpp>
 #include <cassert>
 #include <grlina/matrices/matrix_algorithms.hpp>
@@ -26,18 +26,17 @@ Matrix matrix(int columns, int rows, array<int> entries,
 }
 
 template<class Matrix>
-void check_change(const ModuleTransformation<Matrix>& change) {
-
-
-    assert(change.forward.check_lifts());
-    assert(change.backward.check_lifts());
-    auto identity = change.backward.compose(change.forward);
-    for (const auto& lift : identity.resolution_maps())
-        for (int i = 0; i < lift.get_num_cols(); ++i) assert(lift.get_col(i) == vec<int>{i});
-    auto old_identity = change.forward.compose(change.backward);
-    // After minimization the other composite is identity modulo relations.
-    auto difference = old_identity + Homomorphism<Matrix>::identity(change.original);
-    assert(difference.image(false).is_zero());
+void check_change(const Module<Matrix>& before, bool minimize = true) {
+    auto original = std::make_shared<const Module<Matrix>>(before);
+    auto changed = std::make_shared<Module<Matrix>>(before);
+    Matrix incoming(geometric_row_degrees(before.presentation()));
+    Matrix outgoing = incoming;
+    if (minimize) changed->minimize(true, &incoming, {&outgoing});
+    else changed->sort_compatibly(&incoming, {&outgoing});
+    Homomorphism<Matrix> forward(original, changed, incoming), backward(changed, original, outgoing);
+    assert(forward.check_lifts() && backward.check_lifts());
+    assert((forward.compose(backward) + Homomorphism<Matrix>::identity(original)).image(false).is_zero());
+    assert((backward.compose(forward) + Homomorphism<Matrix>::identity(changed)).image(false).is_zero());
 }
 
 template<class Matrix>
@@ -49,16 +48,14 @@ void runtime_interop() {
         {one,two,two}, {zero,one,zero});
     if constexpr (matrix_grid_backed_v<Matrix>) d1.include_real_degrees({{-0.5,0.5,2.5}});
     auto original = std::make_shared<const Module<Matrix>>(d1);
-    auto sorted = sort_module_with_maps(original);
-    check_change(sorted);
-    auto change = minimize_module_with_maps(original);
-    check_change(change);
-    assert(change.original.get() == original.get());
+    check_change(*original, false);
+    check_change(*original);
+    Module<Matrix> minimized = *original;
+    minimized.minimize();
     assert(original->presentation().data == d1.data);
-    assert(change.transformed->num_of_gens() == 2);
-    assert(change.transformed->num_of_rels() == 1);
+    assert(minimized.num_of_gens() == 2 && minimized.num_of_rels() == 1);
     for (const auto& grade : {zero,one,two})
-        assert(dimension_at(*original, grade) == dimension_at(*change.transformed, grade));
+        assert(original->dimension_at(grade) == minimized.dimension_at(grade));
 
     auto packed = to_packed_csc(d1);
     auto restored = from_packed_csc<Matrix>(3,3,3,packed.data.offsets(),packed.data.entries(),
@@ -101,30 +98,31 @@ void runtime_interop() {
     auto kernel = static_cast<const Matrix&>(outgoing).graded_kernel();
     assert(outgoing.data == saved.data && outgoing.col_degrees == saved.col_degrees);
     ChainComplex<Matrix> complex({outgoing});
-    auto homology = homology_with_cycles(complex,1,false);
-    assert(homology.module->num_of_gens() == 3);
-    assert(homology.module->num_of_rels() == 1);
-    assert(dimension_at(*homology.module, one) == 2);
-    assert(dimension_at(*homology.module, {1,1,0}) == 1);
-    assert((outgoing * homology.cycles).is_zero());
+    auto homology = homology_module(complex,1,false,true);
+    assert(homology.num_of_gens() == 3);
+    assert(homology.num_of_rels() == 1);
+    assert(homology.dimension_at(one) == 2);
+    assert(homology.dimension_at({1,1,0}) == 1);
+    assert((outgoing * *homology.cycles).is_zero());
     auto incoming = matrix<Matrix>(1,3,{{0,1}}, {{1,1,0}},
         {{1,0,0},{0,1,0},{0,0,1}});
     ChainComplex<Matrix> with_boundary({outgoing,incoming});
-    auto quotient = homology_with_cycles(with_boundary,1);
-    assert(dimension_at(*quotient.module, one) == 1);
-    assert(dimension_at(*quotient.module, {1,1,0}) == 0);
-    assert(quotient.cycles.get_num_cols() == quotient.module->num_of_gens());
-    assert((outgoing * quotient.cycles).is_zero());
+    auto quotient = homology_module(with_boundary,1,true,true);
+    assert(quotient.dimension_at(one) == 1);
+    assert(quotient.dimension_at({1,1,0}) == 0);
+    assert(quotient.cycles->get_num_cols() == quotient.num_of_gens());
+    assert((outgoing * *quotient.cycles).is_zero());
     // Identity chain map induces identity after choosing the returned bases.
-    Matrix target_cycles = quotient.cycles;
+    Matrix target_cycles = *quotient.cycles;
     target_cycles.append_matrix(incoming);
-    auto induced_lift = solve_graded_linear_system(target_cycles, quotient.cycles);
+    auto induced_lift = solve_graded_linear_system(target_cycles, *quotient.cycles);
     assert(induced_lift);
-    induced_lift->cull_columns(quotient.module->num_of_gens(), false);
-    Homomorphism<Matrix> induced(quotient.module, quotient.module, std::move(*induced_lift));
+    induced_lift->cull_columns(quotient.num_of_gens(), false);
+    auto owner = std::make_shared<const Module<Matrix>>(quotient);
+    Homomorphism<Matrix> induced(owner, owner, std::move(*induced_lift));
     assert(induced.check_lifts());
-    assert(dimension_at(homology_module(complex,0), zero) == 1);
-    assert(dimension_at(homology_module(complex,0), one) == 0);
+    assert(homology_module(complex,0).dimension_at(zero) == 1);
+    assert(homology_module(complex,0).dimension_at(one) == 0);
 
     // Every stored differential and the completeness marker survive conversion.
     Module<Matrix> resolved(outgoing);
@@ -136,8 +134,8 @@ void runtime_interop() {
     assert(converted.inj_res_.size() == 2);
     auto converted_back = convert_module_storage<array<int>>(converted);
     assert(converted_back.proj_res_[0].data == outgoing.data);
-    check_change(sort_module_with_maps(resolved));
-    check_change(minimize_module_with_maps(resolved));
+    check_change(resolved, false);
+    check_change(resolved);
 
     // Equal-degree pairs in higher groups transport operations to both
     // neighboring differentials, rather than just changing the presentation.
@@ -146,12 +144,13 @@ void runtime_interop() {
     auto upper = matrix<Matrix>(1,3,{{0,1,2}}, {two}, {one,one,two});
     auto contractible = Module<Matrix>::from_projective_resolution(
         ChainComplex<Matrix>({lower,middle,upper}), ResolutionCompleteness::complete);
-    auto cancelled = minimize_module_with_maps(contractible);
-    check_change(cancelled);
-    assert(cancelled.transformed->num_of_gens() == 1);
-    assert(cancelled.transformed->num_of_rels() == 1);
-    assert(cancelled.transformed->res_complete_);
-    assert(cancelled.transformed->proj_res_[1].get_num_cols() == 0);
+    check_change(contractible);
+    auto cancelled = contractible;
+    cancelled.minimize();
+    assert(cancelled.num_of_gens() == 1);
+    assert(cancelled.num_of_rels() == 1);
+    assert(cancelled.res_complete_);
+    assert(cancelled.proj_res_[1].get_num_cols() == 0);
 }
 
 int main() {
@@ -162,16 +161,16 @@ int main() {
     using Legacy = R2GradedSparseMatrix<int>;
     Module<Legacy> legacy(Legacy(3,3,{{0,1},{0,1,2},{0,1,2}},
         {{1,1},{2,2},{2,2}}, {{0,0},{1,1},{0,0}}));
-    check_change(sort_module_with_maps(legacy));
-    check_change(minimize_module_with_maps(legacy));
+    check_change(legacy, false);
+    check_change(legacy);
     using Direct = CoordGradedSparseMatrix<double,int>;
     auto empty = from_packed_csc<Direct>(0,0,3,{0},{},{},{});
     assert(empty.parameter_count() == 3);
     empty.compute_rows_forward();
     assert(empty.rows_computed);
     auto mutable_owner = std::make_shared<Module<Direct>>(empty);
-    assert(sort_module_with_maps(mutable_owner).original.get() == mutable_owner.get());
-    assert(minimize_module_with_maps(mutable_owner).original.get() == mutable_owner.get());
+    check_change(*mutable_owner, false);
+    check_change(*mutable_owner);
     auto dimension_zero = from_packed_csc<Direct>(2,1,0,{0,1,2},{0,0},{},{});
     auto zero_kernel = static_cast<const Direct&>(dimension_zero).graded_kernel();
     assert(zero_kernel.get_num_cols() == 1 && zero_kernel.parameter_count() == 0);

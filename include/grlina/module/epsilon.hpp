@@ -30,8 +30,8 @@ struct EpsilonDiagonal<CoordinateDegree<Scalar, Dimension>> {
 
 /** Use physical coordinates for grid matrices. */
 template <typename Matrix>
-matrix_geometry_degree_t<Matrix> epsilon_diagonal(const Matrix& matrix, double epsilon) {
-    return EpsilonDiagonal<matrix_geometry_degree_t<Matrix>>::make(epsilon);
+typename Matrix::degree_type epsilon_diagonal(const Matrix& matrix, double epsilon) {
+    return EpsilonDiagonal<typename Matrix::degree_type>::make(epsilon);
 }
 
 

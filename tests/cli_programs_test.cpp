@@ -55,8 +55,8 @@ static void require_contains(const std::string& output, const std::string& expec
 
 int main(int argc, char** argv) {
     // fixture directory followed by every module-aware CLI in CMake order.
-    if (argc != 16) {
-        std::cerr << "Expected fixture directory and 14 executable paths\n";
+    if (argc != 18) {
+        std::cerr << "Expected fixture directory and 16 executable paths\n";
         return 2;
     }
 
@@ -133,6 +133,43 @@ int main(int argc, char** argv) {
         run(executable[13], {(fixtures / "interval_resolution_expected.scc").string(),
                              (temporary / "homology.scc").string()}, temporary, "mpfree_clone");
         require_equal(temporary / "homology.scc", fixtures / "zero_module_expected.scc");
+
+        const auto png = run(executable[14], {(fixtures / "interval.scc").string(), "40", "30"},
+                             temporary, "hilbert_image");
+        if (png.size() < 24 || png.substr(0,8) != std::string("\x89PNG\r\n\x1a\n",8))
+            throw std::runtime_error("hilbert_image stdout is not a PNG");
+        auto dimension = [&](int offset) {
+            unsigned value = 0;
+            for (int i = offset; i < offset + 4; ++i)
+                value = (value << 8) | static_cast<unsigned char>(png[i]);
+            return value;
+        };
+        if (dimension(16) != 305 || dimension(20) != 215)
+            throw std::runtime_error("hilbert_image ignored its resolution");
+
+        const auto cropped = run(executable[14], {(fixtures / "interval.scc").string(), "40", "30",
+            "--bounds", "-1", "-1", "2", "2"}, temporary, "hilbert_image_bounds");
+        const auto shared_scale = run(executable[14], {(fixtures / "interval.scc").string(), "40", "30",
+            "--bounds", "-1", "-1", "2", "2", "--scale", "1", "3"}, temporary, "hilbert_image_scale");
+        if (cropped == png || cropped == shared_scale ||
+            cropped.substr(0,8) != png.substr(0,8) || shared_scale.substr(0,8) != png.substr(0,8))
+            throw std::runtime_error("hilbert_image ignored bounds or a shared colour scale");
+
+        const std::vector<std::string> landscape_options{
+            (fixtures / "interval.scc").string(), "40", "30", "--bounds", "0", "0", "2", "2",
+            "--resolution", "0.1"};
+        auto landscape = run(executable[15], landscape_options, temporary, "landscape_image");
+        auto options = landscape_options;
+        options.insert(options.end(), {"--layer", "2"});
+        const auto second_layer = run(executable[15], options, temporary, "landscape_image_layer");
+        options = landscape_options;
+        options.insert(options.end(), {"--direction", "2", "1"});
+        const auto weighted = run(executable[15], options, temporary, "landscape_image_direction");
+        if (landscape.size() < 24 || landscape.substr(0,8) != png.substr(0,8) ||
+            second_layer.substr(0,8) != png.substr(0,8) || weighted.substr(0,8) != png.substr(0,8) ||
+            landscape.substr(16,8) != png.substr(16,8) ||
+            landscape == second_layer || landscape == weighted)
+            throw std::runtime_error("landscape_image ignored resolution, layer, or direction");
 
         fs::remove_all(temporary);
         return 0;

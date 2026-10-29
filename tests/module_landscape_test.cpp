@@ -1,3 +1,4 @@
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <grlina/invariants/landscape.hpp>
 #include <cassert>
 #include <cstdint>
@@ -108,6 +109,24 @@ int main(int argc, char** argv) {
     assert(CountedMatrix::reductions == 201 && compressed.barcodes.size() == 201);
     compressed.at({0.13,0.24}, 3);
     assert(CountedMatrix::reductions == 201);
+    const auto png = compressed.image(1, 40, 30);
+    assert(png.size() > 24);
+    assert(std::string(png.begin(), png.begin()+8) == std::string("\x89PNG\r\n\x1a\n",8));
+    auto image_dimension = [](const auto& bytes, int offset) {
+        unsigned value = 0;
+        for (int i = offset; i < offset+4; ++i) value = (value << 8) | bytes[i];
+        return value;
+    };
+    assert(image_dimension(png,16) == 305 && image_dimension(png,20) == 215);
+    assert(!compressed.image(2, 40, 30).empty()); // No second layer: a valid zero image.
+    assert(!compressed.image(std::numeric_limits<std::size_t>::max(), 20, 20).empty());
+    assert(CountedMatrix::reductions == 201); // Image resolution does not repeat reductions.
+    assert(!empty.image(1, 20, 20).empty());
+    assert(!free.image(1, 20, 20).empty());
+    rejects([&] { compressed.image(0); });
+    rejects([&] { compressed.image(1, 0, 20); });
+    rejects([&] { compressed.image(1, 20, 1); });
+    rejects([&] { compressed.image(1, 50000, 50000); });
 
     std::mt19937 random(42);
     for (int trial = 0; trial < 30; ++trial) {

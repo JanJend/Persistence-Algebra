@@ -12,31 +12,22 @@
 
 namespace graded_linalg {
 
-template<class Matrix, class = void>
-struct MatrixSerializedDegree { using type = matrix_degree_t<Matrix>; static constexpr bool grid = false; };
-template<class Matrix>
-struct MatrixSerializedDegree<Matrix, std::void_t<typename Matrix::GridD>> {
-    using type = typename Matrix::GridD; static constexpr bool grid = true;
-};
-
 template<class Matrix>
 struct MatrixIOOperations {
-    using serialized_degree_type = typename MatrixSerializedDegree<Matrix>::type;
+    using serialized_degree_type = typename Matrix::degree_type;
     static void assign_degrees(Matrix& matrix, const std::vector<serialized_degree_type>& columns,
                                const std::vector<serialized_degree_type>& rows) {
-        if constexpr (MatrixSerializedDegree<Matrix>::grid) matrix.set_real_degrees(columns, rows);
+        if constexpr (matrix_grid_backed_v<Matrix>) matrix.set_real_degrees(columns, rows);
         else { matrix.col_degrees = columns; matrix.row_degrees = rows; }
     }
     template<class Output> static void write_column_degree(Output& out, const Matrix& matrix, matrix_index_t<Matrix> i) {
-        if constexpr (MatrixSerializedDegree<Matrix>::grid) Degree_traits<serialized_degree_type>::write_degree(out, matrix.real_col_degree(i));
-        else Degree_traits<serialized_degree_type>::write_degree(out, matrix.col_degrees[i]);
+        Degree_traits<serialized_degree_type>::write_degree(out, matrix.col_degree(i));
     }
     template<class Output> static void write_row_degree(Output& out, const Matrix& matrix, matrix_index_t<Matrix> i) {
-        if constexpr (MatrixSerializedDegree<Matrix>::grid) Degree_traits<serialized_degree_type>::write_degree(out, matrix.real_row_degree(i));
-        else Degree_traits<serialized_degree_type>::write_degree(out, matrix.row_degrees[i]);
+        Degree_traits<serialized_degree_type>::write_degree(out, matrix.row_degree(i));
     }
     static void normalize_complex(std::vector<Matrix>& matrices) {
-        if constexpr (MatrixSerializedDegree<Matrix>::grid) {
+        if constexpr (matrix_grid_backed_v<Matrix>) {
             if (matrices.empty()) return;
             Matrix merged = matrices.front();
             for (auto& matrix : matrices) merge_grids(merged, matrix);
@@ -48,7 +39,7 @@ struct MatrixIOOperations {
 /** SCC operations using the matrix's serialized degree type. */
 template <typename Matrix, typename = void>
 struct GradedMatrixIO : MatrixIOOperations<Matrix> {
-    using degree_type = typename MatrixSerializedDegree<Matrix>::type;
+    using degree_type = typename Matrix::degree_type;
     using index_type = matrix_index_t<Matrix>;
     static constexpr int output_precision() noexcept { return 17; }
 

@@ -94,6 +94,14 @@ add_executable(analyse_ind analyse_ind.cpp)
 target_link_libraries(analyse_ind grlina::grlina)
 set_target_properties(analyse_ind PROPERTIES DEBUG_POSTFIX "_debug")
 
+add_executable(hilbert_image hilbert_image.cpp)
+target_link_libraries(hilbert_image grlina::grlina)
+set_target_properties(hilbert_image PROPERTIES DEBUG_POSTFIX "_debug")
+
+add_executable(landscape_image landscape_image.cpp)
+target_link_libraries(landscape_image grlina::grlina)
+set_target_properties(landscape_image PROPERTIES DEBUG_POSTFIX "_debug")
+
 add_executable(thickness thickness.cpp)
 target_link_libraries(thickness grlina::grlina)
 set_target_properties(thickness PROPERTIES DEBUG_POSTFIX "_debug")
@@ -117,7 +125,7 @@ foreach(_module_cli delete_gens_and_rels minimize_pres mpfree_clone)
     set_target_properties(${_module_cli} PROPERTIES DEBUG_POSTFIX "_debug")
 endforeach()
 
-install(TARGETS shift_endo cut_module hom minimize pres_to_quiver resolution snap_grid submodule_at analyse_ind thickness size
+install(TARGETS shift_endo cut_module hom minimize pres_to_quiver resolution snap_grid submodule_at analyse_ind thickness hilbert_image landscape_image size
                 delete_gens_and_rels minimize_pres mpfree_clone
     RUNTIME DESTINATION bin
 )
@@ -158,6 +166,15 @@ if(GRLINA_BUILD_TESTS)
     add_executable(module_operations_test tests/module_operations_test.cpp)
     target_link_libraries(module_operations_test grlina::grlina)
     add_test(NAME module_operations_test COMMAND module_operations_test)
+    add_executable(module_cycles_test tests/module_cycles_test.cpp)
+    target_link_libraries(module_cycles_test grlina::grlina)
+    target_compile_definitions(module_cycles_test PRIVATE GRLINA_ENABLE_CHECKS=1)
+    if(MSVC)
+        target_compile_options(module_cycles_test PRIVATE /UNDEBUG)
+    else()
+        target_compile_options(module_cycles_test PRIVATE -UNDEBUG)
+    endif()
+    add_test(NAME module_cycles_test COMMAND module_cycles_test)
     add_executable(module_framework_test tests/modules_test.cpp)
     target_link_libraries(module_framework_test grlina::grlina)
     add_test(NAME module_framework_test COMMAND module_framework_test)
@@ -211,7 +228,9 @@ if(GRLINA_BUILD_TESTS)
         $<TARGET_FILE:cut_module>
         $<TARGET_FILE:delete_gens_and_rels>
         $<TARGET_FILE:minimize_pres>
-        $<TARGET_FILE:mpfree_clone>)
+        $<TARGET_FILE:mpfree_clone>
+        $<TARGET_FILE:hilbert_image>
+        $<TARGET_FILE:landscape_image>)
     target_link_libraries(cli_programs_test grlina::grlina)
     endif()
 

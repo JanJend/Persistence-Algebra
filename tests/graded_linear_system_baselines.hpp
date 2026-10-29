@@ -11,7 +11,7 @@ namespace graded_linalg::test {
 template<class Matrix>
 std::optional<Matrix> column_by_column_solver(const Matrix& A, const Matrix& B) {
     using index = matrix_index_t<Matrix>;
-    using Degree = matrix_geometry_degree_t<Matrix>;
+    using Degree = typename Matrix::degree_type;
     Matrix X = empty_matrix_like(A, B.get_num_cols(), A.get_num_cols());
     set_geometric_degrees(X, geometric_col_degrees(B), geometric_col_degrees(A));
     for (index j = 0; j < B.get_num_cols(); ++j) {
@@ -41,7 +41,7 @@ std::optional<Matrix> column_by_column_solver(const Matrix& A, const Matrix& B) 
 template<class Matrix>
 std::optional<Matrix> full_kernel_solver(const Matrix& A, const Matrix& B, double* kernel_ms = nullptr) {
     using index = matrix_index_t<Matrix>;
-    using Degree = matrix_geometry_degree_t<Matrix>;
+    using Degree = typename Matrix::degree_type;
     const index a_count = A.get_num_cols();
     auto a_degrees = geometric_col_degrees(A);
     auto b_degrees = geometric_col_degrees(B);

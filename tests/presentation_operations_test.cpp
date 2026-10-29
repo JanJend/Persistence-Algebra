@@ -314,7 +314,7 @@ void submodule_quotients_and_parent_minimization() {
         auto presented = result->presented_module(true);
         auto expected = raw.presented_module(true);
         for (const r2degree d : {r2degree{0,0}, {1,1}, {2,2}, {4,4}})
-            assert(dimension_at(presented, d) == dimension_at(expected, d));
+            assert(presented.dimension_at(d) == expected.dimension_at(d));
     }
     assert(X->presentation().data == P.data && X->presentation().row_degrees == P.row_degrees);
     auto saved_parent = raw.parent();

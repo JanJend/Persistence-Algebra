@@ -44,7 +44,7 @@ private:
         return resolution[degree - 1].col_degrees;
     }
 
-    static std::vector<matrix_geometry_degree_t<Matrix>> geometric_chain_group_degrees(
+    static std::vector<typename Matrix::degree_type> geometric_chain_group_degrees(
         const module_type& module, std::size_t degree) {
         const auto& resolution = module.proj_res_;
         if (degree == 0) return geometric_row_degrees(resolution[0]);
@@ -173,7 +173,7 @@ public:
     /** Translate both modules and every stored lift, preserving resolutions.
      * Matrix::shift uses M(amount)_a = M_(a+amount), hence subtracts degrees.
      */
-    Homomorphism shifted(const matrix_geometry_degree_t<Matrix>& amount) const {
+    Homomorphism shifted(const typename Matrix::degree_type& amount) const {
         auto source = std::make_shared<module_type>(*domain());
         source->shift(amount);
         auto destination = source;
@@ -196,7 +196,7 @@ public:
      * preserves degree order; grading follows from the sign of the shift.
      */
     static Homomorphism canonical_shift(std::shared_ptr<const module_type> module,
-                                       const matrix_geometry_degree_t<Matrix>& amount) {
+                                       const typename Matrix::degree_type& amount) {
         GRLINA_DEBUG_CHECK(if (!module) throw std::invalid_argument("Canonical shift requires a module"));
         auto shifted_module = std::make_shared<module_type>(*module);
         shifted_module->shift(amount);
@@ -217,7 +217,7 @@ public:
      * shared_ptr; otherwise shared_from_this() throws std::bad_weak_ptr.
      */
     static Homomorphism canonical_shift(const module_type& module,
-                                       const matrix_geometry_degree_t<Matrix>& amount) {
+                                       const typename Matrix::degree_type& amount) {
         return canonical_shift(module.shared_from_this(), amount);
     }
 

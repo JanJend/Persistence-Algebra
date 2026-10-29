@@ -76,21 +76,14 @@ struct CoordGradedSparseMatrix
 
     Self empty_like(Index columns, Index rows) const { return Self(columns, rows); }
 
-    void sort_rows_colexicographically() {
-        this->sort_rows(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::colex_lambda()});
+    void sort_rows_colexicographically(Self* elements = nullptr, const vec<Self*>& images = {}) {
+        this->sort_rows(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::colex_lambda()}, elements, images);
     }
 
-    vec<Index> sort_rows_colexicographically_with_output() {
-        vec<Index> permutation = sort_and_get_permutation<degree_type, Index>(
-            this->row_degrees, Degree_traits<degree_type>::colex_lambda());
-        vec<Index> reverse(permutation.size());
-        for (Index i = 0; i < static_cast<Index>(permutation.size()); ++i)
-            reverse[permutation[i]] = i;
-        this->transform_data(reverse);
-        this->sort_data();
-
-        this->compatibly_sorted = this->col_degrees.size() <= 1;
-        return permutation;
+    vec<Index> sort_rows_colexicographically_with_output(Self* elements = nullptr,
+                                                       const vec<Self*>& images = {}) {
+        return this->sort_rows_with_permutation(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::colex_lambda()},
+                                                elements, images).new_to_old;
     }
 
     void sort_columns_colexicographically() {
@@ -106,8 +99,8 @@ struct CoordGradedSparseMatrix
         return permutation;
     }
 
-    void sort_colexicographically() {
-        this->sort_compatibly(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::colex_lambda()});
+    void sort_colexicographically(Self* elements = nullptr, const vec<Self*>& images = {}) {
+        this->sort_compatibly(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::colex_lambda()}, elements, images);
     }
 
     Self graded_kernel();
@@ -159,7 +152,7 @@ struct CoordGradedSparseMatrix
         return result;
     }
 
-    void snap_to_grid(const Grid& axes) {
+    void snap_to_grid(const Grid& axes, const vec<Self*>& images = {}) {
         vec<Index> columns, rows;
         auto snap = [&](auto& degrees, auto& remove) {
             for (Index i = 0; i < static_cast<Index>(degrees.size()); ++i)
@@ -172,20 +165,21 @@ struct CoordGradedSparseMatrix
         this->compatibly_sorted = false;
         snap(this->col_degrees, columns);
         snap(this->row_degrees, rows);
+        for (auto* image : images) if (image) image->col_degrees = this->row_degrees;
         this->delete_columns(columns);
-        this->delete_rows(rows);
-        this->sort_compatibly();
-        this->minimize();
+        this->delete_rows(rows, nullptr, images);
+        this->sort_compatibly(nullptr, images);
+        this->minimize(nullptr, images);
     }
 
     template <std::size_t D = Dimension, std::enable_if_t<D == 2, int> = 0>
-    void snap_to_grid(const vec<Scalar>& x, const vec<Scalar>& y) { snap_to_grid(Grid{x, y}); }
+    void snap_to_grid(const vec<Scalar>& x, const vec<Scalar>& y, const vec<Self*>& images = {}) { snap_to_grid(Grid{x, y}, images); }
 
-    void snap_to_equidistant_grid(int n, bool end_inclusive = false) {
-        if (n > 0) snap_to_grid(equidistant_axes(n, end_inclusive));
+    void snap_to_equidistant_grid(int n, bool end_inclusive = false, const vec<Self*>& images = {}) {
+        if (n > 0) snap_to_grid(equidistant_axes(n, end_inclusive), images);
     }
 
-    void cut_above(const std::array<double, Dimension>& cutoffs) {
+    void cut_above(const std::array<double, Dimension>& cutoffs, const vec<Self*>& images = {}) {
         auto box = bounding_box();
         auto outside = [&](const degree_type& degree) {
             for (std::size_t a = 0; a < Dimension; ++a)
@@ -196,13 +190,13 @@ struct CoordGradedSparseMatrix
         for (Index i = 0; i < this->get_num_cols(); ++i) if (outside(this->col_degrees[i])) columns.push_back(i);
         for (Index i = 0; i < this->get_num_rows(); ++i) if (outside(this->row_degrees[i])) rows.push_back(i);
         this->delete_columns(columns);
-        this->delete_rows(rows);
+        this->delete_rows(rows, nullptr, images);
     }
 
     template <std::size_t D = Dimension, std::enable_if_t<D == 2, int> = 0>
-    void cut_above(double x, double y) { cut_above(std::array<double, Dimension>{x, y}); }
+    void cut_above(double x, double y, const vec<Self*>& images = {}) { cut_above(std::array<double, Dimension>{x, y}, images); }
 
-    void bound_support(const degree_type& bound) {
+    void bound_support(const degree_type& bound, const vec<Self*>& images = {}) {
         vec<Index> rows;
         for (Index i = 0; i < this->get_num_rows(); ++i) {
             if (!Degree_traits<degree_type>::smaller_equal(this->row_degrees[i], bound)) rows.push_back(i);
@@ -212,9 +206,9 @@ struct CoordGradedSparseMatrix
                 this->append_column(vec<Index>{i}, degree);
             }
         }
-        this->delete_rows(rows);
-        this->sort_compatibly();
-        this->minimize();
+        this->delete_rows(rows, nullptr, images);
+        this->sort_compatibly(nullptr, images);
+        this->minimize(nullptr, images);
     }
 
     void print_grid() const {

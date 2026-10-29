@@ -218,8 +218,8 @@ static void test_poset_without_optional_operations() {
     assert((matrix.col_degrees == vec<D>{D::left, D::right}));
     Module<ForkGradedMatrix> module(matrix);
     assert(support_degrees(module) == support);
-    const auto values = hilbert_function(module, support);
-    assert(values[0].dimension == 1 && values[1].dimension == 0 && values[2].dimension == 0);
+    const auto values = module.dimension_at(support);
+    assert(values[0] == 1 && values[1] == 0 && values[2] == 0);
     matrix.cancel_local_pairs();
     assert(matrix.get_num_cols() == 2); // No relation has the same degree as a generator.
 
@@ -480,6 +480,21 @@ static void test_chain_complex_round_trip() {
     noncomplex_d2.data = {{0}};
     ChainComplex<Matrix> noncomplex({noncomplex_d1, noncomplex_d2});
     assert(!noncomplex.is_chain_complex());
+
+    // A large ambient group must not cause a scan of every product entry.
+    Matrix sparse_lower(2, 100000, {{0, 99999}, {0, 99999}},
+                        vec<r2degree>(2, {0, 0}), vec<r2degree>(100000, {0, 0}));
+    Matrix sparse_upper(10000, 2, array<int>(10000, {0, 1}),
+                        vec<r2degree>(10000, {0, 0}), vec<r2degree>(2, {0, 0}));
+    assert(ChainComplex<Matrix>({sparse_lower, sparse_upper}).is_chain_complex());
+    sparse_lower.set_col(1, {0});
+    assert(!ChainComplex<Matrix>({sparse_lower, sparse_upper}).is_chain_complex());
+
+    using Compact = R2GradedSparseMatrix<int, CSCStorage<int>>;
+    Compact compact_lower(2, 2, {{0, 1}, {0, 1}},
+                          vec<r2degree>(2, {0, 0}), vec<r2degree>(2, {0, 0}));
+    Compact compact_upper(1, 2, {{0, 1}}, {{0, 0}}, vec<r2degree>(2, {0, 0}));
+    assert(ChainComplex<Compact>({compact_lower, compact_upper}).is_chain_complex());
 }
 
 static void test_named_poset_io() {
@@ -541,9 +556,9 @@ static void test_module_hilbert_function_and_editing() {
     TestModule module(interval_presentation());
     assert(module.num_of_gens() == 1);
     assert(module.num_of_rels() == 1);
-    assert(dimension_at(module, {0.0, 0.0}) == 1);
-    assert(dimension_at(module, {1.0, 1.0}) == 0);
-    auto grid = hilbert_function_on_induced_grid(module);
+    assert(module.dimension_at({0.0, 0.0}) == 1);
+    assert(module.dimension_at({1.0, 1.0}) == 0);
+    auto grid = module.hilbert_function();
     assert(grid.x_grid.size() == 2);
     assert(grid.y_grid.size() == 2);
     assert(grid.maximum == 1);
@@ -570,7 +585,7 @@ static void test_homology_module() {
     auto free_homology = homology_module(ChainComplex<Matrix>({zero_differential}));
     assert(free_homology.num_of_gens() == 1);
     assert(free_homology.num_of_rels() == 0);
-    assert(dimension_at(free_homology, {0.0, 0.0}) == 1);
+    assert(free_homology.dimension_at({0.0, 0.0}) == 1);
 
     Matrix identity_boundary(1, 1, array<int>{{0}},
                              vec<r2degree>{{0.0, 0.0}},
@@ -602,12 +617,12 @@ static void test_submodules_and_morphisms() {
     assert(whole.num_of_gens() == 1);
     auto sum = zero.sum(whole);
     assert(sum.num_of_gens() == 1);
-    assert(dimension_at(whole.presented_module(), {0.0, 0.0}) == 1);
-    assert(dimension_at(zero.quotient_module(), {0.0, 0.0}) == 1);
-    assert(dimension_at(whole.quotient_module(), {0.0, 0.0}) == 0);
+    assert(whole.presented_module().dimension_at({0.0, 0.0}) == 1);
+    assert(zero.quotient_module().dimension_at({0.0, 0.0}) == 1);
+    assert(whole.quotient_module().dimension_at({0.0, 0.0}) == 0);
     auto intersection = whole.intersection(sum);
     assert(intersection.num_of_gens() == 1);
-    assert(dimension_at(intersection.presented_module(), {0.0, 0.0}) == 1);
+    assert(intersection.presented_module().dimension_at({0.0, 0.0}) == 1);
 
     Matrix identity(1, 1, "Identity");
     identity.row_degrees = module->presentation().row_degrees;

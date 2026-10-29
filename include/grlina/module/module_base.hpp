@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <array>
 #include <fstream>
+#include <list>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -19,6 +21,12 @@
 #include <grlina/graded_kernel.hpp>
 #include <grlina/matrices/io.hpp>
 
+// AIDA remains optional: include aida_interface.hpp when calling decompose().
+namespace aida {
+template <typename Index> struct AIDA_functor;
+template <class Matrix> struct Block_t;
+}
+
 namespace graded_linalg {
 
 enum class ResolutionKind { projective, injective };
@@ -32,14 +40,26 @@ class Module : public std::enable_shared_from_this<Module<Matrix>> {
 public:
     static_assert(is_graded_sparse_matrix_v<Matrix>,
                   "Module<Matrix> requires the graded sparse matrix interface");
-    using degree_type = matrix_geometry_degree_t<Matrix>;
-    using stored_degree_type = matrix_degree_t<Matrix>;
+    using degree_type = typename Matrix::degree_type;
+    using stored_degree_type = base_degree<Matrix>;
     using index_type = matrix_index_t<Matrix>;
     using chain_complex_type = ChainComplex<Matrix>;
 
     chain_complex_type proj_res_;
     chain_complex_type inj_res_; // not used at the moment
     bool res_complete_ = false;
+    // Columns lift the current presentation generators to cycles in C_q.
+    // Retained by homology with keep_cycles=true and transported to summands.
+    std::optional<Matrix> cycles;
+    // nullopt means not computed; an empty vector is the zero module's decomposition.
+    std::optional<vec<Module>> decomposition;
+
+protected:
+    void include_cycles(vec<Matrix*>& images) {
+        if (cycles && std::find(images.begin(), images.end(), &*cycles) == images.end())
+            images.push_back(&*cycles);
+    }
+public:
 
     Module() = default;
     virtual ~Module() = default;
@@ -81,6 +101,74 @@ public:
     Matrix& presentation() { return proj_res_[0]; }
     const Matrix& presentation() const { return proj_res_[0]; }
 
+    /** Decompose a minimal, sorted copy of the presentation using AIDA.
+     * Include aida_interface.hpp and link AIDA to instantiate this member.
+     * The dependent default keeps ordinary Module users independent of AIDA.
+     * With keep_cycles, existing representatives are transported to each
+     * summand; absent cycles are not synthesized. The parent's presentation,
+     * cycles and resolutions are unchanged.
+     * No presentation leaves decomposition unset. Direct edits through public
+     * matrices require the caller to reset decomposition themselves.
+     */
+    template <class Decomposer = aida::AIDA_functor<index_type>>
+    void decompose(bool keep_cycles = false) {
+        if (!has_presentation()) {
+            decomposition.reset();
+            return;
+        }
+        Module working(presentation());
+        if (keep_cycles) working.cycles = cycles;
+        working.minimize_presentation();
+        vec<Module> summands;
+        if (working.num_of_gens() == 0) {
+            decomposition = std::move(summands);
+            return;
+        }
+
+        // R2 (including CSC storage) uses editable coordinate columns in AIDA.
+        constexpr bool r2 = std::is_same_v<Matrix,
+            R2GradedSparseMatrix<index_type, matrix_storage_t<Matrix>>>;
+        using WorkingMatrix = std::conditional_t<r2,
+            CoordGradedSparseMatrix<double, 2, index_type>, Matrix>;
+        WorkingMatrix matrix = [&]() {
+            if constexpr (r2) {
+                const auto& p = working.presentation();
+                array<index_type> columns;
+                columns.reserve(p.get_num_cols());
+                for (index_type j = 0; j < p.get_num_cols(); ++j)
+                    columns.push_back(p.get_col(j));
+                return WorkingMatrix(p.get_num_cols(), p.get_num_rows(), columns,
+                                     p.col_degrees, p.row_degrees);
+            } else return working.presentation();
+        }();
+        matrix.compatibly_sorted = working.presentation().compatibly_sorted;
+        Decomposer decomposer;
+        decomposer.config.save_base_change = working.cycles.has_value();
+        std::list<aida::Block_t<WorkingMatrix>> blocks;
+        decomposer(matrix, blocks);
+
+        if (working.cycles) {
+            // A row addition source -> target changes the generator basis by
+            // the inverse column addition target -> source, in recorded order.
+            for (const auto& op : decomposer.base_changes.back()->performed_row_ops)
+                working.cycles->col_op(op.second, op.first);
+        }
+        summands.reserve(blocks.size());
+        for (auto& block : blocks) {
+            if constexpr (r2) {
+                Matrix p(block.get_num_cols(), block.get_num_rows(), block.data,
+                         block.col_degrees, block.row_degrees);
+                p.compatibly_sorted = block.compatibly_sorted;
+                summands.emplace_back(std::move(p));
+            } else {
+                summands.emplace_back(std::move(static_cast<Matrix&>(block)));
+            }
+            if (working.cycles)
+                summands.back().cycles = working.cycles->restricted_domain_copy(block.rows);
+        }
+        decomposition = std::move(summands);
+    }
+
     /** Canonical submodules retaining this exact parent. Requires shared_ptr
      * ownership (otherwise throws std::bad_weak_ptr) and a presentation.
      * Include grlina/module/submodule.hpp for the definitions.
@@ -100,6 +188,34 @@ public:
         return presentation().map_at_degree_pair(degree);
     }
 
+    /** Dimension at one degree, or dimensions in the supplied query order. */
+    index_type dimension_at(const degree_type& degree) const;
+    vec<index_type> dimension_at(const vec<degree_type>& degrees) const;
+
+    /** Numerical Hilbert function on the induced (or stored) two-parameter grid. */
+    auto hilbert_function() const;
+
+    /** Numerical values on sorted Cartesian axes, retaining their scalar type.
+     * The dependent Degree keeps non-coordinate Module specializations usable.
+     */
+    template <typename Degree = degree_type>
+    auto hilbert_function(const vec<typename Degree::value_type>& xs,
+                          const vec<typename Degree::value_type>& ys) const;
+
+    /** PNG bytes in memory. Width/height count heatmap pixels; labels add margins.
+     * Automatic bounds include padding (a fraction of each axis span).
+     */
+    vec<unsigned char> hilbert_function_image(std::size_t width = 800,
+        std::size_t height = 600, double padding = 0.05) const;
+
+    /** PNG restricted to the supplied axes' range, without padding.
+     * All induced-grid changes inside that range remain visible.
+     */
+    template <typename Degree = degree_type>
+    vec<unsigned char> hilbert_function_image(const vec<typename Degree::value_type>& xs,
+        const vec<typename Degree::value_type>& ys,
+        std::size_t width = 800, std::size_t height = 600) const;
+
     void print_presentation(bool suppress_description = false) const {
         presentation().print_graded(suppress_description);
     }
@@ -107,6 +223,7 @@ public:
 
     /** Remove chosen relations from this presentation; may enlarge the module. */
     void remove_relations(vec<index_type> indices) {
+        decomposition.reset();
         normalize_indices(indices, num_of_rels());
         proj_res_.differentials().resize(1);
         res_complete_ = false;
@@ -115,28 +232,33 @@ public:
     }
 
     /** Kill the chosen presentation generators (take the corresponding quotient). */
-    void quotient_by_generators(vec<index_type> indices) {
+    void quotient_by_generators(vec<index_type> indices, vec<Matrix*> images = {}) {
+        decomposition.reset();
         normalize_indices(indices, num_of_gens());
         proj_res_.differentials().resize(1);
         res_complete_ = false;
         inj_res_.clear();
-        presentation().delete_rows(indices);
+        include_cycles(images);
+        presentation().delete_rows(indices, nullptr, images);
     }
 
     /** Keep the first count generators and kill the remaining ones.
      * Equivalent to the matrix cull_columns(count, false), which truncates rows.
      */
-    void quotient_by_tail_generators(index_type count) {
+    void quotient_by_tail_generators(index_type count, vec<Matrix*> images = {}) {
+        decomposition.reset();
         GRLINA_DEBUG_CHECK(if (count < 0 || count > num_of_gens())
             throw std::out_of_range("Number of retained generators out of range"));
         proj_res_.differentials().resize(1);
         res_complete_ = false;
         inj_res_.clear();
-        presentation().cull_columns(count, false);
+        include_cycles(images);
+        presentation().cull_columns(count, false, nullptr, images);
     }
 
     /** Add a homogeneous relation in the current generator coordinates. */
     void add_relation(const vec<index_type>& coefficients, const degree_type& degree) {
+        decomposition.reset();
         proj_res_.differentials().resize(1);
         res_complete_ = false;
         inj_res_.clear();
@@ -144,10 +266,11 @@ public:
     }
 
     /** Cancel local generator/relation pairs without requiring a graded kernel. */
-    void semi_minimize_presentation() {
+    void semi_minimize_presentation(Matrix* elements = nullptr, vec<Matrix*> images = {}) {
         Matrix matrix = presentation();
-        matrix.sort_compatibly();
-        matrix.semi_minimize();
+        include_cycles(images);
+        matrix.sort_compatibly(elements, images);
+        matrix.semi_minimize(elements, images);
         proj_res_ = chain_complex_type(std::vector<Matrix>{std::move(matrix)});
         res_complete_ = false;
     }
@@ -177,37 +300,45 @@ public:
         return matrix.induced_quiver_rep(std::move(vertices), std::move(edges));
     }
 
-    virtual void sort_compatibly() {
-        proj_res_.sort_compatibly();
-        if (!inj_res_.empty()) inj_res_.sort_compatibly();
+    /** Incoming elements use generator rows; outgoing images use generator columns.
+     * Initialize an outgoing image to identity to obtain the new-to-old basis map.
+     * Existing cycles are always updated directly, without matrix multiplication.
+     */
+    virtual void sort_compatibly(Matrix* elements = nullptr, vec<Matrix*> images = {}) {
+        sort_compatibly(TraitLinearOrder<stored_degree_type>{Degree_traits<stored_degree_type>::lex_lambda()},
+                        elements, std::move(images));
     }
-    template <typename Compare>
-    void sort_compatibly(Compare compare) {
-        proj_res_.sort_compatibly(compare);
+    template <typename Compare, std::enable_if_t<std::is_convertible_v<Compare,
+        std::function<bool(const stored_degree_type&, const stored_degree_type&)>>, int> = 0>
+    void sort_compatibly(Compare compare, Matrix* elements = nullptr, vec<Matrix*> images = {}) {
+        include_cycles(images);
+        proj_res_.sort_compatibly(compare, nullptr, elements, images);
         if (!inj_res_.empty()) inj_res_.sort_compatibly(compare);
     }
 
     /** Minimize all stored projective maps, or just the presentation if there is one map. */
-    void minimize(bool sort_if_needed = true) {
+    void minimize(bool sort_if_needed = true, Matrix* elements = nullptr, vec<Matrix*> images = {}) {
         if (proj_res_.size() > 1)
-            minimize_resolution(sort_if_needed);
-        else minimize_presentation(sort_if_needed);
+            minimize_resolution(sort_if_needed, elements, std::move(images));
+        else minimize_presentation(sort_if_needed, elements, std::move(images));
     }
 
     /** Minimize the stored projective resolution in place.
      * Extend a truncation by one kernel map before cancellation, then remove
      * the added tail. Only the last differential is copied for its kernel.
      */
-    virtual void minimize_resolution(bool sort_if_needed = true) {
+    virtual void minimize_resolution(bool sort_if_needed = true, Matrix* elements = nullptr,
+                                     vec<Matrix*> images = {}) {
+        include_cycles(images);
         if (res_complete_) {
-            proj_res_.minimize(sort_if_needed);
+            proj_res_.minimize(sort_if_needed, nullptr, elements, images);
             return;
         }
         if constexpr (has_matrix_graded_kernel<Matrix>::value) {
             Matrix terminal = proj_res_.differentials().back();
             proj_res_.push_differential(terminal.graded_kernel());
             try {
-                proj_res_.minimize(sort_if_needed);
+                proj_res_.minimize(sort_if_needed, nullptr, elements, images);
             } catch (...) {
                 proj_res_.differentials().pop_back();
                 throw;
@@ -222,13 +353,15 @@ public:
     /** Presentation-only minimization: discard higher projective maps while
      * preserving the independently stored injective resolution.
      */
-    virtual void minimize_presentation(bool sort_if_needed = true) {
+    virtual void minimize_presentation(bool sort_if_needed = true, Matrix* elements = nullptr,
+                                       vec<Matrix*> images = {}) {
+        include_cycles(images);
         const bool was_complete_presentation = proj_res_.size() == 1 &&
             res_complete_;
         Matrix minimized = presentation();
-        if (sort_if_needed) minimized.sort_compatibly();
+        if (sort_if_needed) minimized.sort_compatibly(elements, images);
         minimized.column_reduction_graded_w_deletion();
-        minimized.cancel_local_pairs();
+        minimized.cancel_local_pairs(elements, images);
         minimized.remove_redundant_relations();
         proj_res_ = chain_complex_type(std::vector<Matrix>{std::move(minimized)});
         res_complete_ = was_complete_presentation;
@@ -271,6 +404,9 @@ public:
     }
 
     void shift(const degree_type& amount) {
+        if (decomposition)
+            for (auto& summand : *decomposition) summand.shift(amount);
+        if (cycles) cycles->shift(amount);
         for (auto& differential : proj_res_.differentials())
             differential.shift(amount);
         for (auto& differential : inj_res_.differentials())
@@ -281,42 +417,54 @@ public:
      * bases and exactness remain the caller's responsibility.
      */
     template <typename Scalar>
-    void snap_to_grid(const vec<Scalar>& x_grid, const vec<Scalar>& y_grid) {
-        for (auto& differential : proj_res_.differentials())
-            differential.snap_to_grid(x_grid, y_grid);
+    void snap_to_grid(const vec<Scalar>& x_grid, const vec<Scalar>& y_grid, vec<Matrix*> images = {}) {
+        decomposition.reset();
+        include_cycles(images);
+        for (std::size_t i = 0; i < proj_res_.size(); ++i)
+            proj_res_[i].snap_to_grid(x_grid, y_grid, i == 0 ? images : vec<Matrix*>{});
         for (auto& differential : inj_res_.differentials())
             differential.snap_to_grid(x_grid, y_grid);
     }
     template <typename Scalar, std::size_t Dimension>
-    void snap_to_grid(const std::array<vec<Scalar>, Dimension>& axes) {
-        for (auto& differential : proj_res_.differentials())
-            differential.snap_to_grid(axes);
+    void snap_to_grid(const std::array<vec<Scalar>, Dimension>& axes, vec<Matrix*> images = {}) {
+        decomposition.reset();
+        include_cycles(images);
+        for (std::size_t i = 0; i < proj_res_.size(); ++i)
+            proj_res_[i].snap_to_grid(axes, i == 0 ? images : vec<Matrix*>{});
         for (auto& differential : inj_res_.differentials())
             differential.snap_to_grid(axes);
     }
-    void snap_to_equidistant_grid(int n, bool end_inclusive = false) {
-        for (auto& differential : proj_res_.differentials())
-            differential.snap_to_equidistant_grid(n, end_inclusive);
+    void snap_to_equidistant_grid(int n, bool end_inclusive = false, vec<Matrix*> images = {}) {
+        decomposition.reset();
+        include_cycles(images);
+        for (std::size_t i = 0; i < proj_res_.size(); ++i)
+            proj_res_[i].snap_to_equidistant_grid(n, end_inclusive, i == 0 ? images : vec<Matrix*>{});
         for (auto& differential : inj_res_.differentials())
             differential.snap_to_equidistant_grid(n, end_inclusive);
     }
     /** Add boundary relations to the presentation and discard stale resolutions. */
-    void bound_support(const degree_type& bound) {
+    void bound_support(const degree_type& bound, vec<Matrix*> images = {}) {
+        decomposition.reset();
         proj_res_.differentials().resize(1);
         res_complete_ = false;
         inj_res_.clear();
-        presentation().bound_support(bound);
+        include_cycles(images);
+        presentation().bound_support(bound, images);
     }
-    void cut_above(double x_cutoff, double y_cutoff) {
-        for (auto& differential : proj_res_.differentials())
-            differential.cut_above(x_cutoff, y_cutoff);
+    void cut_above(double x_cutoff, double y_cutoff, vec<Matrix*> images = {}) {
+        decomposition.reset();
+        include_cycles(images);
+        for (std::size_t i = 0; i < proj_res_.size(); ++i)
+            proj_res_[i].cut_above(x_cutoff, y_cutoff, i == 0 ? images : vec<Matrix*>{});
         for (auto& differential : inj_res_.differentials())
             differential.cut_above(x_cutoff, y_cutoff);
     }
     template <std::size_t Dimension>
-    void cut_above(const std::array<double, Dimension>& cutoffs) {
-        for (auto& differential : proj_res_.differentials())
-            differential.cut_above(cutoffs);
+    void cut_above(const std::array<double, Dimension>& cutoffs, vec<Matrix*> images = {}) {
+        decomposition.reset();
+        include_cycles(images);
+        for (std::size_t i = 0; i < proj_res_.size(); ++i)
+            proj_res_[i].cut_above(cutoffs, i == 0 ? images : vec<Matrix*>{});
         for (auto& differential : inj_res_.differentials())
             differential.cut_above(cutoffs);
     }
@@ -347,20 +495,30 @@ using R2Module = Module<R2GradedSparseMatrix<index, Storage>>;
  * C_k.  Each incoming-boundary column is therefore solved against that kernel
  * matrix at its own degree; those solution coordinates are the relations of
  * the homology presentation.
+ * keep_cycles retains these representatives in Module::cycles, updating them
+ * during minimization. By default no cycle matrix is retained.
  */
 template <typename Matrix>
-std::pair<Module<Matrix>, Matrix> homology_presentation_and_cycles(
-    const ChainComplex<Matrix>& complex, std::size_t homological_degree) {
+Module<Matrix> homology_module(const ChainComplex<Matrix>& complex,
+                              std::size_t homological_degree = 1, bool minimize = true,
+                              bool keep_cycles = false) {
+    auto finish = [=](Matrix presentation, Matrix representatives) {
+        Module<Matrix> result(std::move(presentation));
+        if (keep_cycles) result.cycles = std::move(representatives);
+        if (minimize) result.minimize();
+        return result;
+    };
     if (homological_degree == 0) {
         Matrix presentation = complex.empty()
             ? GradedMatrixIO<Matrix>::make_matrix(0, 0)
             : complex.differential(1);
-        Matrix cycles(geometric_row_degrees(presentation));
-        if constexpr (matrix_grid_backed_v<Matrix>) {
-            cycles.reindex_grid(presentation.grid_);
+        Matrix cycles;
+        if (keep_cycles) {
+            cycles = Matrix(geometric_row_degrees(presentation));
+            if constexpr (matrix_grid_backed_v<Matrix>) cycles.reindex_grid(presentation.grid_);
+            cycles.compatibly_sorted = presentation.compatibly_sorted;
         }
-        cycles.compatibly_sorted = presentation.compatibly_sorted;
-        return {Module<Matrix>(std::move(presentation)), std::move(cycles)};
+        return finish(std::move(presentation), std::move(cycles));
     }
     static_assert(is_graded_sparse_matrix_v<Matrix>,
                   "homology_module requires the graded sparse matrix interface");
@@ -375,7 +533,7 @@ std::pair<Module<Matrix>, Matrix> homology_presentation_and_cycles(
         kernel_generators.sort_columns_lexicographically();
 
         using index_type = matrix_index_t<Matrix>;
-        using degree_type = matrix_degree_t<Matrix>;
+        using degree_type = base_degree<Matrix>;
         matrix_storage_t<Matrix> relation_coordinates;
         vec<degree_type> relation_degrees;
 
@@ -457,16 +615,11 @@ std::pair<Module<Matrix>, Matrix> homology_presentation_and_cycles(
         presentation.row_degrees = kernel_generators.col_degrees;
         presentation.assign_data(std::move(relation_coordinates));
         presentation.compatibly_sorted = false;
-        return {Module<Matrix>(std::move(presentation)), std::move(kernel_generators)};
+        return finish(std::move(presentation), std::move(kernel_generators));
     }
 }
 
-template <typename Matrix>
-Module<Matrix> homology_module(const ChainComplex<Matrix>& complex,
-                              std::size_t homological_degree = 1, bool minimize = true) {
-    auto result = homology_presentation_and_cycles(complex, homological_degree);
-    if (minimize) result.first.minimize();
-    return std::move(result.first);
-}
-
 } // namespace graded_linalg
+
+// Hilbert members are defined separately, after Module is complete.
+#include <grlina/invariants/hilbert_function.hpp>

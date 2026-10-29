@@ -162,7 +162,7 @@ bool is_isomorphic(Matrix A, Matrix B, bool assume_minimal = false,
     if (A.row_degrees != B.row_degrees || A.col_degrees != B.col_degrees) return false;
     if (A.data == B.data) return true; // Includes zero modules and free modules.
 
-    if constexpr (std::is_same_v<matrix_degree_t<Matrix>, r2degree>) {
+    if constexpr (std::is_same_v<base_degree<Matrix>, r2degree>) {
         // Equal generator degrees identify the free generator modules. If
         // each relation map lifts through the other, their images coincide:
         // the identity on generators induces an explicit module isomorphism.

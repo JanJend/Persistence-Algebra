@@ -1,7 +1,6 @@
 // NEW: runtime grids preserve real geometry across storage and algebra operations.
 #define GRLINA_CSC_COMPILE_WARNINGS 0
 #define GRLINA_CSC_RUNTIME_WARNINGS 0
-#include <grlina/invariants/hilbert_function.hpp>
 #include <grlina/runtime_matrices/class_grid_graded_sparse_matrix.hpp>
 #include <grlina/module/module_base.hpp>
 #include <cassert>
@@ -14,7 +13,7 @@ using namespace graded_linalg;
 template<class Storage> void grid_checks() {
     using M = GridGradedSparseMatrix<double, int, Storage>;
     using D = typename M::real_degree_type;
-    using I = typename M::degree_type;
+    using I = base_degree<M>;
     M matrix(3, 2, 3, {{0}, {1}, {0,1}},
              {{0.5,4,1.25}, {2.75,1.5,2}, {2.75,4,2}},
              {{-1.5,1.5,1.25}, {-1.5,1.5,1.25}});
@@ -67,7 +66,7 @@ template<class Storage> void grid_checks() {
     first.append_matrix(second);
     assert(first.get_num_cols() == 6 && first.real_col_degree(3) == original.real_col_degree(0));
     Module<M> module(original);
-    assert(dimension_at(module, D{1,4,2}) == 1);
+    assert(module.dimension_at(D{1,4,2}) == 1);
     auto final_map = original.empty_like(0, original.get_num_cols());
     final_map.row_degrees = original.col_degrees;
     ChainComplex<M> chain({original, final_map});
@@ -112,7 +111,7 @@ template<class Storage> void three_parameter_resolution() {
     assert((original_second * third).is_zero());
     auto fourth = third.graded_kernel(); assert(fourth.get_num_cols() == 0);
     Module<M> module(differential);
-    assert(dimension_at(module, D{0,0,0}) == 1 && dimension_at(module, D{1,1,1}) == 0);
+    assert(module.dimension_at(D{0,0,0}) == 1 && module.dimension_at(D{1,1,1}) == 0);
     module.compute_projective_resolution();
     const auto& resolution = module.proj_res_;
     assert(resolution.size() == 3 && resolution.is_chain_complex());

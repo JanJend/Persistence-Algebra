@@ -946,8 +946,8 @@ auto hom_space_optimised_impl(const Matrix& A, const Matrix& B,
     const vec<matrix_index_t<Matrix>>& row_indices_A = vec<matrix_index_t<Matrix>>(), const vec<matrix_index_t<Matrix>>& row_indices_B = vec<matrix_index_t<Matrix>>(),
     const bool info = false)  {
     using index = matrix_index_t<Matrix>;
-    using D = matrix_geometry_degree_t<Matrix>;
-    using StoredDT = Degree_traits<matrix_degree_t<Matrix>>;
+    using D = typename Matrix::degree_type;
+    using StoredDT = Degree_traits<base_degree<Matrix>>;
     const bool shared_grid = [&] {
         if constexpr (matrix_grid_backed_v<Matrix>) return A.grid_ == B.grid_;
         else return true;
@@ -976,7 +976,7 @@ auto hom_space_optimised_impl(const Matrix& A, const Matrix& B,
         // Compute the target space B_alpha for each generator of A to minimise the number of variables.
         auto [B_alpha, rows_alpha] = [&] {
             if constexpr (matrix_grid_backed_v<Matrix>)
-                return B.map_at_grid_degree_pair(shared_grid ? matrix_degree_t<Matrix>(A.row_degrees[i])
+                return B.map_at_grid_degree_pair(shared_grid ? base_degree<Matrix>(A.row_degrees[i])
                     : query_matrix_degree(B, geometric_degree(A, A.row_degrees[i])), false);
             else return B.map_at_degree_pair(A.row_degrees[i], false);
         }();
@@ -1073,8 +1073,8 @@ auto hom_space_no_opt_impl(
     const vec<matrix_index_t<Matrix>>& row_indices_B = vec<matrix_index_t<Matrix>>(),
     const bool info = false)  {
     using index = matrix_index_t<Matrix>;
-    using D = matrix_geometry_degree_t<Matrix>;
-    using StoredDT = Degree_traits<matrix_degree_t<Matrix>>;
+    using D = typename Matrix::degree_type;
+    using StoredDT = Degree_traits<base_degree<Matrix>>;
     const bool shared_grid = [&] {
         if constexpr (matrix_grid_backed_v<Matrix>) return A.grid_ == B.grid_;
         else return true;

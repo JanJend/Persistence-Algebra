@@ -1,6 +1,7 @@
-/** @file invariants/landscape.hpp @brief Diagonal barcode landscapes over F2, with CSV/SVG output. */
+/** @file invariants/landscape.hpp @brief Diagonal barcode landscapes over F2, with in-memory PNG and CSV/SVG output. */
 #pragma once
 #include <grlina/module/module_base.hpp>
+#include <grlina/invariants/hilbert_plot.hpp>
 #include <array>
 #include <cmath>
 #include <iomanip>
@@ -11,7 +12,7 @@
 namespace graded_linalg {
 
 template <typename Matrix>
-using landscape_point_t = std::array<double, std::tuple_size<matrix_geometry_degree_t<Matrix>>::value>;
+using landscape_point_t = std::array<double, std::tuple_size<typename Matrix::degree_type>::value>;
 
 // Diagonal restriction: a degree a enters p+t*v at max_i((a_i-p_i)/v_i).
 // The first map of a projective resolution is already a presentation.
@@ -140,7 +141,31 @@ struct Landscape {
         return values;
     }
 
-    // Native compressed representation plus CSV/SVG views. Only export materializes a grid.
+    /** PNG bytes for one layer (1-based), without creating a file.
+     * Width/height count heatmap pixels; labels add 265 x 185 pixels.
+     * Evaluate the cached landscape at each pixel, preserving its interpolation
+     * error bound and performing no matrix reductions. Colours are linear in height.
+     * Define STB_IMAGE_WRITE_IMPLEMENTATION before any grlina include in one .cpp.
+     */
+    vec<unsigned char> image(std::size_t layer = 1, std::size_t width = 800,
+                             std::size_t height = 600) const {
+        if (!layer) throw std::invalid_argument("Landscape image layer must be at least one");
+        image_detail::validate_size(width, height);
+        const auto xs = image_detail::uniform_axis(bounds[0], bounds[2], width);
+        const auto ys = image_detail::uniform_axis(bounds[1], bounds[3], height);
+        array<double> values(width, vec<double>(height, 0));
+        // Layers beyond every stored barcode are identically zero.
+        const bool available = std::any_of(barcodes.begin(), barcodes.end(),
+            [layer](const auto& bars) { return bars.size() >= layer; });
+        if (available)
+            for (std::size_t x = 0; x < width; ++x)
+                for (std::size_t y = 0; y < height; ++y)
+                    values[x][y] = at({xs[x], ys[y]}, layer).back();
+        return image_detail::heatmap_image(xs, ys, values,
+            "Landscape layer " + std::to_string(layer), "Height", false);
+    }
+
+    // Export the cached barcodes and sampled CSV/SVG views.
     void save(const std::string& prefix, std::size_t layers = 1) const {
         if (!layers) throw std::invalid_argument("Landscape export needs at least one layer");
         std::ofstream slices;

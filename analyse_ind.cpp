@@ -106,7 +106,7 @@ void compute_end(std::filesystem::path input_path) {
     R2Module<int> A(input_path.string());
     int dim = compute_hom_space(A, A, -1, false);
     std::cout << "Dimension of hom-space: " << dim << std::endl;
-    auto hilbert = hilbert_function_on_induced_grid(A);
+    auto hilbert = A.hilbert_function();
     std::cout << "thickness: " << hilbert.maximum << std::endl;
 }
 
@@ -211,7 +211,7 @@ void compute_decomp_end(std::filesystem::path input_path, bool hom_timed) {
                 max_gen = std::max(max_gen, A.num_of_rels());
                 non_int_dims.push_back(std::make_pair(std::make_pair(A.num_of_gens(), A.num_of_rels()), std::make_pair(0,0)));
                 int dim;
-                auto hilbert = hilbert_function_on_induced_grid(A);
+                auto hilbert = A.hilbert_function();
                 if(A.num_of_gens() < 100){
                     dim = compute_hom_space(A, A, -1, false, false);
                 } else {

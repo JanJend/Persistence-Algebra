@@ -35,9 +35,9 @@ int main() {
     assert(image.generator_map().generator_lift().col_degrees == vec<r2degree>({{1.5, 2.5}}));
     assert(image.generator_map().generator_lift().data == vec<vec<int>>({{0}}));
     auto image_module = image.presented_module();
-    assert(dimension_at(image_module, {1.5, 2.5}) == 1);
-    assert(dimension_at(image_module, {1.25, 2.5}) == 0);
-    assert(dimension_at(image_module, {1.5, 2.25}) == 0);
+    assert(image_module.dimension_at({1.5, 2.5}) == 1);
+    assert(image_module.dimension_at({1.25, 2.5}) == 0);
+    assert(image_module.dimension_at({1.5, 2.25}) == 0);
     assert(epsilon_kernel(free, 0.5).is_zero());
 
     // Shifting a presented submodule must discard its old module presentation.
@@ -47,7 +47,7 @@ int main() {
     assert(!shifted.has_presentation());
     assert(shifted.inj_res_.empty());
     assert(shifted.parent() == free && shifted.equals(image));
-    assert(dimension_at(shifted.presented_module(), {1, 2}) == 0);
+    assert(shifted.presented_module().dimension_at({1, 2}) == 0);
     assert(shifted.equals(image));
 
     // The relation e0 + e1 dies at (3,4); its kernel starts at (2.5,3.5).
@@ -61,9 +61,9 @@ int main() {
     assert(kernel.generator_map().generator_lift().row_degrees == original.row_degrees);
     assert(kernel.equals(expected));
     auto kernel_module = kernel.presented_module();
-    assert(dimension_at(kernel_module, {2.5, 3.5}) == 1);
-    assert(dimension_at(kernel_module, {2.25, 3.5}) == 0);
-    assert(dimension_at(kernel_module, {3, 4}) == 0);
+    assert(kernel_module.dimension_at({2.5, 3.5}) == 1);
+    assert(kernel_module.dimension_at({2.25, 3.5}) == 0);
+    assert(kernel_module.dimension_at({3, 4}) == 0);
     assert(epsilon_image(coupled, 0).equals(Sub::whole(coupled)));
     assert(epsilon_kernel(coupled, 0).is_zero());
     // Large shifts must still respect the birth degrees of every summand.

@@ -46,7 +46,7 @@ class ChainComplex {
 public:
     static_assert(is_graded_sparse_matrix_v<Matrix>,
                   "ChainComplex<Matrix> requires the graded sparse matrix interface");
-    using degree_type = matrix_degree_t<Matrix>;
+    using degree_type = base_degree<Matrix>;
     using index_type = matrix_index_t<Matrix>;
 
 private:
@@ -157,8 +157,14 @@ public:
     /** Test the chain equations d_i d_(i+1) = 0. */
     bool is_chain_complex() const {
         for (std::size_t i = 1; i < differentials_.size(); ++i) {
-            auto composition = differentials_[i - 1] * differentials_[i];
-            if (!composition.is_zero()) return false;
+            const auto& lower = differentials_[i - 1];
+            const auto& upper = differentials_[i];
+            GRLINA_ASSERT(lower.get_num_cols() == upper.get_num_rows());
+            // Over F2 each product column is the XOR of its selected boundaries.
+            // Avoid testing every unrelated row/column pair or storing d^2.
+            for (index_type column = 0; column < upper.get_num_cols(); ++column)
+                if (!vectorXORMulti<index_type>(lower.data, upper.get_col(column)).empty())
+                    return false;
         }
         return true;
     }
@@ -175,7 +181,8 @@ public:
     }
 
     template <typename Compare>
-    void sort_compatibly(Compare compare, ChainBasisMaps<Matrix>* basis_maps = nullptr) {
+    void sort_compatibly(Compare compare, ChainBasisMaps<Matrix>* basis_maps = nullptr,
+                         Matrix* elements = nullptr, const vec<Matrix*>& generator_images = {}) {
         if (empty()) return;
         GRLINA_ASSERT(!basis_maps || (basis_maps->to_original.size() > size() &&
                                      basis_maps->from_original.size() > size()));
@@ -203,7 +210,10 @@ public:
                 outgoing.col_degrees = degrees;
                 outgoing.compatibly_sorted = false;
             }
-            if (group < size()) differentials_[group].permute_rows_graded(old_to_new);
+            if (group < size()) {
+                if (group == 0) differentials_[group].permute_rows_graded(old_to_new, elements, generator_images);
+                else differentials_[group].permute_rows_graded(old_to_new);
+            }
         }
         for (auto& d : differentials_) d.compatibly_sorted = true;
 
@@ -217,19 +227,28 @@ public:
      * Runs in place from higher to lower homological degree, updating supplied
      * basis maps directly and discarding paired lower columns before reduction.
      */
-    void minimize(bool sort_if_needed = true, ChainBasisMaps<Matrix>* basis_maps = nullptr) {
+    void minimize(bool sort_if_needed = true, ChainBasisMaps<Matrix>* basis_maps = nullptr,
+                  Matrix* elements = nullptr, const vec<Matrix*>& generator_images = {}) {
         if (empty()) return;
+        GRLINA_DEBUG_CHECK(if (basis_maps && elements)
+            throw std::invalid_argument("Use either full chain basis maps or an incoming generator map"));
         GRLINA_ASSERT(!basis_maps || (basis_maps->to_original.size() > size() &&
                                      basis_maps->from_original.size() > size()));
         if (sort_if_needed) sort_compatibly(
             TraitLinearOrder<degree_type>{Degree_traits<degree_type>::lex_lambda()},
-            basis_maps);
+            basis_maps, elements, generator_images);
 
         auto& maps = differentials_;
         for (std::size_t remaining = maps.size(); remaining > 0; --remaining) {
             const std::size_t level = remaining - 1;
             auto& d = maps[level];
-            d.cancel_local_pairs(basis_maps ? &basis_maps->from_original[level] : nullptr,
+            if constexpr (matrix_grid_backed_v<Matrix>) {
+                if (level == 0 && elements) {
+                    merge_grids(d, *elements);
+                    GradedMatrixIO<Matrix>::normalize_complex(maps);
+                }
+            }
+            d.cancel_local_pairs(basis_maps ? &basis_maps->from_original[level] : (level == 0 ? elements : nullptr),
                 basis_maps ? &basis_maps->to_original[level + 1] : nullptr,
                 [&](auto& columns, auto& rows) {
                 // Target survivors retain their basis; source survivors change
@@ -237,6 +256,8 @@ public:
                 // differentials therefore affect only indices being removed.
                 if (level > 0) maps[level - 1].delete_columns(rows);
                 if (level + 1 < maps.size()) maps[level + 1].delete_rows(columns);
+                if (level == 0)
+                    for (auto* images : generator_images) if (images) images->delete_columns(rows);
                 if (basis_maps) {
                     basis_maps->to_original[level].delete_columns(rows);
                     basis_maps->from_original[level + 1].delete_rows(columns);

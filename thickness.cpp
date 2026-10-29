@@ -10,7 +10,7 @@ using namespace graded_linalg;
 void compute_thickness(std::filesystem::path input_path) {
 
     R2Module<int> module(input_path.string());
-    auto hilbert = hilbert_function_on_induced_grid(module);
+    auto hilbert = module.hilbert_function();
     std::cout << module.num_of_gens() << " x " << module.num_of_rels() << ": ";
     std::cout << "thickness: " << hilbert.maximum << std::endl;
 }
@@ -99,7 +99,7 @@ void compute_decomp_thickness(std::filesystem::path input_path) {
                 sizes.push_back(module.num_of_rels()+module.num_of_gens());
             } else {
                 R2Module<int> module(input_file);
-                auto hilbert = hilbert_function_on_induced_grid(module);
+                auto hilbert = module.hilbert_function();
                 thicks.push_back(hilbert.maximum);
                 sizes.push_back(module.num_of_rels()+module.num_of_gens());
             }

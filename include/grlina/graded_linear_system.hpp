@@ -71,9 +71,9 @@ std::conditional_t<StoreOperations, std::optional<Matrix>, bool>
 solve_bigraded_linear_system(Matrix A, Matrix B) {
     static_assert(is_graded_sparse_matrix_v<Matrix>, "Expected graded CRTP matrices");
     using Index = matrix_index_t<Matrix>;
-    using GeometricDegree = matrix_geometry_degree_t<Matrix>;
+    using GeometricDegree = typename Matrix::degree_type;
     using Coordinate = typename GeometricDegree::value_type;
-    using StoredDegree = matrix_degree_t<Matrix>;
+    using StoredDegree = base_degree<Matrix>;
     static_assert(std::tuple_size<GeometricDegree>::value == 2, "Expected two-parameter matrices");
 
     if constexpr (matrix_grid_backed_v<Matrix>) merge_grids(A, B);
@@ -139,14 +139,14 @@ solve_bigraded_linear_system(Matrix A, Matrix B) {
 // with the kernel's queued reduction, and reduce only B as target columns.
 template<class Matrix, bool StoreOperations = true>
 bool solve_bigraded_slice(const Matrix& A, const Matrix& B,
-                         const vec<matrix_geometry_degree_t<Matrix>>& a_degrees,
-                         const vec<matrix_geometry_degree_t<Matrix>>& b_degrees,
+                         const vec<typename Matrix::degree_type>& a_degrees,
+                         const vec<typename Matrix::degree_type>& b_degrees,
                          const vec<matrix_index_t<Matrix>>& sources,
                          const vec<matrix_index_t<Matrix>>& targets,
                          std::size_t frozen_axes,
                          std::conditional_t<StoreOperations, Matrix, std::nullptr_t>& X) {
     using index = matrix_index_t<Matrix>;
-    using Scalar = typename matrix_geometry_degree_t<Matrix>::value_type;
+    using Scalar = typename Matrix::degree_type::value_type;
     const index a_count = static_cast<index>(sources.size());
     const index count = a_count + static_cast<index>(targets.size());
     const std::size_t dimension = b_degrees[targets.front()].size();
@@ -204,7 +204,7 @@ std::conditional_t<StoreOperations, std::optional<Matrix>, bool>
 solve_graded_linear_system(const Matrix& A, const Matrix& B) {
     static_assert(is_graded_sparse_matrix_v<Matrix>, "Expected graded CRTP matrices");
     using index = matrix_index_t<Matrix>;
-    using D = matrix_geometry_degree_t<Matrix>;
+    using D = typename Matrix::degree_type;
     using Scalar = typename D::value_type;
     static_assert(has_degree_join_v<D>, "The coordinate graded solver requires Degree_traits::join(a, b)");
 
@@ -260,7 +260,7 @@ struct is_coordinate_solver_degree<std::array<Scalar, Dimension>> : std::true_ty
 template <typename Matrix>
 bool graded_linear_system_is_solvable(const Matrix& A, const Matrix& B) {
     using index = matrix_index_t<Matrix>;
-    using D = matrix_geometry_degree_t<Matrix>;
+    using D = typename Matrix::degree_type;
     if constexpr (detail::is_coordinate_solver_degree<D>::value) {
         return solve_graded_linear_system<Matrix, false>(A, B);
     } else {
