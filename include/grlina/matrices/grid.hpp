@@ -17,9 +17,9 @@
 namespace graded_linalg {
 
 // Put both matrices on the union grid, preserving their real degrees.
-template <typename Scalar, std::size_t Dimension, typename Index>
-void merge_grids(GridGradedSparseMatrix<Scalar, Dimension, Index>& left,
-                 GridGradedSparseMatrix<Scalar, Dimension, Index>& right) {
+template <typename Scalar, std::size_t Dimension, typename Index, typename Storage>
+void merge_grids(GridGradedSparseMatrix<Scalar, Dimension, Index, Storage>& left,
+                 GridGradedSparseMatrix<Scalar, Dimension, Index, Storage>& right) {
     if (left.grid_ == right.grid_) return;
     auto axes = left.grid_;
     for (std::size_t a = 0; a < Dimension; ++a)
@@ -28,12 +28,12 @@ void merge_grids(GridGradedSparseMatrix<Scalar, Dimension, Index>& left,
     right.reindex_grid(std::move(axes));
 }
 
-template <typename Scalar, std::size_t Dimension, typename Index>
+template <typename Scalar, std::size_t Dimension, typename Index, typename Storage>
 struct GridGradedSparseMatrix
     : CoordGradedSparseMatrix<Index, Dimension, Index,
-                             GridGradedSparseMatrix<Scalar, Dimension, Index>> {
+                             GridGradedSparseMatrix<Scalar, Dimension, Index, Storage>, Storage> {
     using Self = GridGradedSparseMatrix;
-    using Base = CoordGradedSparseMatrix<Index, Dimension, Index, Self>;
+    using Base = CoordGradedSparseMatrix<Index, Dimension, Index, Self, Storage>;
     using D = CoordinateDegree<Index, Dimension>;
     using GridD = CoordinateDegree<Scalar, Dimension>;
     using degree_type = GridD;
@@ -57,8 +57,8 @@ struct GridGradedSparseMatrix
         set_real_degrees(degrees, degrees);
     }
     GridGradedSparseMatrix(Index rows, vec<Index> indicator) : Base(rows, std::move(indicator)) { grid_.fill({Scalar{}}); }
-    explicit GridGradedSparseMatrix(SparseMatrix<Index>&& matrix) : Base(std::move(matrix)) { grid_.fill({Scalar{}}); }
-    explicit GridGradedSparseMatrix(const SparseMatrix<Index>& matrix) : Base(matrix) { grid_.fill({Scalar{}}); }
+    explicit GridGradedSparseMatrix(SparseMatrix<Index, Storage>&& matrix) : Base(std::move(matrix)) { grid_.fill({Scalar{}}); }
+    explicit GridGradedSparseMatrix(const SparseMatrix<Index, Storage>& matrix) : Base(matrix) { grid_.fill({Scalar{}}); }
 
     GridGradedSparseMatrix(Index columns, Index rows, vec<GridD> c, vec<GridD> r)
         : Base(columns, rows) { set_real_degrees(c, r); }
@@ -72,7 +72,7 @@ struct GridGradedSparseMatrix
         : Base(columns, rows, entries, std::move(c), std::move(r)), grid_(std::move(axes)) {}
 
     template <typename OtherScalar, typename Derived>
-    explicit GridGradedSparseMatrix(const GradedSparseMatrix<CoordinateDegree<OtherScalar, Dimension>, Index, Derived>& matrix)
+    explicit GridGradedSparseMatrix(const GradedSparseMatrix<CoordinateDegree<OtherScalar, Dimension>, Index, Derived, Storage>& matrix)
         : Base(matrix.get_num_cols(), matrix.get_num_rows()) {
         this->assign_data(matrix.data);
         set_real_degrees(convert_degrees(matrix.col_degrees), convert_degrees(matrix.row_degrees));
@@ -80,7 +80,7 @@ struct GridGradedSparseMatrix
         this->is_identity = matrix.is_identity;
     }
     template <typename OtherScalar, typename Derived>
-    GridGradedSparseMatrix(const GradedSparseMatrix<CoordinateDegree<OtherScalar, Dimension>, Index, Derived>& matrix, Grid axes)
+    GridGradedSparseMatrix(const GradedSparseMatrix<CoordinateDegree<OtherScalar, Dimension>, Index, Derived, Storage>& matrix, Grid axes)
         : Base(matrix.get_num_cols(), matrix.get_num_rows()), grid_(std::move(axes)) {
         this->assign_data(matrix.data);
         for (Index i = 0; i < matrix.get_num_cols(); ++i)
@@ -91,27 +91,29 @@ struct GridGradedSparseMatrix
         this->is_identity = matrix.is_identity;
     }
     template <typename OtherScalar>
-    explicit GridGradedSparseMatrix(const GridGradedSparseMatrix<OtherScalar, Dimension, Index>& matrix)
-        : Base(matrix.get_num_cols(), matrix.get_num_rows(), matrix.data, matrix.col_degrees, matrix.row_degrees) {
+    explicit GridGradedSparseMatrix(const GridGradedSparseMatrix<OtherScalar, Dimension, Index, Storage>& matrix)
+        : Base(matrix.get_num_cols(), matrix.get_num_rows(), matrix.col_degrees, matrix.row_degrees) {
+        this->assign_data(matrix.data);
         for (std::size_t a = 0; a < Dimension; ++a) grid_[a].assign(matrix.grid_[a].begin(), matrix.grid_[a].end());
         this->compatibly_sorted = matrix.compatibly_sorted;
         this->is_identity = matrix.is_identity;
     }
     template <typename OtherScalar, typename Derived>
-    Self& operator=(const GradedSparseMatrix<CoordinateDegree<OtherScalar, Dimension>, Index, Derived>& matrix) {
+    Self& operator=(const GradedSparseMatrix<CoordinateDegree<OtherScalar, Dimension>, Index, Derived, Storage>& matrix) {
         return *this = Self(matrix);
     }
     template <typename OtherScalar>
-    Self& operator=(const GridGradedSparseMatrix<OtherScalar, Dimension, Index>& matrix) { return *this = Self(matrix); }
+    Self& operator=(const GridGradedSparseMatrix<OtherScalar, Dimension, Index, Storage>& matrix) { return *this = Self(matrix); }
 
     explicit GridGradedSparseMatrix(std::istream& input, bool sort = false)
-        : GridGradedSparseMatrix(CoordGradedSparseMatrix<Scalar, Dimension, Index>(input, sort)) {}
+        : GridGradedSparseMatrix(CoordGradedSparseMatrix<Scalar, Dimension, Index, void, Storage>(input, sort)) {}
     explicit GridGradedSparseMatrix(const std::string& path, bool sort = false)
-        : GridGradedSparseMatrix(CoordGradedSparseMatrix<Scalar, Dimension, Index>(path, sort)) {}
+        : GridGradedSparseMatrix(CoordGradedSparseMatrix<Scalar, Dimension, Index, void, Storage>(path, sort)) {}
 
-    CoordGradedSparseMatrix<Scalar, Dimension, Index> to_coordinates() const {
-        CoordGradedSparseMatrix<Scalar, Dimension, Index> result(this->get_num_cols(), this->get_num_rows(),
-                                                               this->data, real_col_degrees(), real_row_degrees());
+    CoordGradedSparseMatrix<Scalar, Dimension, Index, void, Storage> to_coordinates() const {
+        CoordGradedSparseMatrix<Scalar, Dimension, Index, void, Storage> result(this->get_num_cols(), this->get_num_rows(),
+                                                               real_col_degrees(), real_row_degrees());
+        result.assign_data(this->data);
         result.compatibly_sorted = this->compatibly_sorted;
         result.is_identity = this->is_identity;
         return result;
@@ -131,27 +133,39 @@ struct GridGradedSparseMatrix
         result.grid_ = grid_;
         return result;
     }
-    friend Self operator*(Self left, Self right) {
-        merge_grids(left, right);
-        // The graded operator checks matching middle degrees under GRLINA_ENABLE_CHECKS.
-        Self result = static_cast<const Base&>(left) * static_cast<const Base&>(right);
-        result.grid_ = std::move(left.grid_);
+    friend Self operator*(const Self& left, const Self& right) {
+        GRLINA_ASSERT(left.real_col_degrees() == right.real_row_degrees());
+        Self result(static_cast<const SparseMatrix<Index, Storage>&>(left) * static_cast<const SparseMatrix<Index, Storage>&>(right));
+        result.grid_ = left.grid_;
+        for (std::size_t a = 0; a < Dimension; ++a)
+            result.grid_[a].insert(result.grid_[a].end(), right.grid_[a].begin(), right.grid_[a].end());
+        normalize_grids(result.grid_);
+        result.row_degrees = encode_degrees(left.real_row_degrees(), result.grid_);
+        result.col_degrees = encode_degrees(right.real_col_degrees(), result.grid_);
+        result.compatibly_sorted = false;
         return result;
     }
-    friend Self operator+(Self left, Self right) {
-        merge_grids(left, right);
-        Self result = left.empty_like(left.get_num_cols(), left.get_num_rows());
-        result.assign_data((static_cast<const SparseMatrix<Index>&>(left) + static_cast<const SparseMatrix<Index>&>(right)).data);
-        result.col_degrees = left.col_degrees;
-        result.row_degrees = left.row_degrees;
+    friend Self operator+(const Self& left, const Self& right) {
+        Self result(static_cast<const SparseMatrix<Index, Storage>&>(left) + static_cast<const SparseMatrix<Index, Storage>&>(right));
+        result.grid_ = left.grid_;
+        for (std::size_t a = 0; a < Dimension; ++a)
+            result.grid_[a].insert(result.grid_[a].end(), right.grid_[a].begin(), right.grid_[a].end());
+        normalize_grids(result.grid_);
+        result.col_degrees = encode_degrees(left.real_col_degrees(), result.grid_);
+        result.row_degrees = encode_degrees(left.real_row_degrees(), result.grid_);
         result.compatibly_sorted = left.compatibly_sorted;
         return result;
     }
 
     void append_matrix(const Self& other) {
-        Self aligned = other;
-        merge_grids(*this, aligned);
-        Base::append_matrix(aligned);
+        if (grid_ == other.grid_) { Base::append_matrix(other); return; }
+        GRLINA_ASSERT(this->real_row_degrees() == other.real_row_degrees());
+        auto axes = grid_;
+        for (std::size_t a = 0; a < Dimension; ++a)
+            axes[a].insert(axes[a].end(), other.grid_[a].begin(), other.grid_[a].end());
+        reindex_grid(std::move(axes));
+        for (Index j = 0; j < other.get_num_cols(); ++j)
+            Base::append_column(other.column(j), grid_degree(other.real_col_degree(j)));
     }
     void append_move_matrix(Self&& other) {
         if (this == &other) { append_matrix(other); return; }
@@ -249,10 +263,10 @@ struct GridGradedSparseMatrix
         Base::set_all_generator_degrees(degree);
     }
 
-    std::pair<SparseMatrix<Index>, vec<Index>> map_at_degree_pair(const GridD& degree, bool shifted = true) const {
+    std::pair<SparseMatrix<Index, Storage>, vec<Index>> map_at_degree_pair(const GridD& degree, bool shifted = true) const {
         return Base::map_at_degree_pair(query_degree(degree), shifted);
     }
-    SparseMatrix<Index> map_at_degree(const GridD& degree, vec<Index>& columns) const {
+    SparseMatrix<Index, Storage> map_at_degree(const GridD& degree, vec<Index>& columns) const {
         return Base::map_at_degree(query_degree(degree), columns);
     }
     Index num_cols_before(const GridD& degree) const { return count_before(this->col_degrees, query_degree(degree)); }
@@ -436,7 +450,7 @@ struct GridGradedSparseMatrix
     void print_degrees() const { to_coordinates().print_degrees(); }
     void print_graded(bool suppress_description = false) const { to_coordinates().print_graded(suppress_description); }
     void parse_stream(std::istream& input, bool sort = false) {
-        *this = Self(CoordGradedSparseMatrix<Scalar, Dimension, Index>(input, sort));
+        *this = Self(CoordGradedSparseMatrix<Scalar, Dimension, Index, void, Storage>(input, sort));
     }
     template <typename Output>
     void to_stream(Output& output, bool header = true) const { to_coordinates().to_stream(output, header); }

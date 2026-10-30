@@ -182,6 +182,8 @@ public:
     explicit CSCStorage(std::size_t columns) : CSCStorage() { resize(columns); }
     CSCStorage(std::size_t columns, const vec<Index>& fill) : CSCStorage() { resize(columns, fill); }
     CSCStorage(const vec<vec<Index>>& columns) : CSCStorage() { assign_data(columns); }
+    template<class Column>
+    CSCStorage(const vec<Column>& columns) : CSCStorage() { assign_data(columns); }
     CSCStorage(const CSCStorage&) = default;
     CSCStorage& operator=(const CSCStorage&) = default;
     // The already initialized empty buffer leaves moved-from storage valid.
@@ -283,13 +285,17 @@ public:
     void emplace_back(const vec<Index>& values) { append_col(values); }
     void emplace_back(CSCColumnView<Index> values) { append_col(values); }
 
-    void assign_data(const vec<vec<Index>>& columns) {
+    template<class Columns>
+    void assign_data(const Columns& columns) {
         CSCStorage fresh;
         std::size_t total = 0;
         for (const auto& column : columns) total += column.size();
         fresh.reserve(columns.size());
         fresh.reserve_entries(total);
-        for (const auto& column : columns) fresh.append_col(column);
+        for (const auto& column : columns) {
+            fresh.buffers_->entries.insert(fresh.buffers_->entries.end(), column.begin(), column.end());
+            fresh.buffers_->offsets.push_back(fresh.buffers_->entries.size());
+        }
         buffers_ = std::move(fresh.buffers_);
     }
 

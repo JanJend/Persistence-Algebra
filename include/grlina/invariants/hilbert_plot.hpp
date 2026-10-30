@@ -1,5 +1,6 @@
 #pragma once
 #include <grlina/general_checks.hpp>
+#include <grlina/invariants/colourmaps.hpp>
 #include <grlina/third_party/stb_image_write.h>
 #include <algorithm>
 #include <array>
@@ -56,14 +57,6 @@ inline const unsigned char* hilbert_glyph(char c) {
     return glyphs[i];
 }
 
-inline std::array<unsigned char,3> hilbert_colour(double t) {
-    t = std::clamp(t, 0.0, 1.0);
-    return t < 0.5 ? std::array<unsigned char,3>{static_cast<unsigned char>(212*(1-2*t)),
-        static_cast<unsigned char>(234-256*t),255} : std::array<unsigned char,3>{0,
-        static_cast<unsigned char>(106*(2-2*t)),static_cast<unsigned char>(255*(2-2*t))};
-}
-
-
 namespace image_detail {
 
 inline void validate_size(std::size_t width, std::size_t height) {
@@ -91,7 +84,8 @@ template <typename Scalar, typename Value>
 std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const std::vector<Scalar>& ys,
     const std::vector<std::vector<Value>>& values, const std::string& title,
     const std::string& value_label, bool logarithmic,
-    long double positive_min = 0, long double positive_max = 0) {
+    long double positive_min = 0, long double positive_max = 0,
+    ColourMap colormap = ColourMap::blue) {
     validate_size(xs.size(), ys.size());
     const int w = static_cast<int>(xs.size()), h = static_cast<int>(ys.size());
     const int left = 100, top = 85, width = left+w+165, height = top+h+100;
@@ -163,14 +157,11 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
         if (!logarithmic) return positive_max > 0 ? value / positive_max : 0.0L;
         return log_range > 0 ? (std::log(value)-log_min)/log_range : 0.0L;
     };
-    auto colour = [&](double t) {
-        if (logarithmic) return hilbert_colour(t);
-        const auto shade = static_cast<unsigned char>(std::lround(255 * (1 - std::clamp(t, 0.0, 1.0))));
-        return std::array<unsigned char,3>{shade,shade,255};
-    };
+    auto colour = [&](double t) { return heatmap_colour(t, colormap); };
+    const auto zero_colour = heatmap_zero_colour(colormap);
     for (int x=0; x<w; ++x) for (int y=0; y<h; ++y) {
         const auto value = values[x][y];
-        if (value > 0) pixel(left+x,top+h-1-y,colour(normalise(value)));
+        pixel(left+x,top+h-1-y,value > 0 ? colour(normalise(value)) : zero_colour);
     }
     const std::array<unsigned char,3> ink{90,96,105};
     auto frame = [&](int x, int y, int dx, int dy) {
@@ -206,8 +197,8 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
     const int bar = left+w+35, bar_width = 20;
     text(bar-4,top-29,value_label,14);
     for (int y=0; y<h; ++y) for (int x=0; x<bar_width; ++x)
-        if (positive_max > 0) pixel(bar+x,top+y,
-            colour(!logarithmic || log_range > 0 ? 1.0-static_cast<double>(y)/(h-1) : 0));
+        pixel(bar+x,top+y,positive_max > 0 ?
+            colour(!logarithmic || log_range > 0 ? 1.0-static_cast<double>(y)/(h-1) : 0) : zero_colour);
     frame(bar-1,top-1,bar_width+1,h+1);
     std::vector<long double> colour_ticks;
     if (!logarithmic && positive_max > 0) {
@@ -230,9 +221,11 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
         previous = y;
     }
     if (colour_ticks.empty()) text(bar+bar_width+11,top+h/2.0-8,number(std::max(0.0L,positive_max)));
-    // A separate white swatch makes zero explicit without including it in log space.
+    // A separate swatch makes zero explicit without including it in log space.
+    for (int x=1; x<12; ++x) for (int y=1; y<12; ++y)
+        pixel(left+x,top+h+77+y,zero_colour);
     frame(left,top+h+77,12,12);
-    text(left+21,top+h+75,"White: 0",12);
+    text(left+21,top+h+75,colormap == ColourMap::blue ? "White: 0" : "Black: 0",12);
     text(left+w,top+h+75,logarithmic ? "Log colour scale" : "Linear colour scale",12,1);
 #ifdef GRLINA_HILBERT_CORETEXT
     CGContextFlush(context.get());

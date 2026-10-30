@@ -46,12 +46,40 @@ namespace graded_linalg {
                             Index column, Notify notify,
                             bool store_operations = true, bool update_pivot = true) {
       auto pivot = matrix.col_last(column);
+      bitset packed;
+      std::size_t additions = 0;
       while (pivot != -1) {
           auto owner = pivots.find(pivot);
           if (owner == pivots.end() || owner->second >= column) break;
-          matrix.col_op(owner->second, column);
+          // Keep short/sparse reductions sparse. After two additions, a column
+          // with >=128 entries and >=1/16 density can avoid repeated merging
+          // and allocation by accumulating in bits. Only this column is packed;
+          // reducer columns and the operation matrix retain their own storage.
+          if (packed.empty() && additions >= 2) {
+              const auto& entries = matrix.column(column);
+              if (entries.size() >= 128 && entries.size() >= (std::size_t(pivot) + 16) / 16) {
+                  packed.resize(std::size_t(pivot) + 1);
+                  for (auto row : entries) packed.set(row);
+              }
+          }
+          if (packed.empty()) {
+              matrix.col_op(owner->second, column);
+              pivot = matrix.col_last(column);
+          } else {
+              for (auto row : matrix.column(owner->second)) packed.flip(row);
+              // The pivot only moves down, so total scanning is linear in
+              // the packed column's span over the entire reduction.
+              while (pivot != -1 && !packed.test(pivot)) --pivot;
+          }
           if (store_operations) slave.col_op(owner->second, column);
-          pivot = matrix.col_last(column);
+          ++additions;
+      }
+      if (!packed.empty()) {
+          matrix_column_t<Matrix> entries;
+          entries.reserve(packed.count());
+          for (auto row = packed.find_first(); row != bitset::npos; row = packed.find_next(row))
+              entries.push_back(static_cast<matrix_index_t<Matrix>>(row));
+          matrix.set_col(column, std::move(entries));
       }
       if (pivot != -1 && update_pivot) {
           auto owner = pivots.find(pivot);
@@ -137,15 +165,15 @@ Matrix z2_graded_kernel(Matrix& matrix) {
     std::map<Coordinate, Queue> queues;
     std::map<Index, Index> pivots;
 
-    SparseMatrix<Index> operations(matrix.get_num_cols(), matrix.get_num_cols(), "Identity");
-    array<Index> columns;
+    SparseMatrix<Index, matrix_reduction_storage_t<Matrix>> operations(matrix.get_num_cols(), matrix.get_num_cols(), "Identity");
+    matrix_reduction_storage_t<Matrix> columns;
     vec<Degree> degrees;
     std::vector<bool> emitted(matrix.get_num_cols(), false);
     visit_bigraded_columns(scheduler, queues, matrix.col_degrees,
         [&](Index column, auto grade, auto notify) {
             reduce_graded_column(matrix, operations, pivots, column, notify);
             if (!emitted[column] && matrix.is_zero(column)) {
-                columns.push_back(operations.get_col(column));
+                columns.push_back(std::move(operations.data[column]));
                 degrees.push_back({grade.first, grade.second});
                 emitted[column] = true;
                 matrix.clear_col(column);
@@ -343,10 +371,14 @@ Matrix z3_graded_kernel(const Matrix& matrix) {
 
 namespace graded_linalg {
 
-template<typename Scalar, std::size_t Dimension, typename Index, typename Derived>
-auto CoordGradedSparseMatrix<Scalar, Dimension, Index, Derived>::graded_kernel() -> Self {
+template<typename Scalar, std::size_t Dimension, typename Index, typename Derived, typename Storage>
+auto CoordGradedSparseMatrix<Scalar, Dimension, Index, Derived, Storage>::graded_kernel() -> Self {
     if constexpr (!std::is_integral_v<Scalar>) {
-        GridGradedSparseMatrix<Scalar, Dimension, Index> grid(*this);
+        GridGradedSparseMatrix<Scalar, Dimension, Index, Storage> grid(this->get_num_cols(), this->get_num_rows());
+        grid.set_real_degrees(this->col_degrees, this->row_degrees);
+        grid.assign_data(std::move(this->data));
+        grid.compatibly_sorted = this->compatibly_sorted;
+        grid.is_identity = this->is_identity;
         auto kernel = grid.graded_kernel();
         this->assign_data(std::move(grid.data));
         this->col_degrees = grid.real_col_degrees();
@@ -388,7 +420,7 @@ auto CoordGradedSparseMatrix<Scalar, Dimension, Index, Derived>::graded_kernel()
         auto run_slice = [&] {
             auto selected = columns_in_bigraded_slice<Index>(this->col_degrees, grade, frozen);
             if (selected.empty()) return;
-            CoordGradedSparseMatrix<Scalar, 2, Index> slice(static_cast<Index>(selected.size()), this->get_num_rows());
+            CoordGradedSparseMatrix<Scalar, 2, Index, void, Storage> slice(static_cast<Index>(selected.size()), this->get_num_rows());
             auto project = [&](const degree_type& original) {
                 CoordinateDegree<Scalar, 2> degree{};
                 for (std::size_t a = 0; a < 2; ++a) if (frozen + a < Dimension) degree[a] = original[frozen + a];
@@ -418,8 +450,8 @@ auto CoordGradedSparseMatrix<Scalar, Dimension, Index, Derived>::graded_kernel()
     }
 }
 
-template<typename Scalar, std::size_t Dimension, typename Index, typename Derived>
-auto CoordGradedSparseMatrix<Scalar, Dimension, Index, Derived>::graded_kernel() const -> Self {
+template<typename Scalar, std::size_t Dimension, typename Index, typename Derived, typename Storage>
+auto CoordGradedSparseMatrix<Scalar, Dimension, Index, Derived, Storage>::graded_kernel() const -> Self {
     Self copy = static_cast<const Self&>(*this);
     return copy.graded_kernel();
 }

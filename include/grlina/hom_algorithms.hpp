@@ -52,6 +52,7 @@ std::optional<Matrix> lift_to_relations(const Matrix& source_presentation,
     return solve_graded_linear_system(target_presentation, f0 * source_presentation);
 }
 
+// Explicit test diagnostic; never called during normal computation.
 template <typename Matrix>
 bool is_homomorphism(const Matrix& source_presentation,
                     const Matrix& target_presentation, const Matrix& f0) {

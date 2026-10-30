@@ -102,6 +102,7 @@ public:
      */
     bool id_matrix() const noexcept { return id_matrix_; }
 
+    /** Explicit diagnostic used by tests; computation never calls this. */
     bool check_lifts() const {
         if (!is_homomorphism(domain()->presentation(), target_->presentation(), resolution_maps_[0])) return false;
         for (std::size_t i = 1; i < resolution_maps_.size(); ++i) {
@@ -114,7 +115,7 @@ public:
 
     /** Extend through the common stored part of the two resolutions. */
     void lift_to_resolution() {
-        auto result = resolution_maps_;
+        auto& result = resolution_maps_;
         const auto& source = domain()->proj_res_;
         const auto& destination = target_->proj_res_;
         const auto length = std::min(source.size(), destination.size());
@@ -124,7 +125,6 @@ public:
             if (!next) throw std::invalid_argument("Homomorphism cannot be lifted through the supplied resolutions");
             result.push_back(std::move(*next));
         }
-        resolution_maps_ = std::move(result);
     }
 
     static Homomorphism identity(std::shared_ptr<const module_type> module) {

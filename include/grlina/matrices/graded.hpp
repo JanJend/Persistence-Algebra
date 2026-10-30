@@ -162,15 +162,19 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
         : SparseMatrix<index, Storage>(static_cast<index>(degrees.size()), static_cast<index>(degrees.size()), "Identity"),
           col_degrees(degrees), row_degrees(degrees) {}
 
-    GradedSparseMatrix(index m, index n, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index, Storage>(m, n), col_degrees(c_degrees), row_degrees(r_degrees) {
+    GradedSparseMatrix(index m, index n, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index, Storage>(m, n), col_degrees(std::move(c_degrees)), row_degrees(std::move(r_degrees)) {
         GRLINA_ASSERT(col_degrees.size() == m);
         GRLINA_ASSERT(row_degrees.size() == n);
     }
 
-    GradedSparseMatrix(index m, index n, const array<index>& data, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index, Storage>(m, n, data), col_degrees(c_degrees), row_degrees(r_degrees) {
+    GradedSparseMatrix(index m, index n, const array<index>& data, vec<D> c_degrees, vec<D> r_degrees) : SparseMatrix<index, Storage>(m, n, data), col_degrees(std::move(c_degrees)), row_degrees(std::move(r_degrees)) {
         GRLINA_ASSERT(col_degrees.size() == m);
         GRLINA_ASSERT(row_degrees.size() == n);
     }
+
+    template<class Columns>
+    GradedSparseMatrix(index m, index n, const Columns& entries, vec<D> c, vec<D> r)
+        : GradedSparseMatrix(m, n, std::move(c), std::move(r)) { this->assign_data(entries); }
 
     GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false)
         : SparseMatrix<index, Storage>() {
@@ -245,7 +249,7 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
      */
     void make_graded(){
         index i = 0;
-        this->transform_columns([&](vec<index>& column) {
+        this->transform_columns([&](auto& column) {
             column.erase(std::remove_if(column.begin(), column.end(), [&](index j) {
                 return !Degree_traits<D>::greater_equal(
                     this->col_degrees[i], this->row_degrees[j]);
@@ -1152,6 +1156,10 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
     }
 
     void append_column(const vec<index>& column_data, const D& column_degree) {
+        append_column<vec<index>>(column_data, column_degree);
+    }
+    template<class Column>
+    void append_column(const Column& column_data, const D& column_degree) {
         this->append_col(column_data);
         this->col_degrees.push_back(column_degree);
         this->num_cols += 1;

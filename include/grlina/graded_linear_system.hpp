@@ -20,15 +20,15 @@ namespace detail {
 
 // MPfree reduction on integer bidegrees, already sorted by (y, x).
 // original_columns records indices in the original [A | B], even for a slice.
-template<class Matrix, bool StoreOperations, class Index>
-bool reduce_bigraded_system(SparseMatrix<Index>& helper,
+template<class Matrix, bool StoreOperations, class Index, class Storage>
+bool reduce_bigraded_system(SparseMatrix<Index, Storage>& helper,
                             const vec<std::array<Index, 2>>& degrees,
                             const vec<Index>& original_columns, Index a_count,
                             std::size_t remaining,
                             std::conditional_t<StoreOperations, Matrix, std::nullptr_t>& X) {
     auto coefficients = [&] {
         if constexpr (StoreOperations) {
-            SparseMatrix<Index> result(helper.get_num_cols(), a_count);
+            SparseMatrix<Index, Storage> result(helper.get_num_cols(), a_count);
             result.resize_data(helper.get_num_cols());
             for (Index i = 0; i < helper.get_num_cols(); ++i)
                 if (original_columns[i] < a_count) result.set_col(i, vec<Index>{original_columns[i]});
@@ -48,7 +48,7 @@ bool reduce_bigraded_system(SparseMatrix<Index>& helper,
             reduce_graded_column(helper, helper, pivots, column, notify, false, !target);
         if (target) {
             if (!helper.is_zero(column)) return false;
-            if constexpr (StoreOperations) X.set_col(original - a_count, coefficients.take_col(column));
+            if constexpr (StoreOperations) X.move_col_from(original - a_count, coefficients, column);
             return --remaining != 0;
         }
         if constexpr (StoreOperations)
@@ -111,7 +111,7 @@ solve_bigraded_linear_system(Matrix A, Matrix B) {
         degrees.reserve(order.size());
         for (Index original : order) degrees.push_back(degree(original));
 
-        GridGradedSparseMatrix<Coordinate, 2, Index> helper(static_cast<Index>(order.size()), A.get_num_rows());
+        GridGradedSparseMatrix<Coordinate, 2, Index, matrix_reduction_storage_t<Matrix>> helper(static_cast<Index>(order.size()), A.get_num_rows());
         if constexpr (matrix_grid_backed_v<Matrix>) {
             helper.grid_ = std::move(A.grid_);
             helper.row_degrees = std::move(A.row_degrees);
@@ -121,7 +121,8 @@ solve_bigraded_linear_system(Matrix A, Matrix B) {
         }
         for (Index i = 0; i < helper.get_num_cols(); ++i) {
             const Index original = order[i];
-            helper.set_col(i, original < a_count ? A.take_col(original) : B.take_col(original - a_count));
+            if (original < a_count) helper.move_col_from(i, A, original);
+            else helper.move_col_from(i, B, original - a_count);
         }
         if (!detail::reduce_bigraded_system<Matrix, StoreOperations>(
                 helper, helper.col_degrees, order, a_count, targets.size(), X)) {
@@ -191,7 +192,8 @@ bool solve_bigraded_slice(const Matrix& A, const Matrix& B,
  * Uses the same column reduction and queued grade traversal as graded_kernel,
  * without computing a kernel. A columns update the helper; B columns never
  * become reducers, and their tracked coefficients give X when they reach zero.
- * Two-parameter systems dispatch directly to solve_bigraded_linear_system.
+ * Two-parameter systems consume owned arguments; move inputs to avoid copying.
+ * They dispatch directly to solve_bigraded_linear_system.
  * Other coordinate dimensions reuse the kernel's two-parameter restrictions
  * at the frozen prefixes requested by B, without enumerating a full kernel.
  * No solution is reported as nullopt. Input compatibility is a caller
@@ -199,7 +201,15 @@ bool solve_bigraded_slice(const Matrix& A, const Matrix& B,
  * With StoreOperations=false, return only bool using the same traversal;
  * neither a coefficient matrix nor a solution matrix is constructed.
  */
-template <typename Matrix, bool StoreOperations = true>
+template <typename Matrix, bool StoreOperations = true,
+          std::enable_if_t<std::tuple_size<typename Matrix::degree_type>::value == 2, int> = 0>
+std::conditional_t<StoreOperations, std::optional<Matrix>, bool>
+solve_graded_linear_system(Matrix A, Matrix B) {
+    return solve_bigraded_linear_system<Matrix, StoreOperations>(std::move(A), std::move(B));
+}
+
+template <typename Matrix, bool StoreOperations = true,
+          std::enable_if_t<std::tuple_size<typename Matrix::degree_type>::value != 2, int> = 0>
 std::conditional_t<StoreOperations, std::optional<Matrix>, bool>
 solve_graded_linear_system(const Matrix& A, const Matrix& B) {
     static_assert(is_graded_sparse_matrix_v<Matrix>, "Expected graded CRTP matrices");
@@ -207,9 +217,6 @@ solve_graded_linear_system(const Matrix& A, const Matrix& B) {
     using D = typename Matrix::degree_type;
     using Scalar = typename D::value_type;
     static_assert(has_degree_join_v<D>, "The coordinate graded solver requires Degree_traits::join(a, b)");
-
-    if constexpr (std::tuple_size<D>::value == 2)
-        return solve_bigraded_linear_system<Matrix, StoreOperations>(A, B);
 
     GRLINA_DEBUG_CHECK(if (!same_geometric_rows(A, B))
         throw std::invalid_argument("Graded linear system has different target bases"));

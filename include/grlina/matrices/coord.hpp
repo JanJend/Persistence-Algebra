@@ -15,23 +15,23 @@
 
 namespace graded_linalg {
 
-template <typename Scalar, std::size_t Dimension, typename Index>
+template <typename Scalar, std::size_t Dimension, typename Index, typename Storage = vec<vec<Index>>>
 struct GridGradedSparseMatrix;
 
 /** Sparse matrix with array-valued degrees in Scalar^Dimension, ordered coordinatewise.
  * Derived lets grid matrices keep their own return type in inherited operations.
  */
-template <typename Scalar, std::size_t Dimension, typename Index, typename Derived = void>
+template <typename Scalar, std::size_t Dimension, typename Index, typename Derived = void, typename Storage = vec<vec<Index>>>
 struct CoordGradedSparseMatrix
     : GradedSparseMatrix<CoordinateDegree<Scalar, Dimension>, Index,
           std::conditional_t<std::is_void_v<Derived>,
-              CoordGradedSparseMatrix<Scalar, Dimension, Index>, Derived>> {
+              CoordGradedSparseMatrix<Scalar, Dimension, Index, void, Storage>, Derived>, Storage> {
     // Inherited attributes; this struct adds no stored data:
     // data holds the sparse columns; col_degrees and row_degrees hold their degrees.
     // Matrix dimensions, compatibly_sorted and reduction state also live in the base.
 
     using Self = std::conditional_t<std::is_void_v<Derived>, CoordGradedSparseMatrix, Derived>;
-    using Base = GradedSparseMatrix<CoordinateDegree<Scalar, Dimension>, Index, Self>;
+    using Base = GradedSparseMatrix<CoordinateDegree<Scalar, Dimension>, Index, Self, Storage>;
     using degree_type = CoordinateDegree<Scalar, Dimension>;
     using Grid = std::array<vec<Scalar>, Dimension>;
 
@@ -47,22 +47,14 @@ struct CoordGradedSparseMatrix
     CoordGradedSparseMatrix& operator=(const CoordGradedSparseMatrix&) = default;
     CoordGradedSparseMatrix& operator=(CoordGradedSparseMatrix&&) = default;
 
-    explicit CoordGradedSparseMatrix(SparseMatrix<Index>&& matrix) : Base(std::move(matrix)) {}
-    explicit CoordGradedSparseMatrix(const SparseMatrix<Index>& matrix)
+    explicit CoordGradedSparseMatrix(SparseMatrix<Index, Storage>&& matrix) : Base(std::move(matrix)) {}
+    explicit CoordGradedSparseMatrix(const SparseMatrix<Index, Storage>& matrix)
         : Base(matrix.get_num_cols(), matrix.get_num_rows()) {
         this->assign_data(matrix.data);
         this->is_identity = matrix.is_identity;
     }
-    CoordGradedSparseMatrix(const Base& matrix)
-        : Base(matrix.get_num_cols(), matrix.get_num_rows(), matrix.data,
-               matrix.col_degrees, matrix.row_degrees) {
-        this->compatibly_sorted = matrix.compatibly_sorted;
-        this->is_identity = matrix.is_identity;
-    }
-    CoordGradedSparseMatrix(Base&& matrix) : CoordGradedSparseMatrix(matrix) {
-        this->assign_data(std::move(matrix.data));
-        this->is_identity = std::exchange(matrix.is_identity, false);
-    }
+    CoordGradedSparseMatrix(const Base& matrix) : Base(matrix) {}
+    CoordGradedSparseMatrix(Base&& matrix) : Base(std::move(matrix)) {}
     CoordGradedSparseMatrix& operator=(const Base& matrix) {
         this->assign(matrix);
         return *this;
@@ -254,8 +246,8 @@ struct CoordGradedSparseMatrix
     friend CoordGradedSparseMatrix operator+(const CoordGradedSparseMatrix& left,
                                             const CoordGradedSparseMatrix& right) {
         CoordGradedSparseMatrix result(left.get_num_cols(), left.get_num_rows());
-        result.assign_data((static_cast<const SparseMatrix<Index>&>(left) +
-                            static_cast<const SparseMatrix<Index>&>(right)).data);
+        result.assign_data((static_cast<const SparseMatrix<Index, Storage>&>(left) +
+                            static_cast<const SparseMatrix<Index, Storage>&>(right)).data);
         result.col_degrees = left.col_degrees;
         result.row_degrees = left.row_degrees;
         result.compatibly_sorted = left.compatibly_sorted;
@@ -276,11 +268,11 @@ private:
 };
 
 // Real coordinate matrices in two and three parameters.
-template <typename Index = int>
-using R2Matrix = CoordGradedSparseMatrix<double, 2, Index>;
+template <typename Index = int, typename Storage = DefaultSparseStorage<Index>>
+using R2Matrix = CoordGradedSparseMatrix<double, 2, Index, void, Storage>;
 
-template <typename Index = int>
-using R3Matrix = CoordGradedSparseMatrix<double, 3, Index>;
+template <typename Index = int, typename Storage = DefaultSparseStorage<Index>>
+using R3Matrix = CoordGradedSparseMatrix<double, 3, Index, void, Storage>;
 
 } // namespace graded_linalg
 

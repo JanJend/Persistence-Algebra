@@ -35,6 +35,7 @@
 #include <utility>
 #include <grlina/storage/columns.hpp>
 #include <grlina/storage/traits.hpp>
+#include <grlina/storage/compact.hpp>
 
 namespace graded_linalg {
 
@@ -122,8 +123,9 @@ class MatrixUtil{
     // Copy constructor
     MatrixUtil(const MatrixUtil& other) : data(other.data), is_identity(other.is_identity), num_cols(other.num_cols), num_rows(other.num_rows), pivots(other.pivots) {}
 
-    MatrixUtil(index m, index n, vec<COLUMN> d) : num_cols(m), num_rows(n), data(d) {
+    MatrixUtil(index m, index n, vec<COLUMN> d) : num_cols(m), num_rows(n) {
         GRLINA_ASSERT(m == d.size());
+        assign_data(std::move(d));
     }
 
 
@@ -172,7 +174,8 @@ class MatrixUtil{
         if (type == "Identity") {
             GRLINA_ASSERT(m == n);
             for(index i = 0; i < m; i++) {
-                this->append_col( CT::get_standard_vector(i, n) );
+                if constexpr (is_compact_storage_v<Storage>) data.emplace_back(std::initializer_list<index>{i});
+                else this->append_col(CT::get_standard_vector(i, n));
             }
             is_identity = true;
         } else if (type == "Random") {
@@ -206,7 +209,8 @@ class MatrixUtil{
     MatrixUtil(index n, vec<index> indicator) : num_cols(indicator.size()), num_rows(n), data() {
         data.reserve(indicator.size());
         for(index i : indicator) {
-            this->append_col( CT::get_standard_vector(i, n) );
+            if constexpr (is_compact_storage_v<Storage>) data.emplace_back(std::initializer_list<index>{i});
+            else this->append_col(CT::get_standard_vector(i, n));
         }
         is_identity = indicator.empty() || (indicator.front() >= 0 && indicator.back() < n &&
             std::adjacent_find(indicator.begin(), indicator.end(),
@@ -272,10 +276,21 @@ class MatrixUtil{
     decltype(auto) column(index i) const { return ST::column(data, i); }
     COLUMN get_col(index i) const { return ST::get_col(data, i); }
     COLUMN take_col(index i) { is_identity = false; return ST::take_col(data, i); }
+    template<class Matrix>
+    void move_col_from(index target, Matrix& source, index column) {
+        if constexpr (is_compact_storage_v<Storage> && std::is_same_v<Storage, matrix_storage_t<Matrix>>) {
+            data[target] = std::move(source.data[column]);
+            is_identity = source.is_identity = false;
+        } else {
+            set_col(target, source.take_col(column));
+        }
+    }
     void set_col(index i, const COLUMN& col) { is_identity = false; ST::set_col(data, i, col); }
     void set_col(index i, COLUMN&& col) { is_identity = false; ST::set_col(data, i, std::move(col)); }
     void append_col(const COLUMN& col) { is_identity = false; ST::append_col(data, col); }
-    void append_col(COLUMN&& col) { is_identity = false; ST::append_col(data, col); }
+    void append_col(COLUMN&& col) { is_identity = false; ST::append_col(data, std::move(col)); }
+    template<class Range>
+    void append_col(const Range& col) { is_identity = false; ST::append_col(data, col); }
     void clear_col(index i) { is_identity = false; ST::clear_col(data, i); }
     void append_entry(index i, index entry) { is_identity = false; ST::append_entry(data, i, entry); }
     void pop_entry(index i) { is_identity = false; ST::pop_entry(data, i); }
@@ -284,7 +299,14 @@ class MatrixUtil{
     void clear_data() { is_identity = false; data.clear(); }
     template<class Input> void assign_data(Input&& input) {
         is_identity = false;
-        data = Storage(std::forward<Input>(input));
+        if constexpr (std::is_constructible_v<Storage, Input&&>) {
+            data = Storage(std::forward<Input>(input));
+        } else {
+            Storage converted;
+            converted.reserve(input.size());
+            for (const auto& column : input) converted.emplace_back(column.begin(), column.end());
+            data = std::move(converted);
+        }
     }
     template<class Function> void edit_col(index i, Function&& f) {
         is_identity = false;

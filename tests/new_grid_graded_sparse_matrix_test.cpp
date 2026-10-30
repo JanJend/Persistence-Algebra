@@ -65,12 +65,21 @@ int main() {
     appended.append_matrix(extra);
 
     assert(appended.get_num_cols() == 3);
+    assert(appended.column(2) == extra.column(0));
     assert((appended.real_col_degree(2) == GridD{2, 1}));
     assert(appended.real_row_degrees() == matrix.real_row_degrees());
     auto moved = matrix;
     auto extra_copy = extra;
     moved.append_move_matrix(std::move(extra_copy));
     assert(moved.real_col_degrees() == appended.real_col_degrees());
+    auto self_appended = extra;
+    self_appended.append_matrix(self_appended);
+    assert(self_appended.get_num_cols() == 2 && self_appended.column(1) == extra.column(0));
+    auto on_another_grid = matrix;
+    on_another_grid.include_real_degrees({{-3, -2}});
+    auto sum = matrix + on_another_grid;
+    assert(sum.real_col_degrees() == matrix.real_col_degrees());
+    for (int j = 0; j < sum.get_num_cols(); ++j) assert(sum.is_zero(j));
 
     auto shifted = matrix;
     shifted.shift({0.25, 0.5});

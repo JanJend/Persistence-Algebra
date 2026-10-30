@@ -8,6 +8,7 @@
 #include <cctype>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -116,8 +117,14 @@ public:
     explicit ChainComplex(std::vector<Matrix> differentials)
         : differentials_(std::move(differentials)) { matrix_io::normalize_complex(differentials_); }
 
-    ChainComplex(std::initializer_list<Matrix> differentials)
-        : differentials_(differentials) { matrix_io::normalize_complex(differentials_); }
+    // Unlike an initializer_list, forwarding preserves moves of owned matrices.
+    template<class... Matrices, std::enable_if_t<(sizeof...(Matrices) > 0) &&
+        (std::is_same_v<Matrix, std::decay_t<Matrices>> && ...), int> = 0>
+    explicit ChainComplex(Matrices&&... differentials) {
+        differentials_.reserve(sizeof...(Matrices));
+        (differentials_.emplace_back(std::forward<Matrices>(differentials)), ...);
+        matrix_io::normalize_complex(differentials_);
+    }
 
     explicit ChainComplex(std::istream& input, bool sort_if_needed = false) {
         *this = from_stream(input, sort_if_needed);
@@ -176,16 +183,26 @@ public:
 
     void clear() noexcept { differentials_.clear(); }
 
+    /** Actual (decoded for grid matrices) degrees of C_q; absent groups are zero. */
+    vec<typename Matrix::degree_type> group_degrees(std::size_t q) const {
+        if (empty() || q > size()) return {};
+        return q == 0 ? geometric_row_degrees(differentials_[0])
+                      : geometric_col_degrees(differentials_[q - 1]);
+    }
+
     void sort_compatibly() {
         sort_compatibly(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::lex_lambda()});
     }
 
     template <typename Compare>
     void sort_compatibly(Compare compare, ChainBasisMaps<Matrix>* basis_maps = nullptr,
-                         Matrix* elements = nullptr, const vec<Matrix*>& generator_images = {}) {
+                         Matrix* elements = nullptr, const vec<Matrix*>& generator_images = {},
+                         vec<Matrix>* incoming = nullptr, vec<Matrix>* outgoing = nullptr) {
         if (empty()) return;
         GRLINA_ASSERT(!basis_maps || (basis_maps->to_original.size() > size() &&
                                      basis_maps->from_original.size() > size()));
+        GRLINA_ASSERT(!incoming || incoming->size() > size());
+        GRLINA_ASSERT(!outgoing || outgoing->size() > size());
 
         // Each group is sorted ONCE; its basis permutation is shared by both
         // adjacent maps. This includes stable handling of repeated degrees.
@@ -197,6 +214,8 @@ public:
             vec<index_type> old_to_new(new_to_old.size());
             for (index_type i = 0; i < static_cast<index_type>(new_to_old.size()); ++i)
                 old_to_new[new_to_old[i]] = i;
+            if (incoming) (*incoming)[group].permute_rows_graded(old_to_new);
+            if (outgoing) (*outgoing)[group].permute_columns_graded(new_to_old);
             if (basis_maps) {
                 auto& inclusion = basis_maps->to_original[group];
                 inclusion.permute_columns(new_to_old);
@@ -226,17 +245,34 @@ public:
      * retained: deleting redundant terminal generators can change homology.
      * Runs in place from higher to lower homological degree, updating supplied
      * basis maps directly and discarding paired lower columns before reduction.
+     * Alternatively, incoming[q] lands in C_q and outgoing[q] starts in C_q.
+     * They must be compatible chain maps, with an explicit matrix for every
+     * group (including C0); they are transported directly, without basis maps.
      */
     void minimize(bool sort_if_needed = true, ChainBasisMaps<Matrix>* basis_maps = nullptr,
-                  Matrix* elements = nullptr, const vec<Matrix*>& generator_images = {}) {
+                  Matrix* elements = nullptr, const vec<Matrix*>& generator_images = {},
+                  vec<Matrix>* incoming = nullptr, vec<Matrix>* outgoing = nullptr) {
         if (empty()) return;
         GRLINA_DEBUG_CHECK(if (basis_maps && elements)
             throw std::invalid_argument("Use either full chain basis maps or an incoming generator map"));
+        GRLINA_DEBUG_CHECK(if ((incoming || outgoing) && (basis_maps || elements || !generator_images.empty()))
+            throw std::invalid_argument("Use either attached chain maps or the existing basis/generator tracking arguments"));
         GRLINA_ASSERT(!basis_maps || (basis_maps->to_original.size() > size() &&
                                      basis_maps->from_original.size() > size()));
+        GRLINA_ASSERT(!incoming || incoming->size() > size());
+        GRLINA_ASSERT(!outgoing || outgoing->size() > size());
+        if constexpr (matrix_grid_backed_v<Matrix>) {
+            if (incoming || outgoing) {
+                auto common = empty_matrix_like(differentials_[0], 0, 0);
+                for (auto* collection : {&differentials_, incoming, outgoing})
+                    if (collection) for (auto& matrix : *collection) merge_grids(common, matrix);
+                for (auto* collection : {&differentials_, incoming, outgoing})
+                    if (collection) for (auto& matrix : *collection) matrix.reindex_grid(common.grid_);
+            }
+        }
         if (sort_if_needed) sort_compatibly(
             TraitLinearOrder<degree_type>{Degree_traits<degree_type>::lex_lambda()},
-            basis_maps, elements, generator_images);
+            basis_maps, elements, generator_images, incoming, outgoing);
 
         auto& maps = differentials_;
         for (std::size_t remaining = maps.size(); remaining > 0; --remaining) {
@@ -248,8 +284,9 @@ public:
                     GradedMatrixIO<Matrix>::normalize_complex(maps);
                 }
             }
-            d.cancel_local_pairs(basis_maps ? &basis_maps->from_original[level] : (level == 0 ? elements : nullptr),
-                basis_maps ? &basis_maps->to_original[level + 1] : nullptr,
+            d.cancel_local_pairs(basis_maps ? &basis_maps->from_original[level] :
+                    (incoming ? &(*incoming)[level] : (level == 0 ? elements : nullptr)),
+                basis_maps ? &basis_maps->to_original[level + 1] : (outgoing ? &(*outgoing)[level + 1] : nullptr),
                 [&](auto& columns, auto& rows) {
                 // Target survivors retain their basis; source survivors change
                 // only by paired columns. The inverse changes in both adjacent
@@ -262,6 +299,8 @@ public:
                     basis_maps->to_original[level].delete_columns(rows);
                     basis_maps->from_original[level + 1].delete_rows(columns);
                 }
+                if (outgoing) (*outgoing)[level].delete_columns(rows);
+                if (incoming) (*incoming)[level + 1].delete_rows(columns);
             });
         }
     }
@@ -414,28 +453,146 @@ ChainBasisMaps<Matrix> identity_basis_maps(const ChainComplex<Matrix>& complex) 
 }
 
 // matrices[n] maps domain Cn to target Cn. Shared ownership keeps the endpoints
-// alive when the map is returned, copied, or moved, without copying the complexes.
-// Their chain-group bases must remain unchanged while the map is used.
+// alive. Mutating an endpoint invalidates other maps using its old basis.
+// An explicit copy of a ChainMap copies its endpoints; moving transfers ownership.
 template <typename Matrix>
 class ChainMap {
 public:
     using chain_complex_type = ChainComplex<Matrix>;
 
 private:
-    std::shared_ptr<const chain_complex_type> domain_;
-    std::shared_ptr<const chain_complex_type> target_;
+    std::shared_ptr<chain_complex_type> domain_;
+    std::shared_ptr<chain_complex_type> target_;
     std::vector<Matrix> matrices_;
 
 public:
-    ChainMap(std::shared_ptr<const chain_complex_type> domain,
-             std::shared_ptr<const chain_complex_type> target,
+    ChainMap(std::shared_ptr<chain_complex_type> domain,
+             std::shared_ptr<chain_complex_type> target,
              std::vector<Matrix> matrices)
         : domain_(std::move(domain)), target_(std::move(target)), matrices_(std::move(matrices)) {}
 
+    ChainMap(const ChainMap& other)
+        : domain_(std::make_shared<chain_complex_type>(other.domain())),
+          target_(other.domain_ == other.target_ ? domain_ :
+                  std::make_shared<chain_complex_type>(other.target())), matrices_(other.matrices_) {}
+    ChainMap(ChainMap&&) noexcept = default;
+    ChainMap& operator=(ChainMap&&) noexcept = default;
+    ChainMap& operator=(const ChainMap& other) {
+        if (this != &other) *this = ChainMap(other);
+        return *this;
+    }
+
+    chain_complex_type& domain() noexcept { return *domain_; }
+    chain_complex_type& target() noexcept { return *target_; }
     const chain_complex_type& domain() const noexcept { return *domain_; }
     const chain_complex_type& target() const noexcept { return *target_; }
     const std::vector<Matrix>& matrices() const noexcept { return matrices_; }
     const Matrix& operator[](std::size_t degree) const { return matrices_[degree]; }
+
+    /** Cancel endpoint pairs and transport f directly as p_target*f*i_source.
+     * Requires a coherent graded chain map. Missing components are allowed
+     * only if their source or target group is zero. Changes this map in place;
+     * endpoint complexes are mutated, invalidating other incident maps.
+     */
+    void minimize() {
+        const auto has_pairs = [](const chain_complex_type& complex) {
+            for (const auto& d : complex.differentials())
+                for (matrix_index_t<Matrix> j = 0; j < d.get_num_cols(); ++j)
+                    for (auto row : d.column(j))
+                        if (Degree_traits<base_degree<Matrix>>::equals(d.col_degrees[j], d.row_degrees[row]))
+                            return true;
+            return false;
+        };
+        const bool reduce_source = has_pairs(domain());
+        const bool reduce_target = domain_ == target_ ? reduce_source : has_pairs(target());
+        if (!reduce_source && !reduce_target) return;
+        auto& maps = matrices_;
+        for (std::size_t q = maps.size(); q <= std::max(domain().size(), target().size()); ++q) {
+            const auto from = domain().group_degrees(q), to = target().group_degrees(q);
+            Matrix zero = GradedMatrixIO<Matrix>::make_matrix(from.size(), to.size());
+            zero.resize_data(from.size());
+            set_geometric_degrees(zero, from, to);
+            maps.push_back(std::move(zero));
+        }
+        if (domain_ == target_) {
+            domain_->minimize(true, nullptr, nullptr, {}, &maps, &maps);
+        } else {
+            if (reduce_source) domain_->minimize(true, nullptr, nullptr, {}, nullptr, &maps);
+            if (reduce_target) target_->minimize(true, nullptr, nullptr, {}, &maps);
+        }
+    }
+
+    /** Cone(f)_q = target_q + domain_(q-1), with d = [d_target f; 0 d_source]
+     * over F2. Keeps this original basis; call minimize() separately if desired.
+     * Requires a coherent graded chain map, as for minimize().
+     */
+    chain_complex_type mapping_cone() const {
+        using Index = matrix_index_t<Matrix>;
+        const auto top = std::max(target().size(), domain().empty() ? 0 : domain().size() + 1);
+        vec<Matrix> differentials;
+        auto rows = target().group_degrees(0);
+        for (std::size_t q = 1; q <= top; ++q) {
+            auto columns = target().group_degrees(q);
+            const auto source_columns = domain().group_degrees(q - 1);
+            columns.insert(columns.end(), source_columns.begin(), source_columns.end());
+            if (columns.size() > static_cast<std::size_t>(std::numeric_limits<Index>::max()) ||
+                rows.size() > static_cast<std::size_t>(std::numeric_limits<Index>::max()))
+                throw std::length_error("Mapping-cone group exceeds matrix index range");
+            Matrix d = GradedMatrixIO<Matrix>::make_matrix(columns.size(), rows.size());
+            d.clear_data();
+            set_geometric_degrees(d, columns, rows);
+            if (q <= target().size())
+                for (Index j = 0; j < target().differential(q).get_num_cols(); ++j)
+                    d.append_col(target().differential(q).get_col(j));
+            const auto offset = target().group_degrees(q - 1).size();
+            for (std::size_t j = 0; j < source_columns.size(); ++j) {
+                vec<Index> column;
+                if (q - 1 < matrices_.size()) column = matrices_[q - 1].get_col(j);
+                if (q > 1)
+                    for (Index row : domain().differential(q - 1).column(j)) column.push_back(offset + row);
+                d.append_col(std::move(column));
+            }
+            differentials.push_back(std::move(d));
+            rows = std::move(columns);
+        }
+        return chain_complex_type(std::move(differentials));
+    }
+
+    /** Brutal truncation to [low, high], preserving absolute homological indices.
+     * Mutates the endpoints and invalidates other incident maps. Boundary homology
+     * can change; the caller must choose a sufficient window for its computation.
+     */
+    void truncate(std::size_t low, std::size_t high) {
+        if (low > high) throw std::invalid_argument("Truncation requires low <= high");
+        const auto cut = [&](chain_complex_type& complex) {
+            const auto top = std::min(high, complex.size());
+            if (complex.empty() || low > top) { complex.clear(); return; }
+            // Keep retained matrices in their existing allocations. A lone C0
+            // is represented by its zero incoming differential d1.
+            complex.differentials().resize(std::max(std::size_t{1}, top));
+            for (std::size_t q = 1; q <= complex.size(); ++q) {
+                if (q > low && q <= top) continue;
+                auto columns = q >= low && q <= top ? complex.group_degrees(q) : vec<typename Matrix::degree_type>{};
+                auto rows = q - 1 >= low && q - 1 <= top ? complex.group_degrees(q - 1) : vec<typename Matrix::degree_type>{};
+                Matrix d = GradedMatrixIO<Matrix>::make_matrix(columns.size(), rows.size());
+                d.resize_data(columns.size());
+                set_geometric_degrees(d, columns, rows);
+                complex.differential(q) = std::move(d);
+            }
+        };
+        cut(domain());
+        if (domain_ != target_) cut(target());
+        const auto previous_size = matrices_.size();
+        matrices_.resize(std::max(domain().size(), target().size()) + 1);
+        for (std::size_t q = 0; q < matrices_.size(); ++q) {
+            if (q >= low && q <= high && q < previous_size) continue;
+            const auto from = domain().group_degrees(q), to = target().group_degrees(q);
+            Matrix zero = GradedMatrixIO<Matrix>::make_matrix(from.size(), to.size());
+            zero.resize_data(from.size());
+            set_geometric_degrees(zero, from, to);
+            matrices_[q] = std::move(zero);
+        }
+    }
 };
 
 } // namespace graded_linalg

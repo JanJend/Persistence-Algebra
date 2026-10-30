@@ -15,6 +15,7 @@
 
 #pragma once
 #include <grlina/general_checks.hpp>
+#include <grlina/storage/compact.hpp>
 
 
 #include "grlina/storage/columns.hpp"
@@ -217,8 +218,8 @@ vec<index> shiftIndicesMap(vec<index> indices, index num_rows) {
  * @param indexMap
  * @param needsNoDeletion If the target vector only contains indices which are in the indexMap, this can be set to true.
  */
-template <typename index>
-void apply_transformation(vec<index>& target, const std::unordered_map<index, index>& indexMap, const bool& needsNoDeletion = false) {
+template <typename index, typename Column>
+void apply_transformation(Column& target, const std::unordered_map<index, index>& indexMap, const bool& needsNoDeletion = false) {
     if (needsNoDeletion) {
         for (index& entry : target) {
             auto mapped = indexMap.find(entry);
@@ -242,8 +243,8 @@ void apply_transformation(vec<index>& target, const std::unordered_map<index, in
  * @param index_vector
  * @param needsNoDeletion Defaults to mapping only. If false, discard entries mapped to -1.
  */
-template <typename index>
-void apply_transformation(vec<index>& target, const vec<index>& index_vector, bool needsNoDeletion = true) {
+template <typename index, typename Column>
+void apply_transformation(Column& target, const vec<index>& index_vector, bool needsNoDeletion = true) {
     if (needsNoDeletion) {
         for (index& entry : target) entry = index_vector[entry];
     } else {
@@ -263,8 +264,8 @@ void apply_transformation(vec<index>& target, const vec<index>& index_vector, bo
  * @param v
  * @param w
  */
-template<typename index>
-void re_index_non_ocurrences(std::vector<index>& v, const std::vector<index>& w) {
+template<typename index, typename Column>
+void re_index_non_ocurrences(Column& v, const std::vector<index>& w) {
     GRLINA_ASSERT(std::is_sorted(v.begin(), v.end()));
     GRLINA_ASSERT(std::is_sorted(w.begin(), w.end()));
     index j = 0;
@@ -412,7 +413,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index, S
      * @param i
      */
     void sort_column(index i){
-        this->edit_col(i, [](vec<index>& column) {
+        this->edit_col(i, [](auto& column) {
             std::sort(column.begin(), column.end());
         });
     }
@@ -602,7 +603,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index, S
         remove_intersection(row_map, row_indices_to_remove);
         const index remaining_rows = static_cast<index>(row_map.size());
         row_map = shiftIndicesMap(std::move(row_map), this->num_rows);
-        this->transform_columns([&](vec<index>& column) {
+        this->transform_columns([&](auto& column) {
             apply_transformation(column, row_map, false);
         });
         this->num_rows = remaining_rows;
@@ -632,14 +633,14 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index, S
     }
 
     void transform_data(const std::unordered_map<index, index>& indexMap) {
-        this->transform_columns([&](vec<index>& column) {
+        this->transform_columns([&](auto& column) {
             apply_transformation(column, indexMap, true);
         }, true);
     }
 
 
     void transform_data(const vec<index>& index_vector){
-        this->transform_columns([&](vec<index>& column) {
+        this->transform_columns([&](auto& column) {
             apply_transformation(column, index_vector);
         }, true);
     }
@@ -731,7 +732,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index, S
      *
      */
     void delete_last_entries(){
-        this->transform_columns([](vec<index>& column) {
+        this->transform_columns([](auto& column) {
             if (!column.empty()) {
                 column.pop_back();
             }
@@ -750,7 +751,7 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index, S
             this->set_num_rows(threshold);
         }
 
-        this->transform_columns([&](vec<index>& column) {
+        this->transform_columns([&](auto& column) {
             while(!column.empty() && column.back() >= this->num_rows){
                 column.pop_back();
             }
@@ -1185,27 +1186,8 @@ void add_to (const SparseMatrix<index, Storage>& A, SparseMatrix<index, Storage>
 }
 
 /**
- * @brief Assumes that M is already transposed, then multiplies as before.
- *
- */
-template<typename index, typename Storage>
-SparseMatrix<index, Storage> multiply_transpose(const SparseMatrix<index, Storage>& M, const SparseMatrix<index, Storage>& N){
-  SparseMatrix<index, Storage> result(N.get_num_cols(), M.get_num_cols());
-  // GRLINA_ASSERT(M.get_num_rows() == N.get_num_rows()); Sometimes we dont know.
-  for(index i = 0; i < N.get_num_cols(); i++){
-    vec<index> column;
-    for(index j = 0; j < M.get_num_cols(); j++){
-      if(Column_traits<vec<index>, index>::scalar_product(M.data[j], N.data[i])){
-        column.push_back(j);
-      }
-    }
-    result.append_col(std::move(column));
-  }
-  return result;
-}
-
-/**
- * @brief Computes the transpose of M, then multiplies the columns.
+ * @brief Sparse F2 product, accumulating only columns selected by N.
+ * Works directly with vector-backed and CSC columns; preserves storage type.
  *
  */
 template<typename index, typename Storage>
@@ -1232,8 +1214,43 @@ SparseMatrix<index, Storage> multiply(const SparseMatrix<index, Storage>& M, con
             result.append_col(M.get_col(N.col_last(i)));
         return result;
     }
-    SparseMatrix<index, Storage> transpose = M.transposed_copy();
-    return multiply_transpose(transpose, N);
+    SparseMatrix<index, Storage> result(N.get_num_cols(), M.get_num_rows());
+    // One byte per output row: 0 = untouched, 1 = odd, 2 = even.
+    // Only touched rows are reset between columns; no dense row-column scan.
+    vec<unsigned char> parity(M.get_num_rows(), 0);
+    for (index j = 0; j < N.get_num_cols(); ++j) {
+        vec<index> column;
+        for (index k : N.column(j)) {
+            for (index row : M.column(k)) {
+                if (parity[row] == 0) column.push_back(row);
+                parity[row] = parity[row] == 1 ? 2 : 1;
+            }
+        }
+        column.erase(std::remove_if(column.begin(), column.end(), [&](index row) {
+            const bool even = parity[row] == 2;
+            parity[row] = 0;
+            return even;
+        }), column.end());
+        std::sort(column.begin(), column.end());
+        result.append_col(std::move(column));
+    }
+    return result;
+}
+
+/** Compute M^T N through the shared sparse product. Legacy callers may omit
+ * row counts; missing trailing rows are zero, so infer the common row extent.
+ */
+template<typename index, typename Storage>
+SparseMatrix<index, Storage> multiply_transpose(const SparseMatrix<index, Storage>& M,
+                                               const SparseMatrix<index, Storage>& N) {
+    index rows = std::max(M.get_num_rows(), N.get_num_rows());
+    for (const auto* matrix : {&M, &N})
+        for (index j = 0; j < matrix->get_num_cols(); ++j)
+            if (!matrix->column(j).empty()) rows = std::max(rows, index(matrix->col_last(j) + 1));
+    auto left = M, right = N;
+    left.set_num_rows(rows);
+    right.set_num_rows(rows);
+    return multiply(left.transposed_copy(), right);
 }
 
 template<typename index, typename Storage>

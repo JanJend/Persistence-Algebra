@@ -6,6 +6,7 @@
 #include "test_degree_matrices.hpp"
 #include "graded_linear_system_baselines.hpp"
 #include <cassert>
+#include <numeric>
 #include <random>
 #include <grlina/matrices/matrix_algorithms.hpp>
 #include <grlina/matrices/io.hpp>
@@ -33,7 +34,9 @@ void check(const Matrix& A, const Matrix& B, bool solvable) {
     assert(graded_linear_system_is_solvable(A, B) == solvable);
     if constexpr (std::tuple_size<typename Matrix::degree_type>::value == 2) {
         auto movable_a = A, movable_b = B;
-        auto moved = solve_bigraded_linear_system(std::move(movable_a), std::move(movable_b));
+        auto moved = solve_graded_linear_system(std::move(movable_a), std::move(movable_b));
+        if constexpr (std::is_same_v<Matrix, R2Matrix<>>)
+            assert(movable_a.data.empty() && movable_b.data.empty());
         assert(moved.has_value() == solvable);
         if (moved) assert(moved->data == X->data);
     }
@@ -273,7 +276,68 @@ void reduction_stops_after_targets() {
     assert(notifications == 0 && helper.additions == 1);
 }
 
+template<class Storage>
+void adaptive_column_reduction() {
+    using Mat = SparseMatrix<int, Storage>;
+    // Count sparse merges to verify that dense fixtures actually enter the
+    // packed path, rather than merely testing the unchanged sparse fallback.
+    struct CountingMatrix : Mat {
+        using Mat::Mat;
+        int additions = 0;
+        void col_op(int a, int b) { ++additions; Mat::col_op(a, b); }
+    };
+    for (bool fill_in : {false, true}) for (bool finish_zero : {false, true})
+    for (bool track : {false, true}) for (bool update : {false, true}) {
+        array<int> columns;
+        for (int row = 4095; row >= 4032; --row) columns.push_back({row});
+        vec<int> dense(4096);
+        std::iota(dense.begin(), dense.end(), 0);
+        if (fill_in) columns[0] = dense;
+        if (finish_zero) columns.emplace_back(dense.begin(), dense.begin() + 4032);
+        const int column = columns.size();
+        columns.push_back(fill_in ? vec<int>{4095} : dense);
+        CountingMatrix actual(columns.size(), 4096, columns);
+        Mat reference(columns.size(), 4096, columns);
+        Mat operations(columns.size(), columns.size(), "Identity"), expected_ops = operations;
+        std::map<int, int> pivots;
+        for (int j = 0; j < column; ++j) pivots[reference.col_last(j)] = j;
+        // A later owner must be displaced and notified when the column survives.
+        if (!finish_zero) pivots[4031] = column + 1;
+        auto expected_pivots = pivots;
+        vec<int> notified, expected_notifications;
+        auto pivot = reference.col_last(column);
+        while (pivot != -1) {
+            auto owner = expected_pivots.find(pivot);
+            if (owner == expected_pivots.end() || owner->second >= column) break;
+            reference.col_op(owner->second, column);
+            if (track) expected_ops.col_op(owner->second, column);
+            pivot = reference.col_last(column);
+        }
+        if (pivot != -1 && update) {
+            auto owner = expected_pivots.find(pivot);
+            if (owner != expected_pivots.end() && owner->second > column)
+                expected_notifications.push_back(owner->second);
+            expected_pivots[pivot] = column;
+        }
+        auto notify = [&](int owner) { notified.push_back(owner); };
+        if (track) reduce_graded_column(actual, operations, pivots, column, notify, true, update);
+        else reduce_graded_column(actual, actual, pivots, column, notify, false, update);
+        assert(actual.additions == 2);
+        assert(actual.data == reference.data && operations.data == expected_ops.data);
+        assert(pivots == expected_pivots && notified == expected_notifications);
+    }
+}
+
 int main() {
+    adaptive_column_reduction<vec<vec<int>>>();
+    adaptive_column_reduction<CSCStorage<int>>();
+    // The matrix index type need not match an integer-literal column argument.
+    vec<long long> dense(512);
+    std::iota(dense.begin(), dense.end(), 0);
+    SparseMatrix<long long> wide(4,512,array<long long>{{511},{510},{509},dense});
+    std::map<long long,long long> pivots{{511,0},{510,1},{509,2}};
+    reduce_graded_column(wide,wide,pivots,3,[](long long){},false,false);
+    assert(wide.column(3).size()==509 && wide.col_last(3)==508);
     bigraded_solver_without_matrix_copies();
     solvability_without_output_matrix();
     upset_solvability_checks();

@@ -68,7 +68,7 @@ public:
     Module& operator=(const Module&) = default;
     Module& operator=(Module&&) = default;
     explicit Module(Matrix presentation)
-        : proj_res_(std::vector<Matrix>{std::move(presentation)}) {}
+        : proj_res_(std::move(presentation)) {}
     explicit Module(chain_complex_type resolution,
                     ResolutionKind kind = ResolutionKind::projective,
                     ResolutionCompleteness completeness = ResolutionCompleteness::truncated) {
@@ -267,12 +267,12 @@ public:
 
     /** Cancel local generator/relation pairs without requiring a graded kernel. */
     void semi_minimize_presentation(Matrix* elements = nullptr, vec<Matrix*> images = {}) {
-        Matrix matrix = presentation();
         include_cycles(images);
+        proj_res_.differentials().resize(1);
+        res_complete_ = false;
+        auto& matrix = presentation();
         matrix.sort_compatibly(elements, images);
         matrix.semi_minimize(elements, images);
-        proj_res_ = chain_complex_type(std::vector<Matrix>{std::move(matrix)});
-        res_complete_ = false;
     }
 
     bool is_presentation_minimal() const {
@@ -358,12 +358,13 @@ public:
         include_cycles(images);
         const bool was_complete_presentation = proj_res_.size() == 1 &&
             res_complete_;
-        Matrix minimized = presentation();
+        proj_res_.differentials().resize(1);
+        res_complete_ = false;
+        auto& minimized = presentation();
         if (sort_if_needed) minimized.sort_compatibly(elements, images);
         minimized.column_reduction_graded_w_deletion();
         minimized.cancel_local_pairs(elements, images);
         minimized.remove_redundant_relations();
-        proj_res_ = chain_complex_type(std::vector<Matrix>{std::move(minimized)});
         res_complete_ = was_complete_presentation;
     }
 
@@ -385,18 +386,15 @@ public:
             return;
         }
         if constexpr (has_matrix_graded_kernel<Matrix>::value) {
-            chain_complex_type working = proj_res_;
-
             while (true) {
-                Matrix source = working[working.size() - 1]; // kernel computation is destructive
+                Matrix source = proj_res_.differentials().back(); // Preserve the stored differential during destructive reduction.
                 Matrix kernel = source.graded_kernel();
                 const bool terminal = kernel.get_num_cols() == 0;
                 // Preserve the established d1,d2 shape for a presentation,
                 // even when d2 has zero columns. No further zero maps are needed.
-                if (!terminal || working.size() == 1) working.push_differential(std::move(kernel));
+                if (!terminal || proj_res_.size() == 1) proj_res_.push_differential(std::move(kernel));
                 if (terminal) break;
             }
-            proj_res_ = std::move(working);
             res_complete_ = true;
         } else {
             throw std::logic_error("This graded matrix type does not implement a graded kernel");

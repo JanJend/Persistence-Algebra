@@ -16,6 +16,7 @@ if(_grlina_standalone AND BUILD_TESTING)
     set(_grlina_tests_default ON)
 endif()
 option(GRLINA_BUILD_TESTS "Build Persistence-Algebra tests" ${_grlina_tests_default})
+option(GRLINA_USE_COMPACT_COLUMNS "Use compact column storage for R2Matrix/R3Matrix aliases" OFF)
 
 # Find Boost. Boost.System is header-only since 1.69 and newer distributions
 # (Boost >= 1.90) no longer ship a boost_system CMake config, so do not request it.
@@ -39,6 +40,9 @@ find_package(OpenMP)
 
 add_library(grlina INTERFACE)
 add_library(grlina::grlina ALIAS grlina)
+if(GRLINA_USE_COMPACT_COLUMNS)
+    target_compile_definitions(grlina INTERFACE GRLINA_USE_COMPACT_COLUMNS=1)
+endif()
 target_compile_features(grlina INTERFACE cxx_std_17)
 target_include_directories(grlina INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -240,7 +244,7 @@ if(GRLINA_BUILD_TESTS)
     add_executable(new_grid_graded_sparse_matrix_test tests/new_grid_graded_sparse_matrix_test.cpp)
     target_link_libraries(new_grid_graded_sparse_matrix_test grlina::grlina)
     add_test(NAME new_grid_graded_sparse_matrix_test COMMAND new_grid_graded_sparse_matrix_test)
-    foreach(_csc_test csc_matrix_test csc_graded_test)
+    foreach(_csc_test csc_matrix_test csc_graded_test compact_storage_test)
         add_executable(${_csc_test} tests/${_csc_test}.cpp)
         target_link_libraries(${_csc_test} grlina::grlina)
         add_test(NAME ${_csc_test} COMMAND ${_csc_test})
@@ -311,7 +315,7 @@ if(GRLINA_BUILD_TESTS)
     endforeach()
     # These tests use assert; keep checks active in Release builds as well.
     foreach(_test epsilon_functors_test presentation_operations_test submodule_module_test submodule_reduction_test module_hilbert_test module_landscape_test module_operations_test module_framework_test upset_degree_test upset_matrix_test upset_chain_complex_test multicritical_copy_test cli_programs_test
-                  dense_matrix_test sparse_matrix_test matrix_solver_test graded_matrix_test hom_space_test graded_linear_system_test new_coord_graded_sparse_matrix_test new_grid_graded_sparse_matrix_test csc_matrix_test csc_graded_test)
+                  dense_matrix_test sparse_matrix_test matrix_solver_test graded_matrix_test hom_space_test graded_linear_system_test new_coord_graded_sparse_matrix_test new_grid_graded_sparse_matrix_test csc_matrix_test csc_graded_test compact_storage_test)
         if(NOT TARGET ${_test})
             continue()
         endif()

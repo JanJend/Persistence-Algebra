@@ -28,6 +28,30 @@ decode the stored indices through their grid. `base_degree<Matrix>` is the type
 stored in `row_degrees` and `col_degrees`; `Matrix::degree_type` is the actual
 degree type. These types coincide for ordinary matrices.
 
+### Optional compact column storage
+
+`<grlina/storage/compact.hpp>` provides `CompactStorage<Index>` for mutable
+sparse matrices. A 32-bit column occupies 16 bytes and stores up to three entries
+inline; longer columns own an array. Signed 64-bit indices are also supported.
+The entry count of a single column is limited to `2^31 - 1`.
+
+```cpp
+using Matrix = graded_linalg::R2Matrix<int, graded_linalg::CompactStorage<int>>;
+using Grid = graded_linalg::GridGradedSparseMatrix<double, 2, int,
+                                                 graded_linalg::CompactStorage<int>>;
+```
+
+The matrix operations, kernel and solver use the selected backend without
+changes to calling algorithms. `column()` borrows entries; `get_col()` returns
+an owning vector. `move_col_from()` transfers compact column buffers directly.
+Compact XOR runs on the stored columns, including temporary bitset reduction.
+Conversions to vector and CSC storage use `assign_data()`.
+
+Configure with `-DGRLINA_USE_COMPACT_COLUMNS=ON` to select compact storage for
+the `R2Matrix<>` and `R3Matrix<>` aliases throughout a linked application.
+The CMake target propagates this choice to all translation units. The default
+remains vector storage; the other matrix templates keep their existing defaults.
+
 ### Optional CSC matrix storage
 
 Include `<grlina/matrices/sparse.hpp>` for `CSCMatrix`, the sparse matrix alias
@@ -459,6 +483,7 @@ include/grlina/
 │   ├── columns.hpp           # Column representations and Column_traits arithmetic
 │   ├── traits.hpp            # MatrixStorageTraits and vector-backed primitives
 │   ├── bitset_algebra.hpp    # Bitset helpers
+│   ├── compact.hpp           # Inline columns and compact storage traits
 │   └── csc.hpp               # CSCStorage, borrowed columns, traits and diagnostics
 ├── graded_kernel.hpp         # Graded kernels in two or more parameters
 ├── graded_kernel_scheduler.hpp # Grade scheduling for graded kernel reductions
@@ -570,33 +595,68 @@ using namespace graded_linalg;
 Module<R2Matrix<>> module("presentation_or_resolution.scc");
 Landscape landscape(module); // 1% resolution; degree bounds enlarged by 20%
 auto png = landscape.image(1, 800, 600); // layer 1 as PNG bytes; no file created
+auto inferno = landscape.image(1, 800, 600, ColourMap::inferno); // optional Matplotlib palette
+auto shared_scale = landscape.image(1, 800, 600, ColourMap::blue, 0.5); // linear colours on [0,0.5]
 // save_png(png, "landscape.png"); // explicitly save when wanted
 landscape.save("landscape", 3); // barcode CSV, grid CSV, and SVG with three layers
+// landscape.save("landscape_inferno", 3, ColourMap::inferno); // same palette in SVG
 
 Landscape cropped(module, {0, 0, 1, 1}, 0.01); // xmin,ymin,xmax,ymax; relative resolution
 auto heights = cropped.at({0.5, 0.5}, 3);
 ```
 
-`Landscape` owns barcodes on parallel diagonal slices, so construction performs
-about 200 reductions at the default resolution instead of about 10,000 for a grid.
-It keeps every landscape layer and needs no reference to the original module.
-Values are exact on these slices and linearly interpolated between them;
-`error_bound()` bounds the absolute error of every layer. Resolution is slice
-spacing relative to the longest box side in direction units. The default box
+The optional final `image` argument fixes the maximum colour value; its default
+of zero selects each image's sampled maximum. `sample(layer, width, height)`
+returns the same numerical grid used for rendering. To obtain the PNG and its
+sampled maximum together, use `image_with_data(layer, width, height, colormap,
+colour_maximum, include_values)`: its result has `png`, `maximum`, and optional
+`values` (`values[x][y]`). `maximum` is always the sampled maximum, even when the
+colour scale is fixed separately.
+
+For a shared scale, compute each grid once and render it after choosing the maximum:
+
+```cpp
+auto grid = landscape.sample_grid(1, 500, 500); // grid.values, grid.maximum
+auto png = grid.image(ColourMap::blue, shared_maximum); // no algebra recomputation
+```
+
+The `landscape_image` CLI offers `--json` for `{maximum, png, bounds, layer}`
+(PNG encoded as base64), `--include-values` to also return the array, and
+`--values-only` to return the grid without rendering. Feed that grid JSON to
+`landscape_image --render-values --scale MAX` on stdin to render at a shared
+scale without reading a module or recomputing a barcode. Add `--json` to receive
+the PNG and maximum together. Raw PNG output and `--maximum-only` remain available.
+
+`Landscape` owns a copy of the presentation and cached barcodes on parallel
+diagonal slices. Each query evaluates its own line's barcode, reusing a cached
+line when available. There is no interpolation between slices; `error_bound()`
+is zero, apart from ordinary floating-point rounding. Grid points on the same
+line share one barcode. With an N-by-N grid and direction along the box diagonal,
+only 2N-1 distinct lines are needed. Vineyard updates are enabled by default:
+one initial reduction stores `R = D V`, then adjacent generator/relation order
+swaps update it between slices. Coefficients retain their original IDs to avoid
+rewriting matrix entries on swaps. Each sampling call owns its update state.
+Pass `false` as the constructor's final argument, or `--no-vineyard` to the CLI,
+to use independent reductions as a reference. Other dimensions or directions can require
+more lines, up to one per pixel. Resolution sets the initial cache spacing
+relative to the longest box side in direction units and the export grid spacing;
+it does not limit the accuracy of point queries or PNG samples. The default box
 uses `bounding_box()` with 10% padding on each side; these are
 Betti-degree bounds for a minimal presentation. Constant axes use a unit span.
 
-`save` writes the full compressed representation to `landscape.barcodes.csv`,
-with bounds/direction/resolution metadata and `slice,offset,birth,death` rows.
+`save` writes the barcodes of the export grid's actual lines to
+`landscape.barcodes.csv`, with bounds/direction/resolution metadata,
+`sampling=grid`, and `slice,offset,birth,death` rows. Offsets need not be uniform.
 Empty slices have blank endpoints; infinite deaths are retained. It also writes
 the sampled `landscape.csv` (`x,y,layer,value`) and labelled `landscape.svg` views.
 Only rendering/exporting materializes a grid. Bounds never clip bars or the module itself.
 
 `image(layer = 1, width = 800, height = 600)` returns PNG bytes for one
-1-based layer, sampled from the cached barcodes at each pixel. It performs no
-matrix reductions and keeps the existing interpolation error bound. Width and
+1-based layer, evaluated directly at each pixel. Cached lines are reused;
+additional grid lines are processed in order with vineyard updates. Width and
 height count heatmap pixels; labels add 265 horizontal and 185 vertical pixels.
-Heights use a linear white-to-blue colour scale. Layers above those present in
+Heights use a linear scale: white at zero, then pale blue through muted blue to
+black, or the optional inferno palette. Layers above those present in
 the barcodes give zero images. The bytes can be passed to Jupyter's
 `IPython.display.Image(data=png_bytes)`, just like Hilbert images. Define
 `STB_IMAGE_WRITE_IMPLEMENTATION` before any grlina include in one translation

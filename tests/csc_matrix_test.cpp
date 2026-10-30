@@ -91,6 +91,47 @@ void test_identity_shortcuts() {
     assert(moved.is_identity && !I2.is_identity);
 }
 
+template<class Storage>
+void test_sparse_products() {
+    using Matrix = SparseMatrix<int, Storage>;
+    std::mt19937 random(20261029);
+    for (int trial = 0; trial < 100; ++trial) {
+        const int rows = trial % 11, inner = (trial / 11) % 7, cols = random() % 10;
+        array<int> a(inner), b(cols);
+        const unsigned density = trial % 4; // Includes zero, sparse, and dense products.
+        for (auto& column : a)
+            for (int row = 0; row < rows; ++row)
+                if (random() % 3 < density) column.push_back(row);
+        for (auto& column : b)
+            for (int row = 0; row < inner; ++row)
+                if (random() % 3 < density) column.push_back(row);
+        const Matrix left(inner, rows, a), right(cols, inner, b);
+        const auto product = left * right;
+        assert(multiply_transpose(left.transposed_copy(), right).data == product.data);
+        auto legacy_left = left.transposed_copy(), legacy_right = right;
+        legacy_left.set_num_rows(0);
+        legacy_right.set_num_rows(0);
+        assert(multiply_transpose(legacy_left, legacy_right).data == product.data);
+        static_assert(std::is_same_v<std::decay_t<decltype(product)>, Matrix>);
+        assert(product.get_num_rows() == rows && product.get_num_cols() == cols);
+        // Independent dense dot-product oracle, including cancellation to zero.
+        for (int j = 0; j < cols; ++j) {
+            vec<int> expected;
+            for (int row = 0; row < rows; ++row) {
+                bool odd = false;
+                for (int k = 0; k < inner; ++k)
+                    odd ^= std::binary_search(a[k].begin(), a[k].end(), row) &&
+                           std::binary_search(b[j].begin(), b[j].end(), k);
+                if (odd) expected.push_back(row);
+            }
+            assert(product.get_col(j) == expected);
+            assert(right.get_col(j) == b[j]);
+        }
+        for (int k = 0; k < inner; ++k) assert(left.get_col(k) == a[k]);
+        if constexpr (std::is_same_v<Storage, CSCStorage<int>>) assert_csc_invariants(product);
+    }
+}
+
 void test_shared_algorithms() {
     std::mt19937 generator(419);
     for (int trial = 0; trial < 50; ++trial) {
@@ -357,6 +398,8 @@ void test_offset_check_policy() {
 int main() {
     test_identity_shortcuts<vec<vec<int>>>();
     test_identity_shortcuts<CSCStorage<int>>();
+    test_sparse_products<vec<vec<int>>>();
+    test_sparse_products<CSCStorage<int>>();
     test_shared_algorithms();
     test_dense_index_transformation();
     test_row_index_maps();

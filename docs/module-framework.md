@@ -231,14 +231,19 @@ Landscapes offer the same in-memory PNG output, with a 1-based layer selector:
 #include <grlina/invariants/landscape.hpp>
 graded_linalg::Landscape landscape(module);
 auto png = landscape.image(1, 800, 600); // layer, heatmap width, heatmap height
+auto inferno = landscape.image(1, 800, 600, graded_linalg::ColourMap::inferno);
 // graded_linalg::save_png(png, "landscape.png"); // only when explicitly wanted
 ```
 
-This samples the cached landscape at each pixel, performs no further matrix
-reductions, and preserves its interpolation error bound. Colours are linear in
-height; the visible range is the landscape's existing bounds. The returned bytes
-work with the same Python `Image(data=png_bytes)` call. The existing
-`landscape.save(prefix, layers)` CSV/SVG exports are unchanged.
+This evaluates each output pixel on its own line, sharing a barcode between
+points on the same line and reusing cached lines. Each sequence of additional
+lines uses one initial reduction followed by vineyard updates; there is no interpolation between slices. Colours are
+linear in height; the visible range is the landscape's existing bounds. The returned bytes
+work with the same Python `Image(data=png_bytes)` call. The default palette matches
+the Hilbert plots: white at zero, then pale blue through muted blue to black.
+`ColourMap::inferno` uses Matplotlib's 256 colours, from near-black through red
+and yellow to pale yellow. `landscape.save(prefix, layers, ColourMap::inferno)`
+selects the same palette for SVG; CSV values do not depend on the palette.
 
 Build `landscape_image` alongside `hilbert_image` to use this from Python:
 
@@ -252,9 +257,22 @@ display(Image(data=png))
 
 Optional `--bounds xmin ymin xmax ymax`, `--direction vx vy`, and
 `--resolution relative_spacing` select the landscape's window, positive direction,
-and relative slice spacing (default 0.01). Heatmap dimensions control rendering
-separately. The executable constructs the cached landscape once, calls `image`,
+and relative cache spacing (default 0.01). Heatmap dimensions set the grid of
+direct evaluations separately. The executable constructs the landscape, calls `image`,
 and returns PNG bytes on standard output without creating files.
+Append `--colormap inferno` for inferno, or `--colormap blue` for the default.
+Use `--json` to receive the sampled `maximum` alongside a base64 `png`, and
+`--include-values` to also include `values[x][y]`. For a shared scale, first call
+`--values-only` once per module. After finding the common maximum, feed each
+returned JSON grid to `landscape_image --render-values --scale MAX` on stdin.
+That path only renders the retained values; it never recomputes persistence.
+Every image then uses the same linear value-to-colour map on `[0, MAX]`, including
+images whose landscape is zero. In C++, pass MAX as the final argument to
+`landscape.image(layer, width, height, colormap, MAX)`; zero retains automatic scaling.
+`landscape.image_with_data(...)` returns PNG bytes and the sampled maximum together,
+with an optional final `include_values` boolean. Alternatively retain
+`landscape.sample_grid(layer, width, height)` and call its `image(colormap, MAX)`.
+Vineyard updates are enabled by default; `--no-vineyard` uses independent reductions.
 
 ## SCC I/O
 

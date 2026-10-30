@@ -1,3 +1,6 @@
+// CSC edits are intentional in these algebra checks; diagnostics have their own test.
+#define GRLINA_CSC_COMPILE_WARNINGS 0
+#define GRLINA_CSC_RUNTIME_WARNINGS 0
 #include <grlina/invariants/hilbert_function.hpp>
 #include <grlina/matrices/coord.hpp>
 #include <grlina/hom_interface.hpp>
@@ -706,7 +709,131 @@ static void test_coordinate_io() {
     assert(two.presentation().col_degrees[0] == Integer2::degree_type({1, 2}));
 }
 
+// Compare direct transport with independently retained full change-of-basis maps.
+template<class Mat>
+static void test_chain_map_operations() {
+    using Complex = ChainComplex<Mat>;
+    using Map = ChainMap<Mat>;
+    using Degree = typename Mat::degree_type;
+    const vec<Degree> vertices(2, Degree{0, 0}), edges{{1, 1}, {0, 0}}, faces{{2, 2}, {1, 1}};
+    const auto source = std::make_shared<Complex>(vec<Mat>{
+        Mat(2, 2, {{0, 1}, {0, 1}}, edges, vertices),
+        Mat(2, 2, {{0, 1}, {0, 1}}, faces, edges)});
+    vec<Mat> components{Mat(vertices), Mat(2, 2, {{1}, {1}}, edges, edges),
+                        Mat(2, 2, {{}, {}}, faces, faces)};
+    if constexpr (matrix_grid_backed_v<Mat>)
+        components[1].reindex_grid(typename Mat::Grid{{{-4, 0, 1, 3}, {-4, 0, 1, 3}}});
+    const Map original(source, source, components);
+    auto reduced_source = *source, reduced_target = *source;
+    auto inclusion = identity_basis_maps(reduced_source), projection = identity_basis_maps(reduced_target);
+    reduced_source.minimize(true, &inclusion);
+    reduced_target.minimize(true, &projection);
+    auto reduced = original;
+    reduced.minimize();
+    assert(source->differential(1).get_num_cols() == 2); // Input unchanged.
+    for (std::size_t q = 0; q <= source->size(); ++q) {
+        const auto expected = projection.from_original[q] * components[q] * inclusion.to_original[q];
+        assert(reduced[q].data == expected.data);
+        assert(geometric_col_degrees(reduced[q]) == geometric_col_degrees(expected));
+        assert(geometric_row_degrees(reduced[q]) == geometric_row_degrees(expected));
+        assert(original[q].data == components[q].data);
+    }
+    // Both attached directions can be updated in the same cancellation pass.
+    auto middle = *source;
+    auto incoming = components, outgoing = components;
+    middle.minimize(true, nullptr, nullptr, {}, &incoming, &outgoing);
+    for (std::size_t q = 0; q <= source->size(); ++q) {
+        assert(incoming[q].data == (projection.from_original[q] * components[q]).data);
+        assert(outgoing[q].data == (components[q] * inclusion.to_original[q]).data);
+    }
+    const auto cone = original.mapping_cone();
+    assert(cone.size() == 3 && cone.is_chain_complex());
+    assert((cone[1].get_col(2) == vec<int>{1, 2, 3}));
+    assert((cone[2].get_col(0) == vec<int>{2, 3})); // Shifted top source group.
+    const Map identity(source, source, {Mat(vertices), Mat(edges), Mat(faces)});
+    auto contractible = identity.mapping_cone();
+    contractible.minimize();
+    for (std::size_t q = 0; q <= contractible.size(); ++q) assert(contractible.group_degrees(q).empty());
+    for (auto window : {std::pair<std::size_t, std::size_t>{0, 0}, {1, 1}, {1, 2}, {0, 4}, {4, 6}}) {
+        auto cut = original;
+        cut.truncate(window.first, window.second);
+        assert(cut.domain().is_chain_complex() && cut.target().is_chain_complex());
+        for (std::size_t q = 0; q <= 4; ++q) {
+            const auto expected = q >= window.first && q <= window.second ? source->group_degrees(q) : vec<Degree>{};
+            assert(cut.domain().group_degrees(q) == expected);
+            assert(cut.target().group_degrees(q) == expected);
+        }
+        for (std::size_t q = 1; q <= cut.domain().size(); ++q)
+            assert((cut.target().differential(q) * cut[q]).data ==
+                   (cut[q - 1] * cut.domain().differential(q)).data);
+    }
+    bool rejected = false;
+    try { auto cut = original; cut.truncate(2, 1); } catch (const std::invalid_argument&) { rejected = true; }
+    assert(rejected);
+    const auto empty = std::make_shared<Complex>();
+    const Map to_zero(source, empty, {}), from_zero(empty, source, {});
+    for (const auto* map : {&to_zero, &from_zero}) {
+        assert(map->mapping_cone().is_chain_complex());
+        auto reduced_map = *map;
+        reduced_map.minimize();
+        assert(reduced_map.mapping_cone().is_chain_complex());
+        auto cut = *map;
+        cut.truncate(0, 0);
+        assert(cut.mapping_cone().is_chain_complex());
+    }
+    assert(Map(empty, empty, {}).mapping_cone().empty());
+    // A minimal input keeps its endpoints and their original bases.
+    auto stable = reduced;
+    const auto* stable_source = &stable.domain();
+    const auto* stable_target = &stable.target();
+    stable.minimize();
+    assert(&stable.domain() == stable_source && &stable.target() == stable_target);
+
+    // Mutators retain the actual shared endpoint objects, including endomorphisms.
+    auto owned = std::make_shared<Complex>(*source);
+    Map shared(owned, owned, components);
+    shared.minimize();
+    assert(&shared.domain() == owned.get() && &shared.target() == owned.get());
+    assert(owned->differential(1).get_num_cols() == reduced.domain().differential(1).get_num_cols());
+    for (std::size_t q = 0; q < shared.matrices().size(); ++q)
+        assert(shared[q].data == reduced[q].data);
+    shared.truncate(0, 0);
+    assert(&shared.domain() == owned.get() && &shared.target() == owned.get());
+    assert(owned->group_degrees(1).empty());
+}
+
+static void test_move_ownership() {
+    using Coord = R2Matrix<>;
+    Coord::Base base(1, 1, {{0}}, {{1, 1}}, {{0, 0}});
+    const auto* base_entries = base.column(0).data();
+    const auto* base_degrees = base.col_degrees.data();
+    Coord coordinates(std::move(base));
+    assert(coordinates.column(0).data() == base_entries);
+    assert(coordinates.col_degrees.data() == base_degrees);
+
+    Matrix first(1, 1, {{0}}, {{1, 1}}, {{0, 0}});
+    const auto* entries = first.column(0).data();
+    ChainComplex<Matrix> complex{std::move(first)};
+    assert(complex[0].column(0).data() == entries);
+    Module<Matrix> module(std::move(complex[0]));
+    assert(module.presentation().column(0).data() == entries);
+
+    auto source = std::make_shared<ChainComplex<Matrix>>(module.proj_res_);
+    auto target = std::make_shared<ChainComplex<Matrix>>(module.proj_res_);
+    ChainMap<Matrix> map(source, target, {Matrix(vec<r2degree>{{0, 0}}), Matrix(vec<r2degree>{{1, 1}})});
+    const auto* retained = source->differential(1).column(0).data();
+    map.truncate(0, 1);
+    assert(&map.domain() == source.get() && &map.target() == target.get());
+    assert(source->differential(1).column(0).data() == retained);
+    auto moved = std::move(map);
+    assert(&moved.domain() == source.get());
+}
+
 int main() {
+    test_move_ownership();
+    test_chain_map_operations<Matrix>();
+    test_chain_map_operations<R2GradedSparseMatrix<int, CSCStorage<int>>>();
+    test_chain_map_operations<GridGradedSparseMatrix<double, 2, int>>();
     test_poset_without_optional_operations();
     test_array_degree_traits();
     test_sort_state_and_degree_traits();

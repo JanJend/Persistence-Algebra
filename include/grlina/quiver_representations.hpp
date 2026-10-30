@@ -394,8 +394,8 @@ auto GradedSparseMatrix<D, index, DERIVED, Storage>::induced_quiver_rep(vec<D> v
             return rep;
 }
 
-template<typename Scalar, std::size_t Dimension, typename Index>
-auto GridGradedSparseMatrix<Scalar, Dimension, Index>::induced_quiver_rep(vec<GridD> vertices, array<Index> edges) {
+template<typename Scalar, std::size_t Dimension, typename Index, typename Storage>
+auto GridGradedSparseMatrix<Scalar, Dimension, Index, Storage>::induced_quiver_rep(vec<GridD> vertices, array<Index> edges) {
     return to_coordinates().induced_quiver_rep(std::move(vertices), std::move(edges));
 }
 
