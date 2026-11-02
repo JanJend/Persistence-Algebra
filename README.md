@@ -45,6 +45,9 @@ The matrix operations, kernel and solver use the selected backend without
 changes to calling algorithms. `column()` borrows entries; `get_col()` returns
 an owning vector. `move_col_from()` transfers compact column buffers directly.
 Compact XOR runs on the stored columns, including temporary bitset reduction.
+Scheduled reductions reuse scratch for both primary and auxiliary columns and
+skip empty additions. Row projections filter existing columns in place, and
+completed projected-kernel columns transfer their owned storage into the result.
 Conversions to vector and CSC storage use `assign_data()`.
 
 Configure with `-DGRLINA_USE_COMPACT_COLUMNS=ON` to select compact storage for
@@ -380,6 +383,101 @@ For three or more parameters it reuses the existing kernel's two-parameter slice
 restrictions at the frozen prefixes requested by B. Timing estimates do not
 establish worst-case bounds in general dimensions.
 
+For a known basis with distinct pivots in colex ambient order,
+`solve_graded_system_by_back_substitution(A, B)` borrows A and solves by direct substitution, checking
+degree admissibility. It returns `nullopt` for queries outside the graded span
+and rejects nontriangular bases; use the general solver for arbitrary A.
+For several queries against the same basis, move A into
+`PreparedGradedBasis<Matrix> basis(std::move(A))` and call
+`basis.solve(std::move(B))` for each batch. The prepared object owns the basis
+and reuses its row ordering and pivot lookup; every batch still checks its
+ambient row degrees and graded admissibility.
+
+The same `graded_linear_system.hpp` header provides joint image/projected-kernel reduction:
+`bigraded_reduce(D, P)` computes generators of `P(ker D)` without constructing
+full kernel representatives. `projected_bigraded_kernel_image(D, F)` computes
+injective cycle coordinates and their images under F in one replay.
+Discovery and replay share the same column ordering.
+These operations support ordinary and grid-backed two-parameter matrices.
+`Homomorphism::kernel()`, `cokernel()` and `image()` provide the individual
+module operations. The combined three-module algorithm and its result type
+live in chromatic_mph, which assembles these shared algebraic primitives.
+
+| Entry point in `graded_linear_system.hpp` | Purpose |
+|---|---|
+| `matrix.graded_kernel()` | Full graded kernel generators in the original domain coordinates. |
+| `solve_graded_linear_system(A, B)` | Solve `A X = B` for arbitrary, possibly dependent A. |
+| `solve_graded_system_by_back_substitution(A, B)` | Faster substitution when A has distinct nonzero pivots after colex row ordering. |
+| `PreparedGradedBasis<Matrix>::solve(B)` | Repeated substitution using an owned basis whose row ordering and pivots are prepared once. |
+| `bigraded_reduce(D, P, want_image)` | Apply D's reductions to P; return `P(ker D)` and optionally semi-minimal generators of `im D`. |
+| `bigraded_reduce_pair(left, right, project_left)` | Reduce `[left right]` and retain the kernel's coordinates in the selected summand. |
+| `projected_bigraded_kernel(D)` | An injective coordinate projection of a bigraded kernel, avoiding full representatives. |
+| `projected_bigraded_kernel_image(D, F)` | The projected kernel basis together with its images under F. |
+
+Here “projected” means retaining selected **domain coordinates of kernel
+vectors**, not taking the kernel after projecting D. If Z is the chosen kernel
+basis and S the returned `coordinates`, `basis = pi_S Z`. The selection makes
+`pi_S` injective on `ker D`, so those coordinates still determine every cycle.
+The second function returns the same compact basis together with `image = F Z`.
+Its image columns stay paired with the basis, including zero or dependent
+images; they are not separately minimized generators of an image module.
+Both functions avoid constructing full Z: after discovering S, they carry
+`pi_S` (or the stacked maps `pi_S` and F) through the kernel reduction.
+
+For example, over F2 let D = `(1 1 1)`, with all degrees zero. Cycles have the
+form `(a+b, a, b)`, so the last two coordinates suffice. The compact kernel
+basis is the 2-by-2 identity instead of the full columns `(1,1,0)` and `(1,0,1)`.
+For F = `(0 1 0)`, the second function also returns the two image columns `1,0`.
+In chromatic_mph these operations implement compact target cycles and mapped
+source cycles when full cycle representatives are not requested.
+
+The general solver, full two-parameter kernels and joint reductions reuse
+`visit_bigraded_columns` and `reduce_graded_column`. Higher-dimensional slice
+selection is shared by kernels and solvers. The basis solver uses substitution
+instead of elimination. Matrix/grid construction uses the existing helpers in
+`matrices/grid.hpp`; no separate scheduler or reduction header is needed.
+
+The two matrix presentation minimisers are adjacent in `matrices/graded.hpp`:
+`minimize()` cancels equal-degree generator/relation pairs and then constructs
+a graded kernel to find redundant relations. `minimize_by_image_generators()`
+does the same cancellation first, then keeps minimal generators of the image
+without recording kernel coefficient vectors. For two coordinate parameters it
+reuses the scheduled image reducer. For other degree types it processes columns
+in a linear extension, testing each against retained columns born at degrees
+<= its own. This fallback supports any degree poset with the existing
+`Degree_traits` operations, but rebuilds a span for each test and can be slower.
+
+`Module::minimize_presentation_by_image_generators()` wraps the alternative for
+any parameter count. It requires exactly one stored projective map, checked
+even when diagnostics are disabled, since it does not transport higher maps.
+For example, relation columns `x, y, x^2` become `x, y`: the third is redundant.
+The syzygy `y*x + x*y = 0` remains a relation among those two columns and belongs
+in the next resolution map. No basis of those syzygies is constructed here.
+Avoiding that basis and its operation vectors can save work when only a
+presentation is required. Use `minimize_resolution()` to transport stored higher maps.
+
+`tests/minimization_comparison_test.cpp` compares both minimisers on fixed and
+seeded random inputs in one through four parameters and multiple matrix storage
+types. It checks equal graded images after cancellation, minimal column counts,
+and that the alternative does not call `graded_kernel()`. Its `--benchmark 9`
+mode measures the public calls, with copies and validation outside the timers.
+Build target `minimization_comparison_test`, then run it through CTest or directly.
+Measured results and the computational comparison are in
+[tests/minimization_comparison/RESULTS.md](tests/minimization_comparison/RESULTS.md).
+
+The preserved MPfree implementation is in `MPFREE_clone.hpp`, including its
+upstream attribution, grid scheduler, per-y queues and column reducer:
+
+```cpp
+#include <grlina/MPFREE_clone.hpp>
+auto kernel = matrix.graded_kernel_MPFREE(); // R2GradedSparseMatrix
+```
+
+The default kernel uses streamed birth events and a deduplicated column queue.
+Native integer-coordinate matrices also avoid coordinate compression and keep
+integer degrees exact. Both paths implement the MPfree graded-reduction idea;
+these implementation differences do not establish a universal speed advantage.
+
 ### Chain-complex minimization benchmark against multi-chunk
 
 The optional benchmark uses the multi-chunk checkout at `../multi-chunk`.
@@ -485,9 +583,8 @@ include/grlina/
 │   ├── bitset_algebra.hpp    # Bitset helpers
 │   ├── compact.hpp           # Inline columns and compact storage traits
 │   └── csc.hpp               # CSCStorage, borrowed columns, traits and diagnostics
-├── graded_kernel.hpp         # Graded kernels in two or more parameters
-├── graded_kernel_scheduler.hpp # Grade scheduling for graded kernel reductions
-├── graded_linear_system.hpp     # Degree-admissible linear systems
+├── graded_linear_system.hpp  # Shared reductions, graded kernels, linear systems and projected images
+├── MPFREE_clone.hpp          # Preserved MPfree grid scheduler, reducer and legacy R2 kernel
 ├── subspaces.hpp             # Subspace enumeration, decomposition data and serialization
 ├── posets/
 │   ├── traits.hpp            # Degree_traits capabilities and linear-order contract
@@ -525,7 +622,7 @@ auto kernel = matrix.get_kernel();
 ```
 
 For graded kernels and methods that use them (including full presentation
-minimization and submodules), also include `graded_kernel.hpp`. Matrix-family
+minimization and submodules), also include `graded_linear_system.hpp`. Matrix-family
 algorithms and column-space comparison live in `matrices/matrix_algorithms.hpp`;
 induced quiver representations require `quiver_representations.hpp`.
 `graded_linalg.hpp` exports these algorithms and the module API. For a focused
@@ -542,7 +639,15 @@ The old matrix and storage header paths have been removed.
 Submodule containment is `S.contains(T)` in `module/submodule.hpp`, with a check
 that both submodules have the same parent object. Equality checks containment
 in both directions; `present_same_submodule` adapts this to presentation and
-generator matrices. The graded linear solver lives in `graded_linear_system.hpp`.
+generator matrices. Graded kernels, scheduling, linear systems and joint reductions
+all live in `graded_linear_system.hpp`, in four marked sections. The former
+`graded_kernel.hpp`, `graded_kernel_scheduler.hpp` and `bigraded_reduction.hpp`
+includes have been removed; replace them with `graded_linear_system.hpp`.
+`graded_kernel()` is the default matrix entry point. The earlier MPfree grid
+scheduler and queued reduction remain available together in `MPFREE_clone.hpp`
+through `R2GradedSparseMatrix::graded_kernel_MPFREE()`. Reduction queues are local
+to the call. This legacy path populates the compressed-grid fields; the default
+R2 kernel does not. `compute_grid_representation()` also remains callable directly.
 The former module umbrella and presentation-adapter headers have been removed.
 
 ### Key types at a glance
@@ -626,6 +731,14 @@ The `landscape_image` CLI offers `--json` for `{maximum, png, bounds, layer}`
 `landscape_image --render-values --scale MAX` on stdin to render at a shared
 scale without reading a module or recomputing a barcode. Add `--json` to receive
 the PNG and maximum together. Raw PNG output and `--maximum-only` remain available.
+
+Both image CLIs accept `--sqrt-x` for squared-radius SCC input. It takes the
+square root of every first-coordinate degree before sampling; bounds and
+landscape directions then use radius units. Saved SCC files are unchanged.
+PNG and landscape SVG labels always use ordinary decimal notation, with no
+scientific notation or offset multiplier.
+`hilbert_image --maximum-only` reports the exact maximum on the module's induced
+grid, so shared colour scales need not rely on a coarsely sampled export CSV.
 
 `Landscape` owns a copy of the presentation and cached barcodes on parallel
 diagonal slices. Each query evaluates its own line's barcode, reusing a cached
@@ -885,6 +998,20 @@ group: SCC permits omitting that group's degrees, but then the file does not
 specify the graded matrix completely. No upset-specific graded kernel is supplied.
 
 ---
+
+## Legacy algebra
+
+The first-working chromatic six-pack's historical algebra (revision `4cbf285`)
+is available in two optional headers: `grlina/legacy_linear_algebra.hpp` and
+`grlina/legacy_modules.hpp`. Historical declarations use the `legacy_` prefix
+directly in `graded_linalg`, for example `legacy_R2Matrix<>` and
+`legacy_solve_graded_linear_system`. They retain the old matrix storage,
+reductions, and module algorithms for reproducible comparisons. Unchanged
+degree, graph, bitset, container, and formatting helpers reuse current headers.
+The legacy code is not included by the normal umbrella header.
+`include/grlina/legacy_manifest.json` records provenance and pooled-header hashes;
+the sibling chromatic repository's `tools/restore_legacy.py` regenerates it.
+Historical licensing is retained in `COPYING.legacy` and the header notices.
 
 ## License
 

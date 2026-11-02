@@ -59,6 +59,32 @@ inline const unsigned char* hilbert_glyph(char c) {
 
 namespace image_detail {
 
+// Human-facing labels always use ordinary decimal notation, including tiny values.
+inline std::string decimal_label(double value) {
+    const int places = value == 0 ? 0 : std::max(0, 3 - static_cast<int>(std::floor(std::log10(std::abs(value)))));
+    std::ostringstream out;
+    out << std::fixed << std::setprecision(places) << (value == 0 ? 0 : value);
+    auto label = out.str();
+    if (label.find('.') != std::string::npos) {
+        label.erase(label.find_last_not_of('0') + 1);
+        if (label.back() == '.') label.pop_back();
+    }
+    return label;
+}
+
+// Reparameterize a freshly loaded coordinate-graded resolution for plotting.
+// The source SCC and its squared-radius coordinates remain unchanged.
+template <class Module>
+void square_root_x(Module& module) {
+    for (auto& matrix : module.proj_res_.differentials())
+        for (auto* degrees : {&matrix.row_degrees, &matrix.col_degrees})
+            for (auto& degree : *degrees) {
+                if (!std::isfinite(degree[0]) || degree[0] < 0)
+                    throw std::invalid_argument("Radius plots require finite nonnegative squared-radius grades");
+                degree[0] = std::sqrt(degree[0]);
+            }
+}
+
 inline void validate_size(std::size_t width, std::size_t height) {
     if (width < 2 || height < 2 ||
         width > static_cast<std::size_t>(std::numeric_limits<int>::max() / 4 - 265) ||
@@ -131,11 +157,7 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
         }
 #endif
     };
-    auto number = [](double value) {
-        std::ostringstream out;
-        out << std::setprecision(4) << (value == 0 ? 0 : value);
-        return out.str();
-    };
+    const auto number = decimal_label;
     long double maximum = 0;
     for (const auto& column : values) for (auto value : column) {
         if (!std::isfinite(static_cast<long double>(value)))

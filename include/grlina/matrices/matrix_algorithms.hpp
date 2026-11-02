@@ -9,7 +9,7 @@
 #include <grlina/matrices/grid.hpp>
 #include <grlina/matrices/r2.hpp>
 // Preserve the aggregate includes for existing callers of this header.
-#include <grlina/graded_kernel.hpp>
+#include <grlina/graded_linear_system.hpp>
 
 namespace graded_linalg {
 

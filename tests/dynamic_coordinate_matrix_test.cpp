@@ -10,7 +10,7 @@
 #include <sstream>
 #include <type_traits>
 #include <grlina/matrices/matrix_algorithms.hpp>
-#include <grlina/graded_kernel.hpp>
+#include <grlina/graded_linear_system.hpp>
 
 using namespace graded_linalg;
 

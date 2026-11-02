@@ -146,7 +146,7 @@ bool operator==(const CompactStorage<Index>& compact, const vec<vec<Index>>& vec
 template<class Index>
 bool operator==(const vec<vec<Index>>& vectors, const CompactStorage<Index>& compact) { return compact == vectors; }
 
-#if defined(GRLINA_USE_COMPACT_COLUMNS) && GRLINA_USE_COMPACT_COLUMNS
+#if !defined(GRLINA_USE_COMPACT_COLUMNS) || GRLINA_USE_COMPACT_COLUMNS
 template<class Index> using DefaultSparseStorage = CompactStorage<Index>;
 #else
 template<class Index> using DefaultSparseStorage = vec<vec<Index>>;

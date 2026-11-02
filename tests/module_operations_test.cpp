@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <grlina/matrices/matrix_algorithms.hpp>
 #include <grlina/quiver_representations.hpp>
-#include <grlina/graded_kernel.hpp>
+#include <grlina/graded_linear_system.hpp>
 
 using namespace graded_linalg;
 using Mat = R2GradedSparseMatrix<int>;
@@ -264,8 +264,8 @@ void test_chain_vs_resolution_minimization() {
     ChainComplex<Mat> C({duplicate});
     C.minimize();
     assert(C[0].data == duplicate.data && C[0].col_degrees == duplicate.col_degrees);
-    assert(homology_module(C, 1).dimension_at({1,0}) == 1);
-    assert(homology_module(C, 1).dimension_at({0,0}) == 0);
+    assert(homology_group(C, 1).dimension_at({1,0}) == 1);
+    assert(homology_group(C, 1).dimension_at({0,0}) == 0);
     Mod presentation(C);
     presentation.minimize_resolution(); // explicit method also accepts one map
     assert(presentation.proj_res_.size() == 1 && presentation.num_of_rels() == 1);
@@ -279,13 +279,13 @@ void test_chain_vs_resolution_minimization() {
     ChainComplex<Mat> truncated({square, syzygies});
     truncated.minimize();
     assert(truncated[1].data == syzygies.data);
-    assert(homology_module(truncated, 2).dimension_at({1,1}) == 1);
+    assert(homology_group(truncated, 2).dimension_at({1,1}) == 1);
     Mod M(truncated);
     M.minimize(); // dispatches to module resolution minimization
     assert(M.proj_res_.size() == 2);
     assert(M.proj_res_[1].data == array<int>({{0,1}}));
     assert(M.proj_res_.is_chain_complex());
-    assert(homology_module(M.proj_res_, 2).dimension_at({1,1}) == 0);
+    assert(homology_group(M.proj_res_, 2).dimension_at({1,1}) == 0);
     assert(!M.res_complete_);
     assert(M.dimension_at({0,0}) == 1 && M.dimension_at({1,0}) == 0);
 

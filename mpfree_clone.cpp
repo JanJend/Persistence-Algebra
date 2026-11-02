@@ -10,7 +10,7 @@ void get_minimal_presentation(std::filesystem::path input_path, std::filesystem:
     if (complex.size() < 2) {
         throw std::runtime_error("Homology computation requires d1 and d2");
     }
-    R2Module<int> module = homology_module(complex, 1, true);
+    R2Module<int> module = homology_group(complex, 1, true);
     std::ofstream output_file(output_path);
     if (!output_file.is_open()) {
         std::cerr << "Error: Could not open output file " << output_path << std::endl;

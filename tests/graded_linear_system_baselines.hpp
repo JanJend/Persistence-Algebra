@@ -3,7 +3,6 @@
 #include <grlina/graded_linear_system.hpp>
 #include <chrono>
 #include <grlina/matrices/matrix_algorithms.hpp>
-#include <grlina/graded_kernel.hpp>
 
 namespace graded_linalg::test {
 

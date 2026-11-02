@@ -291,6 +291,8 @@ class MatrixUtil{
     void append_col(COLUMN&& col) { is_identity = false; ST::append_col(data, std::move(col)); }
     template<class Range>
     void append_col(const Range& col) { is_identity = false; ST::append_col(data, col); }
+    template<class Range>
+    void append_col(Range&& col) { is_identity = false; ST::append_col(data, std::forward<Range>(col)); }
     void clear_col(index i) { is_identity = false; ST::clear_col(data, i); }
     void append_entry(index i, index entry) { is_identity = false; ST::append_entry(data, i, entry); }
     void pop_entry(index i) { is_identity = false; ST::pop_entry(data, i); }

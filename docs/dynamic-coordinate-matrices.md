@@ -5,8 +5,8 @@ and `grlina/matrices/grid.hpp`. They live in `graded_linalg` and take
 `Scalar, Dimension, Index` as template arguments. Degree definitions are in
 `posets/coordinate.hpp`; degree/grid adapters live with the grid matrix in
 `matrices/grid.hpp`. Shared reduction, storage and SCC adapters are in
-`graded_kernel.hpp`, `storage/traits.hpp` and `matrices/io.hpp`. Include
-`graded_kernel.hpp` for graded kernels and methods that use them, including
+`graded_linear_system.hpp`, `storage/traits.hpp` and `matrices/io.hpp`. Include
+`graded_linear_system.hpp` for graded kernels and methods that use them, including
 minimization and submodules. Other matrix methods are defined in their classes;
 `matrices/matrix_algorithms.hpp` holds free matrix-family algorithms and column-space comparison.
 See the [current header guide](../README.md#library-structure).
@@ -150,7 +150,7 @@ Unused grid points have no SCC representation.
 The grid type supports full minimization and automatic projective resolutions.
 Two parameters use the existing `Grid_scheduler` kernel algorithm directly on
 the flat tables. Three parameters use an adaptation of muphasa's
-`computeGroebnerBases_gradeopt_min` in `graded_kernel.hpp`: columns are processed
+`computeGroebnerBases_gradeopt_min` in `graded_linear_system.hpp`: columns are processed
 in colexicographic signature order, and a lexicographic event queue schedules
 column births and minimal joins between grades sharing an image pivot.
 Image and syzygy signature histories avoid repeating reductions already

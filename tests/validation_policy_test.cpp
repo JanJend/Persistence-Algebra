@@ -86,6 +86,12 @@ void same_algebra_in_both_modes() {
     expect(module.dimension_at({0,0}) == 1 && module.dimension_at({2,2}) == 0);
     module.compute_projective_resolution();
     expect(module.proj_res_.is_chain_complex());
+    // Presentation-only minimisation rejects higher maps even with checks off.
+    rejects([&] { module.minimize_presentation_by_image_generators(); });
+    using ThreeParameters = CoordGradedSparseMatrix<double, 3, int>;
+    Module<ThreeParameters> three(ThreeParameters(0, 0));
+    three.minimize_presentation_by_image_generators();
+    expect(three.num_of_gens() == 0 && three.num_of_rels() == 0);
 
     auto parent = std::make_shared<Mod>(Mat(0, 2, {}, {}, {{0,0}, {1,1}}));
     auto whole = parent->whole_submodule();

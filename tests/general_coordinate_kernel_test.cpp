@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <random>
 #include <grlina/matrices/matrix_algorithms.hpp>
-#include <grlina/graded_kernel.hpp>
+#include <grlina/graded_linear_system.hpp>
 
 using namespace graded_linalg;
 

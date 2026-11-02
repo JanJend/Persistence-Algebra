@@ -347,14 +347,14 @@ public:
                     << int(colour[0]) << ',' << int(colour[1]) << ',' << int(colour[2]) << ")\"/>";
             }
             svg << "<rect x=\"" << left << "\" y=\"40\" width=\"320\" height=\"320\" fill=\"none\" stroke=\"#222\"/>"
-                << "<text x=\"" << left << "\" y=\"380\">" << bounds[0] << "</text>"
-                << "<text x=\"" << left + 320 << "\" y=\"380\" text-anchor=\"end\">" << bounds[2] << "</text>"
-                << "<text x=\"" << left - 8 << "\" y=\"48\" text-anchor=\"end\">" << bounds[3] << "</text>"
-                << "<text x=\"" << left - 8 << "\" y=\"360\" text-anchor=\"end\">" << bounds[1] << "</text>"
+                << "<text x=\"" << left << "\" y=\"380\">" << image_detail::decimal_label(bounds[0]) << "</text>"
+                << "<text x=\"" << left + 320 << "\" y=\"380\" text-anchor=\"end\">" << image_detail::decimal_label(bounds[2]) << "</text>"
+                << "<text x=\"" << left - 8 << "\" y=\"48\" text-anchor=\"end\">" << image_detail::decimal_label(bounds[3]) << "</text>"
+                << "<text x=\"" << left - 8 << "\" y=\"360\" text-anchor=\"end\">" << image_detail::decimal_label(bounds[1]) << "</text>"
                 << "<text x=\"" << left + 160 << "\" y=\"405\">x</text><text x=\"" << left - 45 << "\" y=\"200\">y</text>"
                 << "<text x=\"" << left + 160 << "\" y=\"425\" text-anchor=\"middle\">"
                 << (colormap == ColourMap::blue ? "white: 0; black: " : "black: 0; pale yellow: ")
-                << maximum << "</text>";
+                << image_detail::decimal_label(maximum) << "</text>";
         }
         svg << "</g></svg>\n";
         csv.close(); svg.close();

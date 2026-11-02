@@ -24,13 +24,14 @@
 #include <grlina/posets/poset_operations.hpp>
 #include <grlina/posets/traits.hpp>
 #include <algorithm>
+#include <array>
 #include <string>
 #include <fstream>
 #include <functional>
 #include <stdexcept>
 #include <type_traits>
 
-// Methods that use a derived graded_kernel require <grlina/graded_kernel.hpp>.
+// Graded kernels and the scheduled image reducer require <grlina/graded_linear_system.hpp>.
 // Quiver conversion methods: <grlina/quiver_representations.hpp>.
 
 namespace graded_linalg {
@@ -47,6 +48,14 @@ struct GradedSparseMatrix;
 /** Type stored in row_degrees and col_degrees; grid matrices store index tuples. */
 template <typename Matrix>
 using base_degree = typename decltype(std::declval<Matrix&>().col_degrees)::value_type;
+
+template<class Degree> struct is_bigraded_coordinate_degree : std::false_type {};
+template<class Scalar> struct is_bigraded_coordinate_degree<std::array<Scalar, 2>> : std::true_type {};
+
+// The two-coordinate image reducer is defined in graded_linear_system.hpp,
+// alongside the graded kernels used by the standard minimiser below.
+template<class Matrix>
+Matrix bigraded_image_generators(Matrix matrix);
 
 template <typename Matrix, typename = void>
 inline constexpr bool matrix_grid_backed_v = false;
@@ -711,12 +720,12 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
     /** Unambiguous alternative to the historical *_with_output conventions. */
     template <typename Compare>
     SortingPermutation sort_columns_with_permutation(Compare compare) {
-        auto degrees = col_degrees;
-        auto new_to_old = sort_and_get_permutation<D, index>(degrees, compare);
+        auto new_to_old = sort_and_get_permutation<D, index>(col_degrees, compare);
         vec<index> old_to_new(new_to_old.size());
         for (index i = 0; i < static_cast<index>(new_to_old.size()); ++i)
             old_to_new[new_to_old[i]] = i;
-        sort_columns(compare);
+        this->permute_columns(new_to_old);
+        compatibly_sorted = row_degrees.size() <= 1;
         return {std::move(old_to_new), std::move(new_to_old)};
     }
     SortingPermutation sort_columns_with_permutation() {
@@ -1024,6 +1033,42 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
         }
     }
 
+    /** Alternative minimisation: cancel local pairs, then generate im(p).
+     * Both methods preserve coker(p). The standard method above constructs
+     * ker(p) to identify redundant relations; this method tests membership in
+     * the image without recording syzygy coefficient vectors.
+     * Two-coordinate matrices reuse the scheduled MPfree image reduction.
+     * For other degrees, process births in a linear extension and test each
+     * column against retained columns whose degrees are <= its own degree.
+     * This fallback works for any degree poset and needs no graded kernel;
+     * rebuilding its local spans can cost more than the standard method.
+     */
+    void minimize_by_image_generators(DERIVED* elements = nullptr,
+                                      const vec<DERIVED*>& generator_images = {}) {
+        static_cast<DERIVED*>(this)->cancel_local_pairs(elements, generator_images);
+        if constexpr (is_bigraded_coordinate_degree<D>::value) {
+            auto generators = bigraded_image_generators(std::move(static_cast<DERIVED&>(*this)));
+            static_cast<DERIVED&>(*this) = std::move(generators);
+        } else {
+            auto degrees = col_degrees;
+            const auto order = sort_and_get_permutation<D, index>(degrees, Degree_traits<D>::lex_lambda());
+            vec<index> retained;
+            for (index column : order) {
+                array<index> eligible;
+                for (index previous : retained)
+                    if (Degree_traits<D>::smaller_equal(col_degrees[previous], col_degrees[column]))
+                        eligible.push_back(this->get_col(previous));
+                SparseMatrix<index> span(static_cast<index>(eligible.size()), this->num_rows, eligible);
+                SparseMatrix<index> candidate(1, this->num_rows, array<index>{this->get_col(column)});
+                // The matrix overload with get_ops=false records no operation
+                // matrix. Only whether the candidate reduces to zero matters.
+                if (!span.solve_col_reduction(candidate)) retained.push_back(column);
+            }
+            std::sort(retained.begin(), retained.end());
+            this->delete_all_but_columns_alt(retained);
+        }
+    }
+
     /** Optional cheap reduction before the same complete minimization. */
     void minimize_variant(DERIVED* elements = nullptr, const vec<DERIVED*>& generator_images = {}) {
         GRLINA_DEBUG_CHECK(if (!compatibly_sorted)
@@ -1161,6 +1206,13 @@ struct GradedSparseMatrix : public SparseMatrix<index, Storage> {
     template<class Column>
     void append_column(const Column& column_data, const D& column_degree) {
         this->append_col(column_data);
+        this->col_degrees.push_back(column_degree);
+        this->num_cols += 1;
+        this->compatibly_sorted = false;
+    }
+    template<class Column>
+    void append_column(Column&& column_data, const D& column_degree) {
+        this->append_col(std::forward<Column>(column_data));
         this->col_degrees.push_back(column_degree);
         this->num_cols += 1;
         this->compatibly_sorted = false;

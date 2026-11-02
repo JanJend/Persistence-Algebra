@@ -1,7 +1,7 @@
 #include "test_degree_matrices.hpp"
 #include <grlina/module/submodule.hpp>
 #include <cassert>
-#include <grlina/graded_kernel.hpp>
+#include <grlina/graded_linear_system.hpp>
 
 using namespace graded_linalg;
 using Mat = R2GradedSparseMatrix<int>;

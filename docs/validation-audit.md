@@ -98,7 +98,7 @@ strict-order helper through the storage accessor; it adds no automatic scan.
 | DM | [mat_dense.hpp](../include/grlina/matrices/dense.hpp) |
 | BIT | [bitset_algebra.hpp](../include/grlina/storage/bitset_algebra.hpp) |
 | COL | [mat_columns.hpp](../include/grlina/storage/columns.hpp) |
-| GS | [graded_kernel.hpp](../include/grlina/graded_kernel.hpp) |
+| GS | [graded_linear_system.hpp](../include/grlina/graded_linear_system.hpp) (shared graded reductions and kernels) |
 | Q | [quiver_representations.hpp](../include/grlina/quiver_representations.hpp) |
 | OG | [posets/poset_operations.hpp](../include/grlina/posets/poset_operations.hpp) |
 | DH | [invariants/hilbert_plot.hpp](../include/grlina/invariants/hilbert_plot.hpp) |
@@ -272,7 +272,7 @@ strict-order helper through the storage accessor; it adds no automatic scan.
 | R1 | Legacy | Caller can supply empty snap grids. | Debug-only. |
 | R2 | Mixed | Legacy degree-length assertions plus later full validation cover public malformed matrix input. | Removed full validation; legacy degree-length assertions remain. |
 | R3 | Legacy | Scheduler generates valid intervals; failure would indicate a scheduler bug. | Already absent in the working tree before this audit's edits. |
-| R4 | Legacy / moved | Queued-column grade eligibility follows from the scheduler/reducer contract. | Already moved to graded_kernel.hpp in the starting working tree; remain debug-only. |
+| R4 | Legacy / moved | Queued-column grade eligibility follows from the scheduler/reducer contract. | Already extracted in the starting working tree; now consolidated in graded_linear_system.hpp. Checks remain debug-only. |
 | R5 | Legacy (Nov 2025) | Caller can request zero grid points. | Existing zero-grid diagnostic/skip retained; it prevents an undefined grid calculation and does not scan data. |
 | DM1 | Legacy | String constructor can receive an unsupported matrix type. | Existing factory dispatch error retained. |
 | DM2 | Legacy | Public dense column count can disagree with storage length. | Debug-only. |

@@ -1,0 +1,200 @@
+{
+  "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+  "symbol_prefix": "legacy_",
+  "namespace": "graded_linalg",
+  "reused_unchanged_headers": {
+    "deg_traits.hpp": "posets/traits.hpp",
+    "deg_coordinate.hpp": "posets/coordinate.hpp",
+    "deg_poset_operations.hpp": "posets/poset_operations.hpp",
+    "bitset_algebra.hpp": "storage/bitset_algebra.hpp",
+    "graphs.hpp": "graphs.hpp"
+  },
+  "reused_general_helpers": [
+    "array",
+    "erase_from_sorted_vector",
+    "erase_from_sorted_vector_bool",
+    "get_index_vector",
+    "insert_into_sorted_vector",
+    "pair",
+    "pair_hash",
+    "pair_to_index_map",
+    "remove_intersection",
+    "set",
+    "sort_by_permutation",
+    "timed_with_progress",
+    "vec",
+    "vec_deletion",
+    "vec_restriction",
+    "write_vector_of_sets_to_file",
+    "write_vector_to_file"
+  ],
+  "pooled_headers": [
+    {
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp",
+      "restored_sha256": "12e418b0c520a16e1e26404732533cf6afcb901f1c285c47727673bd8f01082d"
+    },
+    {
+      "restored_path": "include/grlina/legacy_modules.hpp",
+      "restored_sha256": "5ce7ef54cb14b0f499f65e4a2506ef909d5d6165a09dbf3d6eb89ed54d164d47"
+    }
+  ],
+  "sources": [
+    {
+      "original_path": "include/grlina/deg_traits.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "296092ddac9d99939ec3b25b9ecb0f0c2e8718957ff0197f57d8700bdf1f4e0f",
+      "reused_path": "include/grlina/posets/traits.hpp"
+    },
+    {
+      "original_path": "include/grlina/deg_coordinate.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "95b3865a6ab938413c00583647d7c02412f42e7ad909fbd76214c0dd9fb04a18",
+      "reused_path": "include/grlina/posets/coordinate.hpp"
+    },
+    {
+      "original_path": "include/grlina/deg_poset_operations.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "075f97453be797c6f2442ead5e7993d752ab0c6e68a6d0cfc2d3834ba422e9a2",
+      "reused_path": "include/grlina/posets/poset_operations.hpp"
+    },
+    {
+      "original_path": "include/grlina/bitset_algebra.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "fea2c41ca08dccd165fe88af8b43ae453831c50e1d6db8e8b4dec61cda27a188",
+      "reused_path": "include/grlina/storage/bitset_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/graphs.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "49cd28b49d440fffe8b34ec6943ea3d5e93e4221b41196c606c33e9858532208",
+      "reused_path": "include/grlina/graphs.hpp"
+    },
+    {
+      "original_path": "include/grlina/proj_chain_complex.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "b930b539a881ae89c424294b01d3421e8e751923f8fb9dd63774d14a364bf8b9",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mat_graded.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "a2f6a8ecf3957e4460a9cf265158a6904fc3e12bb58db626313dc098a5d3b47c",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/general_checks.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "a50dd53a501551fb4f490cabb0a3f15f7761043f0671c4e7a05f84cba0a37d0e",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mat_sparse.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "69615858c6c34423089c8de3c32d49530d1c1ec3444dd08e0e490648bb187948",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mat_columns.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "093e8926528a12d932908101a3274788f71ba83821d41246cad7e5660661c519",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/general.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "4ffb23f6d09bf614d7956b2d77dc925a2eeb55b176e3e835a119e6aede60e212",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mat_base.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "6c02a86c0fc158e5c7d4db2709e457538bf38ba636d1b45d177e2eabcfb85fa5",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mat_storage.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "1ebdc69d1d7eccb40be0119f9ad658a6b4335745285ce91fd085e9fe0ac4c5c3",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mat_dense.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "4f255d5fddcaa56c474975b5d531eb1ba90f8877fe60ba5451aee119a2414da7",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/quiver_representations.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "26587c53dbd2a773204768f5e25df5eb454071a9f2c7add6ee57c1f56839ba73",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mat_io.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "25bcaf5ada41aa8652c31d8f08443cec4956cd3887adee11988a340d3841fe3c",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mat_grid.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "10ae3353ee0a84dc3e36629c81a79a0b9dab587fd5d2a180f37a924b90536689",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mat_coord.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "d25aaba38930d6461505fcaaa7df0ba4f005a9c5269a8227136562333645449b",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mat_kernel.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "ce7622ac9eb3b25b8b7d95bd5937da6d8bcbb20a9087be27a10703e1146fab59",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mat_linear_system.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "26d0b1865f7dc8e87368628b902f0f9ddc72e0e128fa49fa1dde633d38d9d2fa",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mat_r2.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "2f07a23780995819be4752442b2eda5bdd5656edb5cf5263ef44dfa7bf58c5f2",
+      "restored_path": "include/grlina/legacy_linear_algebra.hpp"
+    },
+    {
+      "original_path": "include/grlina/mod_submodule.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "d5a966ace70f8baf6a072cb734cd5c5b3582becd620e1d4b828a7be2b10314d3",
+      "restored_path": "include/grlina/legacy_modules.hpp"
+    },
+    {
+      "original_path": "include/grlina/hom_core_class.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "6d5ef6b1e80c9aaf0aecf8b8216abe3bfbf6ad60f9dd866afab8a22ee936346f",
+      "restored_path": "include/grlina/legacy_modules.hpp"
+    },
+    {
+      "original_path": "include/grlina/mod_module.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "69a6888deb4c12273f19c9ec7eab2f2df0cb77df7cd6693b059308be8006d984",
+      "restored_path": "include/grlina/legacy_modules.hpp"
+    },
+    {
+      "original_path": "include/grlina/mod_isomorphism.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "a4247dba21c5c3b87911460b48269f1cd65f877b2bc3f1aadf4f253ebca5b083",
+      "restored_path": "include/grlina/legacy_modules.hpp"
+    },
+    {
+      "original_path": "include/grlina/hom_algorithms.hpp",
+      "revision": "4cbf2851476e70a314f62fbafbef25832a1cd97a",
+      "original_sha256": "93c4a9a7f8a6c532055e413e17c17ed7099ebc6f23bb3634711e1021b6f465ed",
+      "restored_path": "include/grlina/legacy_modules.hpp"
+    }
+  ],
+  "historical_license": "COPYING.legacy"
+}

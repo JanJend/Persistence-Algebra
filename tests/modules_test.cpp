@@ -225,6 +225,12 @@ static void test_poset_without_optional_operations() {
     assert(values[0] == 1 && values[1] == 0 && values[2] == 0);
     matrix.cancel_local_pairs();
     assert(matrix.get_num_cols() == 2); // No relation has the same degree as a generator.
+    matrix.minimize_by_image_generators();
+    assert(matrix.get_num_cols() == 2); // Incomparable births must both survive.
+    ForkGradedMatrix duplicates(3, 1, {{0}, {0}, {0}},
+        {D::left, D::right, D::left}, {D::root});
+    duplicates.minimize_by_image_generators(); // No graded_kernel() exists for this poset.
+    assert((duplicates.col_degrees == vec<D>{D::left, D::right}));
 
     ForkGradedMatrix cancellable(1, 1, {{0}}, {D::left}, {D::left});
     cancellable.cancel_local_pairs();
@@ -234,6 +240,8 @@ static void test_poset_without_optional_operations() {
     ForkGradedMatrix rhs(1, 1, {{0}}, {D::right}, {D::root});
     assert(graded_linear_system_is_solvable(lhs, lhs));
     assert(!graded_linear_system_is_solvable(lhs, rhs));
+    auto coordinates = homology_boundary_coordinates(matrix, rhs);
+    assert((matrix * coordinates).data == rhs.data);
     // Invalid-degree diagnostics also work when degree printing is absent.
     lhs.row_degrees = {D::right};
     std::ostringstream diagnostic;
@@ -575,17 +583,17 @@ static void test_module_hilbert_function_and_editing() {
     assert(module.proj_res_.size() == 1);
 }
 
-static void test_homology_module() {
+static void test_homology_group() {
     Matrix injective = interval_presentation();
     Matrix no_incoming(0, 1, array<int>{}, vec<r2degree>{}, injective.col_degrees);
-    auto zero_homology = homology_module(ChainComplex<Matrix>({injective, no_incoming}));
+    auto zero_homology = homology_group(ChainComplex<Matrix>({injective, no_incoming}));
     assert(zero_homology.num_of_gens() == 0);
     assert(zero_homology.num_of_rels() == 0);
 
     Matrix zero_differential(1, 1, array<int>{{}},
                              vec<r2degree>{{0.0, 0.0}},
                              vec<r2degree>{{0.0, 0.0}});
-    auto free_homology = homology_module(ChainComplex<Matrix>({zero_differential}));
+    auto free_homology = homology_group(ChainComplex<Matrix>({zero_differential}));
     assert(free_homology.num_of_gens() == 1);
     assert(free_homology.num_of_rels() == 0);
     assert(free_homology.dimension_at({0.0, 0.0}) == 1);
@@ -593,7 +601,7 @@ static void test_homology_module() {
     Matrix identity_boundary(1, 1, array<int>{{0}},
                              vec<r2degree>{{0.0, 0.0}},
                              zero_differential.col_degrees);
-    auto killed_homology = homology_module(
+    auto killed_homology = homology_group(
         ChainComplex<Matrix>({zero_differential, identity_boundary}));
     assert(killed_homology.num_of_gens() == 0);
     assert(killed_homology.num_of_rels() == 0);
@@ -601,12 +609,12 @@ static void test_homology_module() {
     Matrix fold(2, 1, array<int>{{0}, {0}},
                 vec<r2degree>{{0.0, 0.0}, {0.0, 0.0}},
                 vec<r2degree>{{0.0, 0.0}});
-    auto one_dimensional_kernel = homology_module(ChainComplex<Matrix>({fold}));
+    auto one_dimensional_kernel = homology_group(ChainComplex<Matrix>({fold}));
     assert(one_dimensional_kernel.num_of_gens() == 1);
     assert(one_dimensional_kernel.num_of_rels() == 0);
     Matrix kernel_boundary(1, 2, array<int>{{0, 1}},
                            vec<r2degree>{{0.0, 0.0}}, fold.col_degrees);
-    auto killed_nontrivial_kernel = homology_module(
+    auto killed_nontrivial_kernel = homology_group(
         ChainComplex<Matrix>({fold, kernel_boundary}));
     assert(killed_nontrivial_kernel.num_of_gens() == 0);
     assert(killed_nontrivial_kernel.num_of_rels() == 0);
@@ -843,7 +851,7 @@ int main() {
     test_named_poset_io();
     test_existing_scc_files();
     test_module_hilbert_function_and_editing();
-    test_homology_module();
+    test_homology_group();
     test_submodules_and_morphisms();
     test_module_hom_adapter();
     test_coordinate_colex_sorting();

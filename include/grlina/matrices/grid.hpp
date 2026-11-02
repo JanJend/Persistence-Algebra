@@ -11,7 +11,7 @@
 #include <type_traits>
 #include <vector>
 
-// Graded kernel method definitions: <grlina/graded_kernel.hpp>.
+// Graded kernel method definitions: <grlina/graded_linear_system.hpp>.
 // Quiver method definitions: <grlina/quiver_representations.hpp>.
 
 namespace graded_linalg {

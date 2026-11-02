@@ -22,12 +22,11 @@
 #include "grlina/posets/poset_operations.hpp"
 #include <grlina/posets/coordinate.hpp>
 #include <grlina/matrices/graded.hpp>
-#include <grlina/graded_kernel_scheduler.hpp>
 #include <iostream>
 #include <vector>
 #include <string>
 
-// Graded kernel method definitions: <grlina/graded_kernel.hpp>.
+// Graded kernel method definitions: <grlina/graded_linear_system.hpp>.
 
 namespace graded_linalg {
 
@@ -36,7 +35,7 @@ namespace graded_linalg {
  *
  * @tparam index
  */
-template <typename index, typename Storage = vec<vec<index>>>
+template <typename index, typename Storage = DefaultSparseStorage<index>>
 struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, Storage>, Storage> {
 
     using SparseBase = SparseMatrix<index, Storage>;
@@ -52,12 +51,6 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
 
     vec<CoordinateDegree<index, 2>> z2_col_degrees;
     vec<CoordinateDegree<index, 2>> z2_row_degrees;
-
-    // This is also used in kernel computation
-    typedef std::priority_queue<index,std::vector<index>,std::greater<index>> PQ;
-
-    Grid_scheduler<index> grid_scheduler;
-    std::vector<PQ> pq_row;
 
 
     R2GradedSparseMatrix() : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, Storage>, Storage>() {}
@@ -140,12 +133,6 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     R2GradedSparseMatrix(std::istream& file_stream, bool lex_sort = false)
         : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, Storage>, Storage>(file_stream, lex_sort) {
     } // Constructor from ifstream
-
-    /**
-     * @brief Sets up the grid scheduler for kernel computation
-     *
-     */
-    void initialise_grid_scheduler();
 
     /**
      * @brief Sorts the row degrees, stores the permutation used and transforms the entries of the sparse col vectors accordingly.
@@ -442,20 +429,18 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     }
 
     /**
-     * @brief used in graded_kernel. Adapted from MPfree
-     *
-     */
-    void kernel_column_reduction(index i, pair<index>& curr_gr, SparseBase& column_operations, bool store_col_ops=false, bool notify_pq=false);
-
-
-    /**
      * @brief Returns a basis for the kernel of a 2d graded matrix as another 2d graded matrix.
-     * Assumes that the columns are sorted lexicographically.
+     * Reduction sorts the columns colexicographically; output rows retain the
+     * original input column coordinates.
      * Adapted from MPfree.
      *
      * @return SparseMatrix<index>
      */
+    // Kernel computations overwrite the input. Copy explicitly to retain it.
     R2GradedSparseMatrix graded_kernel();
+
+    // Preserved grid-scheduler implementation: include <grlina/MPFREE_clone.hpp>.
+    R2GradedSparseMatrix graded_kernel_MPFREE();
 
 
     pair<r2degree> bounding_box() const{

@@ -92,13 +92,15 @@ vec<index> sort_by_permutation(const vec<index>& compare_against){
  * @param comp The comparison function to use for sorting.
  * @return std::vector<index> A vector of indices representing the permutation used to sort.
  */
-template <typename T, typename index>
-std::vector<index> sort_and_get_permutation(std::vector<T>& vec, std::function<bool(const T&, const T&)> comp) {
+template <typename T, typename index, typename Compare>
+std::vector<index> sort_and_get_permutation(std::vector<T>& vec, Compare comp) {
     // Initialize indices
     std::vector<index> indices(vec.size());
     for (index i = 0; i < vec.size(); ++i) {
         indices[i] = i;
     }
+
+    if (std::is_sorted(vec.begin(), vec.end(), comp)) return indices;
 
     // Sort indices based on the custom comparator
     std::stable_sort(indices.begin(), indices.end(), [&vec, &comp](index i1, index i2) {
@@ -111,8 +113,7 @@ std::vector<index> sort_and_get_permutation(std::vector<T>& vec, std::function<b
         sorted_vec[i] = vec[indices[i]];
     }
 
-    // Assign the sorted vector back to the original vector
-    vec = sorted_vec;
+    vec.swap(sorted_vec);
 
     return indices;
 }

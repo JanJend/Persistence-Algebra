@@ -63,6 +63,16 @@ bases are preserved. A uniform `shift()` is
 applied to every stored projective and injective differential and therefore
 preserves the resolutions.
 
+`minimize_presentation_by_image_generators()` is an explicit presentation-only
+alternative for any parameter count. It rejects stored higher maps
+unconditionally, cancels equal-degree generator/relation pairs first, and then
+generates the image of the remaining presentation to remove redundant columns.
+It does not store relations among retained columns: those belong in the next
+resolution map. In two coordinate parameters it uses the scheduled image
+reducer; otherwise it tests each column against the span of retained columns
+with admissible degrees. The latter fallback also works for general degree
+posets, but repeated span construction can cost more than computing a kernel.
+
 `GradedSparseMatrix` retains the boolean `compatibly_sorted` flag.
 `sort_compatibly()` sorts both degree lists by the linear extension supplied by
 `Degree_traits` and sets the flag. No comparator or sortedness validator runs.
@@ -86,8 +96,11 @@ been removed. See [the validation audit](validation-audit.md).
 Minimization first cancels equal-degree generator/relation pairs, clearing the
 entire pivot row by column operations before deletion. It then uses the concrete
 graded kernel to remove redundant relations. Ordinary graded column reduction
-alone is insufficient at incomparable grades. `minimize_variant()` performs that
-cheap reduction as a preliminary optimization, then the standard algorithm.
+alone is insufficient at incomparable grades. `minimize_variant()` cancels local
+pairs, performs cheap graded column reduction, then removes redundancies using
+the kernel. The module's standard presentation minimiser uses this variant.
+The adjacent matrix method `minimize_by_image_generators()` replaces the kernel
+step with image generation, as described above.
 `semi_minimize()` performs only local pair cancellations.
 
 `Submodule::reduce_generators_lazy()` is a kernel-free preprocessing operation:
@@ -294,7 +307,7 @@ one 0-by-0 presentation, not an absent presentation.
 `ChainComplex::to_stream`, `from_stream`, `to_file`, and `from_file` are the
 canonical generic SCC operations. Older matrix SCC readers also check the ID.
 
-`homology_module(complex, k)` computes a presentation of
+`homology_group(complex, k)` computes a presentation of
 `ker(d_k) / im(d_(k+1))`: incoming boundary columns are lifted degree by degree
 to coordinates in the concrete matrix type's graded-kernel basis. This is the
 path used by `mpfree_clone`.
@@ -650,13 +663,19 @@ and cutting transform each stored injective map as described above.
 
 ### Optional cycle representatives and direct coordinate updates
 
-`homology_module(C, q, minimize = true, keep_cycles = false)` returns a `Module`.
+`homology_group(C, q, minimize = true, keep_cycles = false)` returns a `Module`.
 When requested, its `std::optional<Matrix> cycles` has one column per presentation
 generator, expressed in the original `C_q` coordinates. Its image lies in the
 cycle group; it is a lift from the free generators, not a map from homology to
 cycles. An engaged optional with zero columns represents requested zero homology.
 The construction includes relations among kernel generators, also for nonfree
 kernels. Degree zero is supported, including an empty complex.
+The implementations are separated into `homology_group_degree_zero`,
+`homology_group_bigraded`, and the general `homology_group` construction.
+`finish_homology_group` applies the shared minimization/cycle-retention options.
+The bigraded path uses `solve_graded_system_by_back_substitution` to express
+boundaries in the free triangular kernel basis. The general path also computes
+relations among kernel generators, since that kernel need not be free.
 
 Sorting and minimization update stored cycles directly. Module methods accept
 an optional incoming matrix (`elements`) and a list of outgoing matrices

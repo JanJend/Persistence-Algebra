@@ -5,8 +5,8 @@
 #include <grlina/posets/upset.hpp>
 #include <grlina/matrices/upset.hpp>
 #include <grlina/matrices/matrix_algorithms.hpp>
-#include <grlina/graded_kernel.hpp>
 #include <grlina/graded_linear_system.hpp>
+#include <grlina/MPFREE_clone.hpp>
 #include <grlina/matrices/conversions.hpp>
 #include <grlina/subspaces.hpp>
 #include <grlina/quiver_representations.hpp>

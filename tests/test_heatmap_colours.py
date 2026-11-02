@@ -94,6 +94,29 @@ def main(hilbert, landscape):
                        ["--scale", "-1"], ["--scale", "nan"], ["--scale", "inf"], ["--scale"]):
             result = subprocess.run([str(landscape), *base, *option], capture_output=True)
             assert result.returncode != 0 and not result.stdout
+
+        # Reparameterize before sampling: [4,9) in r^2 is [2,3) in radius.
+        squared = Path(temporary) / "squared.scc"
+        radius = Path(temporary) / "radius.scc"
+        squared_text = "scc2020\n2\n1 1 0\n9 0 ; 0\n4 0 ;\n"
+        squared.write_text(squared_text)
+        radius.write_text("scc2020\n2\n1 1 0\n3 0 ; 0\n2 0 ;\n")
+        options = ["65", "65", "--bounds", "0", "0", "4", "4"]
+        for binary in (hilbert, landscape):
+            actual = subprocess.run([str(binary), str(squared), *options, "--sqrt-x"], check=True, capture_output=True)
+            expected = subprocess.run([str(binary), str(radius), *options], check=True, capture_output=True)
+            assert actual.stdout == expected.stdout
+            assert squared.read_text() == squared_text
+            failure = subprocess.run([str(binary), str(squared), *options, "--sqrt-x", "--bounds", "-1", "0", "4", "4"], capture_output=True)
+            assert failure.returncode != 0 and not failure.stdout
+        sampled = subprocess.run([str(landscape), str(squared), *options, "--sqrt-x", "--values-only"], check=True, capture_output=True)
+        data = json.loads(sampled.stdout)
+        assert data["bounds"] == [0, 0, 4, 4]
+        assert data["maximum"] == 0.5
+        assert data["values"][40][-1] == 0.5  # x=2.5, y=4
+        assert data["values"][48][-1] == 0    # x=3, relation has entered
+        peak = subprocess.run([str(hilbert), str(squared), "--sqrt-x", "--maximum-only"], check=True, capture_output=True)
+        assert int(peak.stdout) == 1
     print("Shared value scales, sampled maxima, both palettes, zero plots, and CLI validation passed.")
 
 

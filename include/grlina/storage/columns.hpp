@@ -189,6 +189,7 @@ struct Column_traits<vec<index>, index> {
     template<class Range>
     static void add_to(const Range& v, vec<index>& w) {
         vec<index> result;
+        result.reserve(v.size() + w.size());
         std::set_symmetric_difference(v.begin(), v.end(), w.begin(), w.end(),
                                     std::back_inserter(result));
         w = std::move(result);

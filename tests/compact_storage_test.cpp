@@ -117,6 +117,32 @@ void dense_reduction_and_conversion() {
     assert(compact.column(0).data() == allocation && source.column(0).empty());
 }
 
+template<class Storage>
+void append_owned_columns() {
+    using Matrix = R2Matrix<int, Storage>;
+    using Column = typename Storage::value_type;
+    const vec<int> entries{0,1,2,3,4,5};
+    Column owned(entries.begin(), entries.end());
+    const auto* allocation = owned.data();
+    Matrix matrix(0, 6, {}, vec<r2degree>(6, {0,0}));
+    matrix.compatibly_sorted = true;
+    matrix.append_column(std::move(owned), r2degree{1,1});
+    assert(matrix.column(0).data() == allocation && matrix.get_col(0) == entries);
+    assert(!matrix.compatibly_sorted && matrix.col_degrees == vec<r2degree>({{1,1}}));
+    const Column borrowed(entries.begin(), entries.end());
+    matrix.template append_column<Column>(borrowed, r2degree{2,2});
+    assert(matrix.get_col(1) == entries && matrix.column(1).data() != borrowed.data());
+    assert(matrix.get_num_cols() == 2 && matrix.get_num_rows() == 6);
+    // A zero differential emits the whole payload. Its completed column should
+    // transfer into the kernel image without allocating another coefficient list.
+    Matrix differential(1, 0, vec<r2degree>{{1,1}}, {});
+    Matrix payload(1, 6, array<int>{entries}, {{1,1}}, vec<r2degree>(6, {0,0}));
+    allocation = payload.column(0).data();
+    auto reduced = bigraded_reduce(std::move(differential), std::move(payload));
+    assert(reduced.kernel_image.column(0).data() == allocation);
+    assert(reduced.kernel_image.get_col(0) == entries);
+}
+
 // Run each storage separately under /usr/bin/time -l to measure peak memory.
 template<class Storage>
 void memory_example() {
@@ -137,6 +163,8 @@ int main(int argc, char** argv) {
     if (argc == 2 && std::string(argv[1]) == "--memory-vector") { memory_example<vec<vec<int>>>(); return 0; }
     columns<int>();
     columns<long long>();
+    append_owned_columns<vec<vec<int>>>();
+    append_owned_columns<CompactStorage<int>>();
     dense_reduction_and_conversion();
     algebra<R2Matrix<int, CompactStorage<int>>>();
     algebra<R3Matrix<int, CompactStorage<int>>>();

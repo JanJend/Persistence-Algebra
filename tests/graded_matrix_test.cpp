@@ -6,7 +6,7 @@
 #include <filesystem>
 #include <grlina/matrices/matrix_algorithms.hpp>
 #include <grlina/quiver_representations.hpp>
-#include <grlina/graded_kernel.hpp>
+#include <grlina/graded_linear_system.hpp>
 
 using namespace graded_linalg; 
 
@@ -295,9 +295,10 @@ void test_grid(){
 
     M.print_grid_representation();
 
-    M.initialise_grid_scheduler();
-    // Additional checks could be added here to verify kernel correctness
-    std::cout << "The priority queue has size " << M.grid_scheduler.size() << std::endl;
+    int visited = 0;
+    visit_bigraded_columns(M.z2_col_degrees, M.get_num_cols(),
+        [&](int, auto, auto) { ++visited; return true; });
+    assert(visited == M.get_num_cols());
 
 }
 

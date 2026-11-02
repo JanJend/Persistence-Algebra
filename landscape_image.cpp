@@ -82,9 +82,10 @@ int main(int argc, char** argv) {
         std::cerr << "Usage: landscape_image input.scc [width height] [--layer K] "
                      "[--bounds xmin ymin xmax ymax] [--direction vx vy] [--resolution relative_spacing] "
                      "[--colormap blue|inferno] [--scale MAX] [--maximum-only] [--json] [--include-values] "
-                     "[--values-only] [--no-vineyard]\n"
+                     "[--values-only] [--no-vineyard] [--sqrt-x]\n"
                      "       landscape_image --render-values [--colormap blue|inferno] [--scale MAX] [--json]\n"
-                     "JSON output includes the sampled maximum; --render-values reads a grid JSON from stdin.\n";
+                     "JSON output includes the sampled maximum; --render-values reads a grid JSON from stdin.\n"
+                     "--sqrt-x reparameterizes squared-radius input to radius before sampling; bounds and direction use displayed coordinates.\n";
         return 1;
     }
     try {
@@ -93,6 +94,7 @@ int main(int argc, char** argv) {
         double colour_maximum = 0;
         bool maximum_only = false;
         bool json_output = false, include_values = false, values_only = false, vineyard = true;
+        bool sqrt_x = false;
         const bool render_values = std::string(argv[1]) == "--render-values";
         graded_linalg::ColourMap colormap = graded_linalg::ColourMap::blue;
         graded_linalg::r2degree direction{1, 1};
@@ -143,15 +145,19 @@ int main(int argc, char** argv) {
             else if (option == "--include-values") { json_output = true; include_values = true; }
             else if (option == "--values-only") { json_output = true; include_values = true; values_only = true; }
             else if (option == "--no-vineyard") vineyard = false;
+            else if (option == "--sqrt-x") sqrt_x = true;
             else throw std::invalid_argument("Unknown image option: " + option);
         }
         graded_linalg::image_detail::validate_size(width, height);
         if (maximum_only && json_output) throw std::invalid_argument("Choose maximum-only or JSON output");
+        if (sqrt_x && (render_values || bounds && (*bounds)[0] < 0))
+            throw std::invalid_argument("--sqrt-x needs a module and nonnegative radius bounds");
         // Keep parser/algebra diagnostics out of the binary image stream.
         auto* output = std::cout.rdbuf(std::cerr.rdbuf());
         const auto grid = [&] {
             if (render_values) return read_grid();
-            const graded_linalg::R2Module<int> module(argv[1]);
+            graded_linalg::R2Module<int> module(argv[1]);
+            if (sqrt_x) graded_linalg::image_detail::square_root_x(module);
             const graded_linalg::Landscape landscape(module,
                 bounds.value_or(graded_linalg::Landscape::default_bounds(module)), resolution, direction, vineyard);
             return landscape.sample_grid(layer, width, height);

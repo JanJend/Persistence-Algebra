@@ -9,7 +9,6 @@
 #include <grlina/hom_core_class.hpp>
 #include <grlina/graded_linear_system.hpp>
 #include <grlina/matrices/matrix_algorithms.hpp>
-#include <grlina/graded_kernel.hpp>
 
 namespace graded_linalg {
 
@@ -351,6 +350,15 @@ public:
                              vec<Matrix*> images = {}) override {
         minimize_presentation(sort_if_needed, elements, std::move(images));
         this->compute_projective_resolution();
+    }
+
+    void minimize_presentation_by_image_generators(bool sort_if_needed = true,
+            Matrix* elements = nullptr, vec<Matrix*> images = {}) override {
+        if (!this->has_presentation()) compute_presentation(false);
+        Matrix generators = generator_matrix();
+        images.push_back(&generators);
+        module_type::minimize_presentation_by_image_generators(sort_if_needed, elements, std::move(images));
+        generator_map_ = make_generator_map(parent(), std::move(generators));
     }
 
     /** Explicitly compute/store the presentation and return a standalone copy. */

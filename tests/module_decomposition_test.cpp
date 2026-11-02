@@ -63,7 +63,7 @@ void triangular_decomposition() {
     Matrix relations(3, 3, {{0,1,2}, {1,2}, {2}},
                      {D{0,3}, D{1,2}, D{2,1}}, {D{0,0}, D{0,0}, D{0,0}});
     if constexpr (matrix_grid_backed_v<Matrix>) relations.include_real_degrees({D{7,9}});
-    auto module = homology_module(ChainComplex<Matrix>({relations}), 0, false, true);
+    auto module = homology_group(ChainComplex<Matrix>({relations}), 0, false, true);
     module.compute_projective_resolution();
     const auto original = module;
     assert(!module.decomposition);
@@ -113,7 +113,7 @@ void triangular_decomposition() {
     assert(zero.decomposition && zero.decomposition->empty());
 
     Matrix free(0, 2, {}, {}, {D{2,2}, D{0,0}});
-    auto free_module = homology_module(ChainComplex<Matrix>({free}), 0, false, true);
+    auto free_module = homology_group(ChainComplex<Matrix>({free}), 0, false, true);
     free_module.decompose(true);
     assert(free_module.decomposition->size() == 2);
     assert(free_module.decomposition->front().cycles->get_col(0) == vec<Index>{1});
@@ -122,7 +122,7 @@ void triangular_decomposition() {
     // Sorting and cancelling a local pair must transport representatives before AIDA.
     Matrix nonminimal(3, 3, {{0,1,2}, {0,1}, {0,1,2}},
                       {D{2,2}, D{1,1}, D{2,2}}, {D{0,0}, D{1,1}, D{0,0}});
-    auto minimized = homology_module(ChainComplex<Matrix>({nonminimal}), 0, false, true);
+    auto minimized = homology_group(ChainComplex<Matrix>({nonminimal}), 0, false, true);
     minimized.decompose(true);
     check_summands(minimized, nonminimal);
 }
@@ -134,7 +134,7 @@ void homology_cycles() {
     M cycles(3, 4, {{0,1}, {1,2}, {2,3}}, {{0,0},{0,0},{0,0}}, outgoing.col_degrees);
     M coordinates(3, 3, {{0,1,2}, {1,2}, {2}}, {{0,3},{1,2},{2,1}}, cycles.col_degrees);
     M boundaries = cycles * coordinates;
-    auto module = homology_module(ChainComplex<M>({outgoing, boundaries}), 1, true, true);
+    auto module = homology_group(ChainComplex<M>({outgoing, boundaries}), 1, true, true);
     module.decompose(true);
     assert(module.decomposition->size() == 3);
     check_summands(module, boundaries, &outgoing);

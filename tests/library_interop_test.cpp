@@ -7,7 +7,7 @@
 #include <grlina/runtime_matrices/class_coord_graded_sparse_matrix.hpp>
 #include <cassert>
 #include <grlina/matrices/matrix_algorithms.hpp>
-#include <grlina/graded_kernel.hpp>
+#include <grlina/graded_linear_system.hpp>
 #include <grlina/matrices/io.hpp>
 
 using namespace graded_linalg;
@@ -98,7 +98,7 @@ void runtime_interop() {
     auto kernel = static_cast<const Matrix&>(outgoing).graded_kernel();
     assert(outgoing.data == saved.data && outgoing.col_degrees == saved.col_degrees);
     ChainComplex<Matrix> complex({outgoing});
-    auto homology = homology_module(complex,1,false,true);
+    auto homology = homology_group(complex,1,false,true);
     assert(homology.num_of_gens() == 3);
     assert(homology.num_of_rels() == 1);
     assert(homology.dimension_at(one) == 2);
@@ -107,7 +107,7 @@ void runtime_interop() {
     auto incoming = matrix<Matrix>(1,3,{{0,1}}, {{1,1,0}},
         {{1,0,0},{0,1,0},{0,0,1}});
     ChainComplex<Matrix> with_boundary({outgoing,incoming});
-    auto quotient = homology_module(with_boundary,1,true,true);
+    auto quotient = homology_group(with_boundary,1,true,true);
     assert(quotient.dimension_at(one) == 1);
     assert(quotient.dimension_at({1,1,0}) == 0);
     assert(quotient.cycles->get_num_cols() == quotient.num_of_gens());
@@ -121,8 +121,8 @@ void runtime_interop() {
     auto owner = std::make_shared<const Module<Matrix>>(quotient);
     Homomorphism<Matrix> induced(owner, owner, std::move(*induced_lift));
     assert(induced.check_lifts());
-    assert(homology_module(complex,0).dimension_at(zero) == 1);
-    assert(homology_module(complex,0).dimension_at(one) == 0);
+    assert(homology_group(complex,0).dimension_at(zero) == 1);
+    assert(homology_group(complex,0).dimension_at(one) == 0);
 
     // Every stored differential and the completeness marker survive conversion.
     Module<Matrix> resolved(outgoing);

@@ -833,13 +833,13 @@ struct SparseMatrix : public MatrixUtil<vec<index>, index, SparseMatrix<index, S
         return col_operations.restricted_domain_copy(zero_cols);
     }
 
-    /** Return a kernel basis in the original column coordinates, preserving
-     * this matrix and ignoring any cached pivots from previous reductions.
+    /** Return a kernel basis in the original column coordinates, reducing this
+     * matrix in place and ignoring any cached pivots from previous reductions.
+     * Copy explicitly before calling if the original matrix is needed again.
      */
-    SparseMatrix get_kernel() const {
-        SparseMatrix copy(*this);
-        copy.pivots.clear();
-        return copy.kernel();
+    SparseMatrix get_kernel() {
+        this->pivots.clear();
+        return this->kernel();
     }
 
     /**

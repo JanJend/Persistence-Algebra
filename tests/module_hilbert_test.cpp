@@ -7,7 +7,7 @@
 #include <chrono>
 #include <sstream>
 #include <grlina/matrices/matrix_algorithms.hpp>
-#include <grlina/graded_kernel.hpp>
+#include <grlina/graded_linear_system.hpp>
 
 using namespace graded_linalg;
 
@@ -259,6 +259,12 @@ void test_scalar_types_and_stored_axes() {
 }
 
 void test_png_and_sampling_cost() {
+    assert(image_detail::decimal_label(535781) == "535781");
+    assert(image_detail::decimal_label(0.00001234) == "0.00001234");
+    assert(image_detail::decimal_label(-0.00001234) == "-0.00001234");
+    assert(image_detail::decimal_label(-0.0) == "0");
+    assert(image_detail::decimal_label(1e20) == "100000000000000000000");
+    assert(image_detail::decimal_label(std::numeric_limits<double>::denorm_min()).find_first_of("eE") == std::string::npos);
     using Matrix = ObservedMatrix<false>;
     Module<Matrix> module(square<Matrix>());
     const auto calls = Matrix::local_calls;

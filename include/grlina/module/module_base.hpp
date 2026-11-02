@@ -18,7 +18,7 @@
 #include <grlina/matrices/grid.hpp>
 #include <grlina/matrices/matrix_algorithms.hpp>
 #include <grlina/quiver_representations.hpp>
-#include <grlina/graded_kernel.hpp>
+#include <grlina/graded_linear_system.hpp>
 #include <grlina/matrices/io.hpp>
 
 // AIDA remains optional: include aida_interface.hpp when calling decompose().
@@ -362,10 +362,28 @@ public:
         res_complete_ = false;
         auto& minimized = presentation();
         if (sort_if_needed) minimized.sort_compatibly(elements, images);
-        minimized.column_reduction_graded_w_deletion();
-        minimized.cancel_local_pairs(elements, images);
-        minimized.remove_redundant_relations();
+        GRLINA_DEBUG_CHECK(if (!minimized.compatibly_sorted)
+            throw std::invalid_argument("Presentation minimization requires compatibly sorted rows and columns"));
+        minimized.minimize_variant(elements, images);
         res_complete_ = was_complete_presentation;
+    }
+
+    /** Minimise a presentation by cancellation followed by image generation.
+     * Delegates to the alternative beside Matrix::minimize(), supporting all
+     * parameter counts. Cycles and supplied generator maps are transported.
+     * Requires exactly one stored projective map. Use minimize_resolution()
+     * when higher maps are already available and should be transported.
+     */
+    virtual void minimize_presentation_by_image_generators(bool sort_if_needed = true,
+            Matrix* elements = nullptr, vec<Matrix*> images = {}) {
+        if (proj_res_.size() != 1)
+            throw std::invalid_argument("Presentation-only minimization requires one presentation and no higher projective maps");
+        include_cycles(images);
+        auto& minimized = presentation();
+        if (sort_if_needed) minimized.sort_compatibly(elements, images);
+        GRLINA_DEBUG_CHECK(if (!minimized.compatibly_sorted)
+            throw std::invalid_argument("Presentation minimization requires compatibly sorted rows and columns"));
+        minimized.minimize_by_image_generators(elements, images);
     }
 
     void minimize_injective_resolution(bool /*sort_if_needed*/ = true) {
@@ -486,134 +504,145 @@ template <typename Matrix> using PersistenceModule = Module<Matrix>;
 template <typename index, typename Storage = vec<vec<index>>>
 using R2Module = Module<R2GradedSparseMatrix<index, Storage>>;
 
-/**
- * Present H_k = ker(d_k) / im(d_{k+1}) from a chain complex.
- *
- * graded_kernel() returns kernel generators as columns in the coordinates of
- * C_k.  Each incoming-boundary column is therefore solved against that kernel
- * matrix at its own degree; those solution coordinates are the relations of
- * the homology presentation.
- * keep_cycles retains these representatives in Module::cycles, updating them
- * during minimization. By default no cycle matrix is retained.
+/** Construct the homology output and optionally retain cycle representatives.
+ * Kept outside the algorithms so every path applies the same output options.
  */
 template <typename Matrix>
-Module<Matrix> homology_module(const ChainComplex<Matrix>& complex,
+Module<Matrix> finish_homology_group(Matrix presentation, Matrix representatives,
+                                    bool minimize, bool keep_cycles) {
+    Module<Matrix> result(std::move(presentation));
+    if (keep_cycles) result.cycles = std::move(representatives);
+    if (minimize) {
+        if constexpr (is_bigraded_coordinate_degree<typename Matrix::degree_type>::value)
+            result.minimize_presentation_by_image_generators();
+        else result.minimize();
+    }
+    return result;
+}
+
+/** H_0 = C_0 / im(d_1): no kernel computation is needed. */
+template <typename Matrix>
+Module<Matrix> homology_group_degree_zero(const ChainComplex<Matrix>& complex,
+                                         bool minimize = true, bool keep_cycles = false) {
+    Matrix presentation = complex.empty()
+        ? GradedMatrixIO<Matrix>::make_matrix(0, 0) : complex.differential(1);
+    Matrix representatives;
+    if (keep_cycles) {
+        representatives = Matrix(geometric_row_degrees(presentation));
+        if constexpr (matrix_grid_backed_v<Matrix>) representatives.reindex_grid(presentation.grid_);
+        representatives.compatibly_sorted = presentation.compatibly_sorted;
+    }
+    return finish_homology_group(std::move(presentation), std::move(representatives), minimize, keep_cycles);
+}
+
+/** Two-coordinate kernels are free. Express all incoming boundaries in this
+ * triangular kernel basis; their coordinates are the homology relations.
+ * There are no relations among these kernel generators to compute separately.
+ */
+template <typename Matrix>
+Module<Matrix> homology_group_bigraded(const ChainComplex<Matrix>& complex,
+                                      std::size_t homological_degree = 1,
+                                      bool minimize = true, bool keep_cycles = false) {
+    static_assert(is_bigraded_coordinate_degree<typename Matrix::degree_type>::value,
+                  "Bigraded homology requires exactly two coordinate parameters");
+    if (homological_degree == 0) return homology_group_degree_zero(complex, minimize, keep_cycles);
+    GRLINA_DEBUG_CHECK(if (homological_degree > complex.size())
+        throw std::out_of_range("No outgoing differential at the requested homological degree"));
+    Matrix outgoing = complex.differential(homological_degree);
+    Matrix kernel_generators = outgoing.graded_kernel();
+    kernel_generators.sort_columns_lexicographically();
+    Matrix incoming;
+    if (homological_degree < complex.size()) {
+        incoming = complex.differential(homological_degree + 1);
+        if constexpr (matrix_grid_backed_v<Matrix>) merge_grids(kernel_generators, incoming);
+    }
+    Matrix presentation = empty_matrix_like(kernel_generators,
+        matrix_index_t<Matrix>(0), kernel_generators.get_num_cols());
+    presentation.row_degrees = kernel_generators.col_degrees;
+    if (homological_degree < complex.size()) {
+        auto coordinates = solve_graded_system_by_back_substitution(
+            kernel_generators, std::move(incoming));
+        if (!coordinates) throw std::invalid_argument("Incoming boundaries are outside the graded kernel span");
+        presentation = std::move(*coordinates);
+    }
+    return finish_homology_group(std::move(presentation), std::move(kernel_generators), minimize, keep_cycles);
+}
+
+/** Express incoming boundaries in possibly dependent graded cycle generators.
+ * Coordinate degrees use the shared graded solver. For a general degree poset,
+ * solve each column using just the generators born by that boundary's grade.
+ */
+template <typename Matrix>
+Matrix homology_boundary_coordinates(const Matrix& kernel_generators, Matrix incoming) {
+    if constexpr (is_coordinate_solver_degree<typename Matrix::degree_type>::value) {
+        auto coordinates = solve_graded_linear_system(kernel_generators, std::move(incoming));
+        if (!coordinates) throw std::invalid_argument("Incoming boundaries are outside the graded kernel span");
+        return std::move(*coordinates);
+    } else {
+        Matrix coordinates = empty_matrix_like(kernel_generators, incoming.get_num_cols(), kernel_generators.get_num_cols());
+        set_geometric_degrees(coordinates, geometric_col_degrees(incoming), geometric_col_degrees(kernel_generators));
+        for (matrix_index_t<Matrix> column = 0; column < incoming.get_num_cols(); ++column) {
+            vec<matrix_index_t<Matrix>> selected;
+            array<matrix_index_t<Matrix>> eligible_columns;
+            for (matrix_index_t<Matrix> candidate = 0; candidate < kernel_generators.get_num_cols(); ++candidate) {
+                if (Degree_traits<base_degree<Matrix>>::smaller_equal(
+                        kernel_generators.col_degrees[candidate], incoming.col_degrees[column])) {
+                    selected.push_back(candidate);
+                    eligible_columns.push_back(kernel_generators.get_col(candidate));
+                }
+            }
+            SparseMatrix<matrix_index_t<Matrix>> local(static_cast<matrix_index_t<Matrix>>(selected.size()),
+                kernel_generators.get_num_rows(), eligible_columns);
+            auto boundary = incoming.get_col(column);
+            vec<matrix_index_t<Matrix>> solution;
+            if (!local.solve_col_reduction(boundary, solution, true, true, true))
+                throw std::invalid_argument("Incoming boundaries are outside the graded kernel span");
+            for (auto& index : solution) index = selected.at(index);
+            coordinates.set_col(column, solution);
+        }
+        return coordinates;
+    }
+}
+
+/** Present H_k = ker(d_k) / im(d_{k+1}).
+ * Degree zero and two-coordinate kernels have their own implementations above.
+ * In the general case kernel generators can have relations. Include both those
+ * relations and coordinates of incoming boundaries in the presentation.
+ * With keep_cycles, Module::cycles retains representatives in the original C_k.
+ */
+template <typename Matrix>
+Module<Matrix> homology_group(const ChainComplex<Matrix>& complex,
                               std::size_t homological_degree = 1, bool minimize = true,
                               bool keep_cycles = false) {
-    auto finish = [=](Matrix presentation, Matrix representatives) {
-        Module<Matrix> result(std::move(presentation));
-        if (keep_cycles) result.cycles = std::move(representatives);
-        if (minimize) result.minimize();
-        return result;
-    };
-    if (homological_degree == 0) {
-        Matrix presentation = complex.empty()
-            ? GradedMatrixIO<Matrix>::make_matrix(0, 0)
-            : complex.differential(1);
-        Matrix cycles;
-        if (keep_cycles) {
-            cycles = Matrix(geometric_row_degrees(presentation));
-            if constexpr (matrix_grid_backed_v<Matrix>) cycles.reindex_grid(presentation.grid_);
-            cycles.compatibly_sorted = presentation.compatibly_sorted;
-        }
-        return finish(std::move(presentation), std::move(cycles));
-    }
     static_assert(is_graded_sparse_matrix_v<Matrix>,
-                  "homology_module requires the graded sparse matrix interface");
+                  "homology_group requires the graded sparse matrix interface");
+    if (homological_degree == 0) return homology_group_degree_zero(complex, minimize, keep_cycles);
     if constexpr (!has_matrix_graded_kernel<Matrix>::value) {
         throw std::logic_error("This graded matrix type does not implement a graded kernel");
+    } else if constexpr (is_bigraded_coordinate_degree<typename Matrix::degree_type>::value) {
+        return homology_group_bigraded(complex, homological_degree, minimize, keep_cycles);
     } else {
         GRLINA_DEBUG_CHECK(if (homological_degree > complex.size())
             throw std::out_of_range("No outgoing differential at the requested homological degree"));
-
-        Matrix kernel_source = complex.differential(homological_degree);
-        Matrix kernel_generators = kernel_source.graded_kernel();
+        Matrix outgoing = complex.differential(homological_degree);
+        Matrix kernel_generators = outgoing.graded_kernel();
         kernel_generators.sort_columns_lexicographically();
-
-        using index_type = matrix_index_t<Matrix>;
-        using degree_type = base_degree<Matrix>;
-        matrix_storage_t<Matrix> relation_coordinates;
-        vec<degree_type> relation_degrees;
-
+        Matrix incoming;
         if (homological_degree < complex.size()) {
-            Matrix aligned_incoming;
-            const Matrix* incoming_ptr = &complex.differential(homological_degree + 1);
-            if constexpr (matrix_grid_backed_v<Matrix>) {
-                aligned_incoming = *incoming_ptr;
-                merge_grids(kernel_generators, aligned_incoming);
-                incoming_ptr = &aligned_incoming;
-            }
-            const Matrix& incoming = *incoming_ptr;
-            relation_coordinates.reserve(static_cast<std::size_t>(incoming.get_num_cols()));
-            relation_degrees.assign(incoming.col_degrees.begin(), incoming.col_degrees.end());
-
-            for (index_type column = 0; column < incoming.get_num_cols(); ++column) {
-                const degree_type degree = incoming.col_degrees[column];
-                auto local_pair = [&] {
-                    if constexpr (matrix_grid_backed_v<Matrix>)
-                        return kernel_generators.map_at_grid_degree_pair(degree, true);
-                    else return kernel_generators.map_at_degree_pair(degree, true);
-                }();
-                auto local_kernel = std::move(local_pair.first);
-                const vec<index_type>& selected_rows = local_pair.second;
-
-                vec<index_type> selected_kernel_columns;
-                for (index_type candidate = 0;
-                     candidate < kernel_generators.get_num_cols(); ++candidate) {
-                    if (Degree_traits<degree_type>::smaller_equal(
-                            kernel_generators.col_degrees[candidate], degree)) {
-                        selected_kernel_columns.push_back(candidate);
-                    }
-                }
-
-                vec<index_type> local_boundary;
-                local_boundary.reserve(incoming.data[column].size());
-                for (index_type row : incoming.data[column]) {
-                    auto position = std::lower_bound(selected_rows.begin(), selected_rows.end(), row);
-                    GRLINA_DEBUG_CHECK(if (position == selected_rows.end() || *position != row) {
-                        throw std::logic_error(
-                            "An incoming boundary contains a row unavailable at its degree");
-                    });
-                    local_boundary.push_back(
-                        static_cast<index_type>(std::distance(selected_rows.begin(), position)));
-                }
-
-                vec<index_type> local_solution;
-                if (!local_kernel.solve_col_reduction(
-                        local_boundary, local_solution, true, true, true)) {
-                    GRLINA_DEBUG_CHECK(throw std::invalid_argument(
-                        "An incoming boundary is not contained in the computed graded kernel"));
-                }
-
-                vec<index_type> global_solution;
-                global_solution.reserve(local_solution.size());
-                for (index_type local_index : local_solution) {
-                    GRLINA_DEBUG_CHECK(if (local_index < 0 ||
-                        local_index >= static_cast<index_type>(selected_kernel_columns.size())) {
-                        throw std::logic_error("Kernel-coordinate solver returned an invalid index");
-                    });
-                    global_solution.push_back(selected_kernel_columns[local_index]);
-                }
-                relation_coordinates.push_back(std::move(global_solution));
-            }
-        }
-
-        // A graded kernel need not be free: include its own syzygies as well
-        // as lifts of incoming boundaries. Both use the aligned kernel basis.
-        Matrix kernel_copy = kernel_generators;
-        Matrix kernel_relations = kernel_copy.graded_kernel();
-        for (index_type column = 0; column < kernel_relations.get_num_cols(); ++column) {
-            const auto entries = kernel_relations.get_col(column);
-            relation_coordinates.push_back(vec<index_type>(entries.begin(), entries.end()));
-            relation_degrees.push_back(kernel_relations.col_degrees[column]);
+            incoming = complex.differential(homological_degree + 1);
+            if constexpr (matrix_grid_backed_v<Matrix>) merge_grids(kernel_generators, incoming);
         }
         Matrix presentation = empty_matrix_like(kernel_generators,
-            static_cast<index_type>(relation_coordinates.size()), kernel_generators.get_num_cols());
-        presentation.col_degrees = relation_degrees;
+            matrix_index_t<Matrix>(0), kernel_generators.get_num_cols());
         presentation.row_degrees = kernel_generators.col_degrees;
-        presentation.assign_data(std::move(relation_coordinates));
-        presentation.compatibly_sorted = false;
-        return finish(std::move(presentation), std::move(kernel_generators));
+        if (homological_degree < complex.size()) {
+            presentation = homology_boundary_coordinates(kernel_generators, std::move(incoming));
+        }
+        // Quotient by dependencies among the cycle generators as well as by
+        // incoming boundaries. These dependencies matter beyond two parameters.
+        Matrix kernel_copy = kernel_generators;
+        presentation.append_move_matrix(kernel_copy.graded_kernel());
+        return finish_homology_group(std::move(presentation), std::move(kernel_generators), minimize, keep_cycles);
     }
 }
 

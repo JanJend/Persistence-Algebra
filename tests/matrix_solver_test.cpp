@@ -67,8 +67,8 @@ void check_kernel(Matrix matrix, const array<int>& columns) {
     matrix.pivots[0] = 0;
     const auto before = matrix.data;
     const auto pivots = matrix.pivots;
-    const Matrix& input = matrix;
-    auto basis = input.get_kernel();
+    auto working = matrix;
+    auto basis = working.get_kernel();
     static_assert(std::is_same_v<decltype(basis), Matrix>);
     assert(basis.get_num_rows() == matrix.get_num_cols());
     assert(basis.get_num_cols() <= matrix.get_num_cols());

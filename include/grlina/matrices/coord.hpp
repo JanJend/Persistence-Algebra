@@ -11,17 +11,17 @@
 #include <type_traits>
 #include <utility>
 
-// Graded kernel method definitions: <grlina/graded_kernel.hpp>.
+// Graded kernel method definitions: <grlina/graded_linear_system.hpp>.
 
 namespace graded_linalg {
 
-template <typename Scalar, std::size_t Dimension, typename Index, typename Storage = vec<vec<Index>>>
+template <typename Scalar, std::size_t Dimension, typename Index, typename Storage = DefaultSparseStorage<Index>>
 struct GridGradedSparseMatrix;
 
 /** Sparse matrix with array-valued degrees in Scalar^Dimension, ordered coordinatewise.
  * Derived lets grid matrices keep their own return type in inherited operations.
  */
-template <typename Scalar, std::size_t Dimension, typename Index, typename Derived = void, typename Storage = vec<vec<Index>>>
+template <typename Scalar, std::size_t Dimension, typename Index, typename Derived = void, typename Storage = DefaultSparseStorage<Index>>
 struct CoordGradedSparseMatrix
     : GradedSparseMatrix<CoordinateDegree<Scalar, Dimension>, Index,
           std::conditional_t<std::is_void_v<Derived>,
@@ -95,8 +95,9 @@ struct CoordGradedSparseMatrix
         this->sort_compatibly(TraitLinearOrder<degree_type>{Degree_traits<degree_type>::colex_lambda()}, elements, images);
     }
 
+    // Consumes this matrix. Afterwards only destruction or reassignment is
+    // supported. Copy explicitly before calling if the input is needed again.
     Self graded_kernel();
-    Self graded_kernel() const;
 
     Grid coordinate_grid() const {
         Grid axes;

@@ -22,12 +22,12 @@ void presentation_cycles() {
     Matrix relations(3, 3, {{0,1}, {0,1,2}, {0,1,2}},
                      {D{1,1}, D{2,2}, D{2,2}}, {D{0,0}, D{1,1}, D{0,0}});
     const ChainComplex<Matrix> complex({relations});
-    auto raw = homology_module(complex, 0, false, true);
-    assert(!homology_module(complex, 0, false).cycles);
-    assert(!homology_module(complex, 0).cycles);
+    auto raw = homology_group(complex, 0, false, true);
+    assert(!homology_group(complex, 0, false).cycles);
+    assert(!homology_group(complex, 0).cycles);
     check_representatives(raw, relations);
 
-    for (int method = 0; method < 7; ++method) {
+    for (int method = 0; method < 8; ++method) {
         auto module = raw;
         Matrix incoming(geometric_row_degrees(relations));
         Matrix outgoing = incoming;
@@ -47,7 +47,8 @@ void presentation_cycles() {
                 Degree_traits<base_degree<Matrix>>::colex_lambda()}, &map, {&outgoing});
             module.minimize_presentation(false, &map, {&outgoing});
         }
-        if (method >= 5) {
+        if (method == 7) module.minimize_presentation_by_image_generators(true, &map, {&outgoing});
+        if (method == 5 || method == 6) {
             auto& p = module.presentation();
             p.sort_compatibly(&map, {&outgoing, &*module.cycles});
             if (method == 5) p.minimize(&map, {&outgoing, &*module.cycles});
@@ -65,19 +66,29 @@ void presentation_cycles() {
         for (const D& point : {D{0,0}, D{1,1}, D{2,2}})
             assert(module.dimension_at(point) == raw.dimension_at(point));
     }
-    auto minimized = homology_module(complex, 0, true, true);
+    auto minimized = homology_group(complex, 0, true, true);
     assert(minimized.num_of_gens() == 2 && minimized.num_of_rels() == 1);
     check_representatives(minimized, relations);
     Matrix unit(1, 1, {{0}}, {D{0,0}}, {D{0,0}});
-    auto zero = homology_module(ChainComplex<Matrix>({unit}), 0, true, true);
+    auto zero = homology_group(ChainComplex<Matrix>({unit}), 0, true, true);
     assert(zero.cycles && zero.cycles->get_num_cols() == 0);
     assert(zero.cycles->get_num_rows() == 1);
-    assert(homology_module(ChainComplex<Matrix>{}, 0, true, true).cycles);
+    assert(homology_group(ChainComplex<Matrix>{}, 0, true, true).cycles);
+
+    auto resolved = raw;
+    resolved.compute_projective_resolution();
+    const auto map_count = resolved.proj_res_.size();
+    bool rejected_resolution = false;
+    try { resolved.minimize_presentation_by_image_generators(); }
+    catch (const std::invalid_argument&) { rejected_resolution = true; }
+    assert(rejected_resolution && resolved.proj_res_.size() == map_count);
 
     // A submodule uses parent cycles through its inclusion, never another cache.
     auto parent = std::make_shared<const Module<Matrix>>(raw);
     Matrix generators(1, 3, {{1}}, {D{1,1}}, geometric_row_degrees(relations));
     Submodule<Matrix> submodule(parent, generators);
+    submodule.minimize_presentation_by_image_generators();
+    assert(submodule.generator_map().check_lifts());
     submodule.minimize_parent();
     assert(!submodule.cycles && submodule.parent()->cycles);
     auto representatives = *submodule.parent()->cycles * submodule.generator_map().generator_lift();
@@ -90,7 +101,7 @@ template<class Matrix>
 void degree_and_generator_edits() {
     using D = typename Matrix::degree_type;
     Matrix free(0, 3, {}, {}, {D{2,2}, D{0,0}, D{1,1}});
-    const auto original = homology_module(ChainComplex<Matrix>({free}), 0, false, true);
+    const auto original = homology_group(ChainComplex<Matrix>({free}), 0, false, true);
     for (int operation = 0; operation < 6; ++operation) {
         auto module = original;
         if (operation == 0) module.quotient_by_generators({0});
@@ -127,9 +138,13 @@ void nonfree_cycles() {
     Matrix outgoing(3, 1, {{0},{0},{0}}, {D{1,0,0}, D{0,1,0}, D{0,0,1}}, {D{0,0,0}});
     Matrix incoming(1, 3, {{0,1}}, {D{1,1,0}}, geometric_col_degrees(outgoing));
     ChainComplex<Matrix> complex({outgoing, incoming});
-    auto raw = homology_module(complex, 1, false, true);
+    auto raw = homology_group(complex, 1, false, true);
     assert(raw.num_of_gens() == 3 && raw.num_of_rels() == 2);
-    auto module = homology_module(complex, 1, true, true);
+    auto alternative = raw;
+    alternative.minimize_presentation_by_image_generators();
+    assert(alternative.num_of_gens() == 2 && alternative.num_of_rels() == 1);
+    assert((outgoing * *alternative.cycles).is_zero());
+    auto module = homology_group(complex, 1, true, true);
     assert(module.num_of_gens() == 2 && module.num_of_rels() == 1);
     assert((outgoing * *module.cycles).is_zero());
     assert(graded_linear_system_is_solvable(incoming, *module.cycles * module.presentation()));

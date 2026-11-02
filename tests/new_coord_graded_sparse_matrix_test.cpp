@@ -6,7 +6,8 @@
 #include <random>
 #include <sstream>
 #include <grlina/matrices/matrix_algorithms.hpp>
-#include <grlina/graded_kernel.hpp>
+#include <grlina/graded_linear_system.hpp>
+#include <grlina/MPFREE_clone.hpp>
 
 using namespace graded_linalg;
 
@@ -106,12 +107,26 @@ static void randomized_kernels() {
             for (int j = 0; j < rows; ++j)
                 if ((random() & 1) && Degree_traits<Degree>::smaller_equal(r[j], c[i])) data[i].push_back(j);
         Coordinates source(columns, rows, data, c, r);
-        check_kernel(source, static_cast<const Coordinates&>(source).graded_kernel());
+        auto working = source;
+        check_kernel(source, working.graded_kernel());
+        assert(working.data.empty());
+        if constexpr (Dimension == 2 && !std::is_integral_v<Scalar>) {
+            // The legacy R2 adapter now shares the event traversal directly on
+            // real degrees. Check negative/fractional grades against rank, too.
+            R2GradedSparseMatrix<int> legacy(columns, rows, data, c, r);
+            const auto original = legacy;
+            legacy.pivots[0] = 1000;
+            check_kernel(original, legacy.graded_kernel());
+            legacy = original;
+            check_kernel(original, legacy.graded_kernel_MPFREE());
+        }
         Grid grid(source);
         Degree unused{};
         unused.fill(Scalar(99));
         grid.include_real_degrees({unused});
-        check_kernel(grid, static_cast<const Grid&>(grid).graded_kernel());
+        auto grid_working = grid;
+        check_kernel(grid, grid_working.graded_kernel());
+        assert(grid_working.data.empty());
     }
 }
 
@@ -151,7 +166,7 @@ static void legacy_kernel_comparison() {
         auto grid_kernel = grid.graded_kernel();
         R2GradedSparseMatrix<int> legacy(source.get_num_cols(), source.get_num_rows(), source.data,
                                         real_degrees(source.col_degrees), real_degrees(source.row_degrees));
-        auto legacy_kernel = legacy.graded_kernel();
+        auto legacy_kernel = legacy.graded_kernel_MPFREE();
 
         check_kernel(source, native_kernel);
         check_kernel(original_grid, grid_kernel);
@@ -212,7 +227,8 @@ static void koszul_kernels() {
     Matrix differential(Dimension, 1, array<int>(Dimension, {0}), degrees, {Degree{}});
     vec<int> counts = Dimension == 3 ? vec<int>{3, 1, 0} : vec<int>{6, 4, 1, 0};
     for (int count : counts) {
-        auto next = static_cast<const Matrix&>(differential).graded_kernel();
+        auto working = differential;
+        auto next = working.graded_kernel();
         check_kernel(differential, next);
         assert(next.get_num_cols() == count);
         differential = std::move(next);
