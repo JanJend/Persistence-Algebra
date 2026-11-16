@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
                 value = (value << 8) | static_cast<unsigned char>(png[i]);
             return value;
         };
-        if (dimension(16) != 305 || dimension(20) != 215)
+        if (dimension(16) != 305 || dimension(20) != 145)
             throw std::runtime_error("hilbert_image ignored its resolution");
 
         const auto cropped = run(executable[14], {(fixtures / "interval.scc").string(), "40", "30",
@@ -154,6 +154,12 @@ int main(int argc, char** argv) {
         if (cropped == png || cropped == shared_scale ||
             cropped.substr(0,8) != png.substr(0,8) || shared_scale.substr(0,8) != png.substr(0,8))
             throw std::runtime_error("hilbert_image ignored bounds or a shared colour scale");
+
+        const auto hilbert_values = run(executable[14], {(fixtures / "interval.scc").string(), "3", "5",
+            "--bounds", "-1", "-1", "2", "1", "--values-only"}, temporary, "hilbert_values");
+        if (hilbert_values != "{\"maximum\":1,\"x_grid\":[-1,0.5,2],\"y_grid\":[-1,-0.5,0,0.5,1],"
+                              "\"values\":[[0,0,0,0,0],[0,0,1,1,1],[0,0,1,1,0]]}\n")
+            throw std::runtime_error("hilbert_image returned incorrect numerical samples: " + hilbert_values);
 
         const std::vector<std::string> landscape_options{
             (fixtures / "interval.scc").string(), "40", "30", "--bounds", "0", "0", "2", "2",

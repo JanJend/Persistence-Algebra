@@ -92,11 +92,11 @@ void presentation_adapters() {
     assert(!line.rows_computed);
     Mat torsion(1, 1, {{0}}, {{1,1}}, {{0,0}});
     assert(homomorphism_lift_basis(torsion, line).empty());
-    assert(End_2d_0(line, {0,0}).empty());
+    assert(End_d_0(line, {0,0}).empty());
     // Two free generators born at 0 and 1: End has 3 allowed matrix entries;
     // shifting by 1 admits the fourth (early generator -> late generator).
     Mat births(0, 2, {}, {}, {{0,0}, {1,1}});
-    auto extra = End_2d_0(births, {1,1});
+    auto extra = End_d_0(births, {1,1});
     assert(extra.size() == 1 && extra[0].data == array<int>({{1}, {}}));
     assert(extra[0].is_graded_matrix());
     auto domain = std::make_shared<const Mod>(births);
@@ -123,11 +123,104 @@ void matrix_families() {
     assert(B.size() == 2);
 }
 
+template<class Matrix>
+void matrix_families_modulo_relations() {
+    using Degree = typename Matrix::degree_type;
+    auto make = [](array<int> columns, vec<Degree> grades) {
+        Matrix result(static_cast<int>(columns.size()), 3);
+        result.assign_data(std::move(columns));
+        set_geometric_degrees(result, grades, vec<Degree>{{0,0}, {0,0}, {0,0}});
+        return result;
+    };
+    // Incomparable relations: x+y at (1,0), y at (0,1); z dies later.
+    const auto relations = make({{0,1}, {1}, {2}}, {{1,0}, {0,1}, {2,2}});
+    const vec<Degree> grades{{0,0}, {1,0}, {0,1}, {1,1}, {2,2}};
+    // The standalone normalizer preserves early columns, identifies equal
+    // module maps, and is idempotent, including with compressed grade storage.
+    auto map = make({{1}, {1}, {0,1}, {2}, {2}}, grades);
+    auto equivalent = make({{1}, {0}, {0}, {2}, {}}, grades);
+    const auto target_grades = geometric_row_degrees(map);
+    map.compute_rows_forward();
+    normalize_map_modulo_target_relations(map, relations);
+    normalize_map_modulo_target_relations(equivalent, relations);
+    for (int c = 0; c < map.get_num_cols(); ++c)
+        assert(map.get_col(c) == equivalent.get_col(c));
+    assert(map.get_col(0) == vec<int>{1} && map.get_col(1) == vec<int>{0});
+    assert(map.get_col(2) == vec<int>{0} && map.get_col(3) == vec<int>{2});
+    assert(map.get_col(4).empty() && !map.rows_computed && map._rows.empty());
+    normalize_map_modulo_target_relations(map, relations);
+    for (int c = 0; c < map.get_num_cols(); ++c)
+        assert(map.get_col(c) == equivalent.get_col(c));
+    assert(geometric_col_degrees(map) == grades && geometric_row_degrees(map) == target_grades);
+    const std::size_t dimensions[] = {2, 1, 2, 1, 0};
+    for (std::size_t i = 0; i < grades.size(); ++i) {
+        auto x = make({{0}}, {grades[i]}), y = make({{1}}, {grades[i]});
+        auto z = make({{2}}, {grades[i]}), xy = make({{0,1}}, {grades[i]});
+        std::vector<Matrix> A{y}, B{x, z, xy, y};
+        A[0].compute_rows_forward();
+        B[0].compute_rows_forward();
+        reduce_matrix_family_modulo(A, B, relations);
+        assert(A.size() == 1 && B.size() == dimensions[i]);
+        assert(!A[0].rows_computed);
+        for (const auto& map : B) {
+            assert(map.is_graded_matrix());
+            assert(!map.rows_computed);
+            assert(geometric_col_degrees(map) == vec<Degree>{grades[i]});
+        }
+        if (i == 1) {
+            // Normalizing only B would miss x = y modulo the relation x+y.
+            assert(A[0].get_col(0) == vec<int>{0});
+            assert(B[0].get_col(0) == vec<int>{2});
+        }
+    }
+    assert(relations.get_col(0) == vec<int>({0,1}));
+    // Different columns of one map require different relation reducers.
+    std::vector<Matrix> A, B{
+        make({{0,1}, {}}, {{0,0}, {1,0}}),
+        make({{}, {0,1}}, {{0,0}, {1,0}}),
+        make({{0,1}, {0,1}}, {{0,0}, {1,0}})};
+    reduce_matrix_family_modulo(A, B, relations);
+    assert(B.size() == 1 && B[0].get_col(0) == vec<int>({0,1}) && B[0].get_col(1).empty());
+    std::vector<Matrix> empty;
+    reduce_matrix_family_modulo(empty, empty, relations);
+    auto no_relations = make({}, {});
+    std::vector<Matrix> plain_A, plain_B = B;
+    reduce_matrix_family_modulo(plain_A, plain_B);
+    reduce_matrix_family_modulo(A, B, no_relations);
+    assert(B.size() == plain_B.size() && B[0].get_col(0) == plain_B[0].get_col(0));
+}
+
+void additional_hom_classes(HomAlgorithm hom_algorithm) {
+    // All shifted module maps vanish, but the old lift quotient was nonzero.
+    Mat finite(2, 2, {{0}, {1}}, {{0.5,0}, {1.5,0}}, {{0,0}, {1,0}});
+    auto shifted = finite;
+    shifted.shift({2,2});
+    auto A = homomorphism_lift_basis(finite, finite);
+    auto B = homomorphism_lift_basis(finite, shifted);
+    reduce_matrix_family_modulo(A, B);
+    assert(!B.empty());
+    auto parent = std::make_shared<Mod>(finite);
+    assert(End_d_0(finite, {2,2}, false, hom_algorithm).empty());
+    assert(End_d_0(parent, {2,2}, false, hom_algorithm).empty());
+    assert(End_d_0(Hom::canonical_shift(parent, {2,2}), false, hom_algorithm).empty());
+
+    // Removing the finite summands' zero maps must retain a genuine extra map
+    // between free summands born at (0,0) and (1,1).
+    Mat mixed(2, 4, {{0}, {1}}, {{0.5,0}, {1.5,0}}, {{0,0}, {1,0}, {0,0}, {1,1}});
+    auto mixed_parent = std::make_shared<const Mod>(mixed);
+    auto eta = Hom::canonical_shift(mixed_parent, {2,2});
+    auto maps = End_d_0(eta, false, hom_algorithm);
+    assert(maps.size() == 1 && maps[0].check_lifts());
+    assert(maps[0].generator_lift().get_col(2) == vec<int>{3});
+    assert(End_d_0(mixed, {2,2}, false, hom_algorithm).size() == 1);
+    assert(End_d_0(mixed_parent, {2,2}, false, hom_algorithm).size() == 1);
+}
+
 void homomorphism_shifts() {
     Mod square(Mat(2, 1, {{0}, {0}}, {{1,0}, {0,1}}, {{0,0}}));
     square.compute_projective_resolution();
     auto source = std::make_shared<const Mod>(square);
-    auto can = Hom::canonical_shift(source, {0.5,0.5});
+    const auto can = Hom::canonical_shift(source, {0.5,0.5});
     const Mod& source_ref = *source;
     auto from_ref = Hom::canonical_shift(source_ref, {0.5,0.5});
     assert(from_ref.domain() == source);
@@ -163,10 +256,10 @@ void typed_additional_lifts() {
             Mat(2, 3, {{0}, {1,2}}, {{3,3}, {4,4}}, {{0,0}, {1,1}, {2,2}})}) {
         auto domain = std::make_shared<Mod>(presentation);
         for (const r2degree amount : {r2degree{0,0}, r2degree{1,1}, r2degree{2,2}}) {
-            auto expected = End_2d_0(presentation, amount);
-            auto actual = End_2d_0(domain, amount);
+            auto expected = End_d_0(presentation, amount);
+            auto actual = End_d_0(domain, amount);
             auto eta = Hom::canonical_shift(domain, amount);
-            auto shared = End_2d_0(eta);
+            auto shared = End_d_0(eta);
             assert(actual.size() == expected.size());
             assert(shared.size() == expected.size());
             for (std::size_t i = 0; i < actual.size(); ++i) {
@@ -190,15 +283,15 @@ void typed_additional_lifts() {
         assert(!domain->presentation().rows_computed);
     }
     auto domain = std::make_shared<const Mod>(Mat(0, 2, {}, {}, {{0,0}, {1,1}}));
-    assert(End_2d_0(std::make_shared<const Mod>(Mat(0, 0, {}, {}, {})), {1,1}).empty());
-    assert(End_2d_0(Hom::canonical_shift(
+    assert(End_d_0(std::make_shared<const Mod>(Mat(0, 0, {}, {}, {})), {1,1}).empty());
+    assert(End_d_0(Hom::canonical_shift(
         std::make_shared<const Mod>(Mat(0, 0, {}, {}, {})), {1,1})).empty());
-    rejects([&] { End_2d_0(Hom(nullptr, domain, Mat{})); });
-    rejects([&] { End_2d_0(Hom(domain, nullptr, Mat{})); });
-    auto result = End_2d_0(domain, {1,1});
+    rejects([&] { End_d_0(Hom(nullptr, domain, Mat{})); });
+    rejects([&] { End_d_0(Hom(domain, nullptr, Mat{})); });
+    auto result = End_d_0(domain, {1,1});
     assert(result.size() == 1);
     std::weak_ptr<const Mod> lifetime = domain;
-    rejects([&] { End_2d_0(std::shared_ptr<const Mod>{}, {1,1}); });
+    rejects([&] { End_d_0(std::shared_ptr<const Mod>{}, {1,1}); });
     domain.reset();
     assert(!lifetime.expired() && result[0].check_lifts());
 
@@ -379,4 +472,13 @@ void submodule_quotients_and_parent_minimization() {
     assert(empty_sub.is_zero());
 }
 
-int main() { containment(); presentation_adapters(); matrix_families(); homomorphism_shifts(); typed_additional_lifts(); identity_shortcuts(); submodule_quotients_and_parent_minimization(); }
+int main() {
+    containment(); presentation_adapters(); matrix_families();
+    matrix_families_modulo_relations<Mat>();
+    matrix_families_modulo_relations<R2GradedSparseMatrix<int, CompactStorage<int>>>();
+    matrix_families_modulo_relations<GridGradedSparseMatrix<double, 2, int>>();
+    for (auto algorithm : {HomAlgorithm::optimised, HomAlgorithm::full_restriction, HomAlgorithm::hom_exactness})
+        additional_hom_classes(algorithm);
+    homomorphism_shifts(); typed_additional_lifts(); identity_shortcuts();
+    submodule_quotients_and_parent_minimization();
+}

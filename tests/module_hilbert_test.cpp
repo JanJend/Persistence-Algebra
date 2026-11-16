@@ -278,7 +278,7 @@ void test_png_and_sampling_cost() {
         for (int i = offset; i < offset + 4; ++i) value = (value << 8) | bytes[i];
         return value;
     };
-    assert(dimension(png,16) == 305 && dimension(png,20) == 215);
+    assert(dimension(png,16) == 305 && dimension(png,20) == 145);
     const auto file = std::filesystem::temp_directory_path() / ("grlina-hilbert-" +
         std::to_string(std::chrono::high_resolution_clock::now().time_since_epoch().count()) + ".png");
     save_png(png, file.string());
@@ -288,7 +288,7 @@ void test_png_and_sampling_cost() {
     saved.close();
     std::filesystem::remove(file);
     const auto image = module.hilbert_function_image({0.25,0.75}, {0.25,0.75}, 60, 50);
-    assert(dimension(image,16) == 325 && dimension(image,20) == 235);
+    assert(dimension(image,16) == 325 && dimension(image,20) == 165);
     assert(Matrix::local_calls == calls + 8); // Four induced points, not 3,000 pixels.
     assert(!module.hilbert_function_image(20, 20).empty());
     assert(Matrix::local_calls == calls + 12);

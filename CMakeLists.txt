@@ -24,6 +24,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.30)
     cmake_policy(SET CMP0167 NEW)
 endif()
 find_package(Boost REQUIRED COMPONENTS timer)
+find_package(Threads REQUIRED)
 
 # OpenMP is optional: used when available, ignored otherwise.
 # Apple clang ships no OpenMP runtime, so point CMake at Homebrew's libomp if present.
@@ -49,7 +50,7 @@ target_compile_features(grlina INTERFACE cxx_std_17)
 target_include_directories(grlina INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
-target_link_libraries(grlina INTERFACE Boost::timer)
+target_link_libraries(grlina INTERFACE Boost::timer Threads::Threads)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(grlina INTERFACE OpenMP::OpenMP_CXX)
 endif()

@@ -27,6 +27,11 @@ All types live in `graded_linalg`.
   possibly partial chain map between their projective resolutions: entry 0 maps
   generators, entry 1 maps relations, and later entries map higher syzygies.
   This accessor computes nothing; `lift_to_resolution()` extends the stored map.
+  `generator_lift()` returns `Matrix&` on a mutable map, borrowing its existing
+  storage. Mutable access discards higher lifts and identity certificates; finish
+  edits before using the map or rebuilding lifts. For a read-only borrow use
+  `std::as_const(map).generator_lift()`, which returns `const Matrix&` and preserves
+  those certificates. Bind the result with `auto&`; plain `auto` copies the matrix.
 - `module_hom_space_basis` and `module_endomorphism_basis` adapt the established
   Hom algorithms and return typed module homomorphisms.
 
@@ -186,8 +191,9 @@ implementation. Images return bytes and create no file:
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <grlina/invariants/hilbert_function.hpp>
 
-// Width and height count heatmap pixels; labels add 265 x 185 pixels.
+// Width and height count heatmap pixels; margins add 265 x 115 pixels.
 auto png = module.hilbert_function_image(800, 600); // 5% padding by default
+auto labelled = module.hilbert_function_image(800, 600, 0.05, "Radius", "Codensity");
 auto cropped = module.hilbert_function_image({0.0, 2.0}, {0.0, 1.0}, 800, 600);
 graded_linalg::save_png(png, "hilbert.png"); // only this explicitly creates a file
 
@@ -231,11 +237,21 @@ display(Image(data=png))
 ```
 
 Debug builds name the executable `hilbert_image_debug`. Diagnostics use standard
-error; standard output contains only the PNG bytes.
+error; standard output contains only the PNG bytes by default.
 
 Append `--bounds xmin ymin xmax ymax` to select a plotting window, and
 `--scale min max` to share a positive logarithmic colour range between images.
 Both options can be combined with the requested heatmap width and height.
+Axis captions are empty by default. Supply `--x-label "Radius"` and
+`--y-label "Codensity"` to label them. PNG images have no automatic title,
+maximum subtitle, zero-colour swatch, or colour-scale footer. Numeric ticks and
+the colour bar remain visible.
+Append `--values-only` to return JSON with `x_grid`, `y_grid`, `values[x][y]`,
+and the sampled `maximum`, without rendering an image. The returned coordinates
+and dimensions match the PNG's heatmap grid, including its default padding or
+explicit bounds. The sampled maximum can differ from `--maximum-only`, which
+reports the exact maximum over the full induced grid. These two output flags
+cannot be combined.
 
 Landscapes offer the same in-memory PNG output, with a 1-based layer selector:
 
@@ -407,10 +423,34 @@ Stable-Decomposition's reusable helpers are exposed in
 - Matrix-level adapters cover zero/whole/sum/reduction, canonical shift lifts,
   and equality in a presented parent. They preserve
   ambient row coordinates; containment needs no sorting.
-- `homomorphism_lift_basis` and `End_2d_0` intentionally
-  operate on spaces of generator lifts. Use `module_hom_space_basis` when maps
-  differing by target relations should be identified. `reduce_matrix_family_modulo`
-  is coefficient-vector linear algebra, not a categorical Hom quotient.
+- `homomorphism_lift_basis` returns generator lifts. `module_hom_space_basis`
+  identifies lifts differing by target relations. `End_d_0` computes the actual
+  quotient `Hom(X,X_d) / eta_d End(X)`. Its working families now use sparse
+  coefficient columns; full graded maps are created only for its returned basis.
+- `hom_space_coefficients(source, target, algorithm)` exposes the compressed
+  basis for all three Hom algorithms. Compute the source row cache first.
+  One column represents one whole map; entry `(c,r)` is encoded as
+  `c * target.get_num_rows() + r`. Grades remain in the shared source/target.
+  `hom_space_basis_ungraded` instead returns a vector of ordinary sparse
+  matrices without grades, for callers needing the traditional matrix shape.
+- `hom_space_shift_image_coefficients(source, target, shifted_target)` computes
+  the canonical-shift image directly. `End_d_0_coefficients(eta, E)` reuses a
+  supplied coefficient basis of End_0 and returns `{quotient, subspace}` for
+  Q and the reduced eta E; E remains unchanged. The overload without E uses the
+  direct shift-image kernel. `reduce_quotient_in_place(W, H)` operates on owned
+  coefficient families already normalized in the same target, retaining W and
+  replacing H with Q. It neither concatenates nor copies the map families.
+- Coefficient output defaults to `DefaultSparseStorage<std::ptrdiff_t>`, following
+  `GRLINA_USE_COMPACT_COLUMNS`. Select `CompactStorage<std::ptrdiff_t>` or
+  `vec<vec<std::ptrdiff_t>>` explicitly as the coefficient-producing function's
+  first template argument. Sparse coefficient columns avoid allocating empty
+  source-column slots, even when the ambient flattened row count is large.
+- `budgeted_composition_generators(Q, E, W, source, target, options)` accepts these
+  coefficient matrices and returns coefficient families. Both sides share one
+  prepared coordinate solver. Stable-Decomposition uses this path and converts
+  only the selected families with `homomorphisms_from_coefficients`; it does
+  not reconstruct W after computing Q. The Homomorphism-based APIs remain
+  available as adapters.
 
 These additions are tested with handmade examples in
 `tests/presentation_operations_test.cpp`. The generic timing utility now lives
@@ -524,15 +564,19 @@ local pairs and therefore also works without a graded kernel.
 
 ### Typed additional shifted lifts
 
-Include `grlina/hom_interface.hpp` and call `End_2d_0(module, amount)` with a
+Include `grlina/hom_interface.hpp` and call `End_d_0(X, d)` with a
 `std::shared_ptr<Module<Matrix>>` or `std::shared_ptr<const Module<Matrix>>`.
-It returns `std::vector<Homomorphism<Matrix>>`, retaining the original domain
-and sharing one presentation-only target `M(amount)` across the results.
-The computation preserves the matrix overload’s quotient of lift spaces; it
-does not identify lifts modulo target relations. Result matrices are moved
-into homomorphisms, and both Hom computations reuse one source row cache.
-Both the matrix and module overloads are defined side by side in
-`hom_interface.hpp`. Their algorithms are unchanged.
+The shift `d` is used directly. The returned `std::vector<Homomorphism<Matrix>>`
+retains `X` and shares one presentation-only target `X_d = X(d)`.
+The quotient identifies both zero-inducing lifts and transported endomorphisms.
+Result matrices are moved into homomorphisms, and the two Hom computations
+reuse one source row cache. An existing canonical map `eta_d: X -> X_d` can
+instead be passed to retain both of its endpoint objects.
+
+The final argument after `info` is `HomAlgorithm::optimised` (default,
+Algorithm A-1/2), `HomAlgorithm::full_restriction` (Algorithm A), or
+`HomAlgorithm::hom_exactness` (Algorithm B). The shared dispatcher is
+`hom_space_basis(source, target, algorithm)` in `hom_algorithms.hpp`.
 
 `hom_interface.hpp` provides `module_hom_space_basis` and
 `module_endomorphism_basis`. Include `hom_interface.hpp` directly; the former

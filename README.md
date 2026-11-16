@@ -702,6 +702,7 @@ Landscape landscape(module); // 1% resolution; degree bounds enlarged by 20%
 auto png = landscape.image(1, 800, 600); // layer 1 as PNG bytes; no file created
 auto inferno = landscape.image(1, 800, 600, ColourMap::inferno); // optional Matplotlib palette
 auto shared_scale = landscape.image(1, 800, 600, ColourMap::blue, 0.5); // linear colours on [0,0.5]
+auto labelled = landscape.image(1, 800, 600, ColourMap::blue, 0, "Radius", "Codensity");
 // save_png(png, "landscape.png"); // explicitly save when wanted
 landscape.save("landscape", 3); // barcode CSV, grid CSV, and SVG with three layers
 // landscape.save("landscape_inferno", 3, ColourMap::inferno); // same palette in SVG
@@ -710,11 +711,11 @@ Landscape cropped(module, {0, 0, 1, 1}, 0.01); // xmin,ymin,xmax,ymax; relative 
 auto heights = cropped.at({0.5, 0.5}, 3);
 ```
 
-The optional final `image` argument fixes the maximum colour value; its default
+The optional `colour_maximum` argument fixes the maximum colour value; its default
 of zero selects each image's sampled maximum. `sample(layer, width, height)`
 returns the same numerical grid used for rendering. To obtain the PNG and its
 sampled maximum together, use `image_with_data(layer, width, height, colormap,
-colour_maximum, include_values)`: its result has `png`, `maximum`, and optional
+colour_maximum, include_values, x_label, y_label)`: its result has `png`, `maximum`, and optional
 `values` (`values[x][y]`). `maximum` is always the sampled maximum, even when the
 colour scale is fixed separately.
 
@@ -735,10 +736,18 @@ the PNG and maximum together. Raw PNG output and `--maximum-only` remain availab
 Both image CLIs accept `--sqrt-x` for squared-radius SCC input. It takes the
 square root of every first-coordinate degree before sampling; bounds and
 landscape directions then use radius units. Saved SCC files are unchanged.
+PNG axis captions default to empty; both image CLIs accept `--x-label` and
+`--y-label`. The C++ image methods also accept these two strings as their final
+arguments. PNGs omit automatic headings and footer legends, retaining numeric
+ticks and the colour bar. Margins add 265 x 115 pixels to the heatmap dimensions.
 PNG and landscape SVG labels always use ordinary decimal notation, with no
 scientific notation or offset multiplier.
 `hilbert_image --maximum-only` reports the exact maximum on the module's induced
 grid, so shared colour scales need not rely on a coarsely sampled export CSV.
+`hilbert_image input.scc 500 500 --values-only` returns JSON containing `x_grid`,
+`y_grid`, `values[x][y]`, and the sampled `maximum`, without generating a PNG.
+The dimensions, `--bounds`, and `--sqrt-x` select the same grid as PNG output.
+The sampled maximum may be smaller than the exact `--maximum-only` result.
 
 `Landscape` owns a copy of the presentation and cached barcodes on parallel
 diagonal slices. Each query evaluates its own line's barcode, reusing a cached

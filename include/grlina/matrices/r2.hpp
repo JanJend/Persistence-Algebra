@@ -98,6 +98,10 @@ struct R2GradedSparseMatrix : GradedSparseMatrix<r2degree, index, R2GradedSparse
     R2GradedSparseMatrix(index m, index n, const array<index>& data, vec<r2degree> c_degrees, vec<r2degree> r_degrees) :
         GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, Storage>, Storage>(m, n, data, c_degrees, r_degrees) {} // Constructor with data and degrees
 
+    template<class Columns>
+    R2GradedSparseMatrix(index m, index n, const Columns& entries, vec<r2degree> c_degrees, vec<r2degree> r_degrees) :
+        GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, Storage>, Storage>(m, n, entries, std::move(c_degrees), std::move(r_degrees)) {}
+
     R2GradedSparseMatrix(const R2GradedSparseMatrix& other)
         : GradedSparseMatrix<r2degree, index, R2GradedSparseMatrix<index, Storage>, Storage>(other) {
     } // Copy constructor

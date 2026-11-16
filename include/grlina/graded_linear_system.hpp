@@ -273,7 +273,7 @@ std::vector<Index> columns_in_bigraded_slice(const Degrees& degrees,
 // and real degrees use the same events without coordinate compression. Only
 // column order changes; returned rows retain the original input domain.
 template <class Matrix, std::enable_if_t<!std::is_const_v<Matrix>, int> = 0>
-Matrix z2_graded_kernel(Matrix& matrix) {
+Matrix z2_graded_kernel(Matrix& matrix, bool dense_pivots = false) {
     using Index = matrix_index_t<Matrix>;
     using Degree = base_degree<Matrix>;
     static_assert(std::tuple_size_v<Degree> == 2, "Kernel degrees must have two coordinates");
@@ -282,14 +282,13 @@ Matrix z2_graded_kernel(Matrix& matrix) {
     // sorted-to-original permutation for the coordinates of the kernel vectors.
     auto permutation = matrix.sort_columns_with_permutation(Degree_traits<Degree>::colex_order).new_to_old;
     // All reduction state belongs to this call, rather than the matrix object.
-    std::map<Index, Index> pivots;
-
     SparseMatrix<Index, matrix_reduction_storage_t<Matrix>> operations(matrix.get_num_cols(), matrix.get_num_cols(), "Identity");
     matrix_reduction_storage_t<Matrix> columns;
     vec<Degree> degrees;
     std::vector<bool> emitted(matrix.get_num_cols(), false);
     GradedReductionWorkspace<Index> workspace;
-    visit_bigraded_columns(matrix.col_degrees, matrix.get_num_cols(),
+    auto traverse = [&](auto& pivots) {
+      visit_bigraded_columns(matrix.col_degrees, matrix.get_num_cols(),
         [&](Index column, auto grade, auto notify) {
             reduce_graded_column(matrix, operations, pivots, column, notify, true, true, &workspace);
             if (!emitted[column] && matrix.is_zero(column)) {
@@ -301,6 +300,14 @@ Matrix z2_graded_kernel(Matrix& matrix) {
             }
             return true;
         });
+    };
+    if (dense_pivots) {
+        vec<Index> pivots(matrix.get_num_rows(), Index(-1));
+        traverse(pivots);
+    } else {
+        std::map<Index, Index> pivots;
+        traverse(pivots);
+    }
 
     // Kernel vectors live in the input domain (one row per original column),
     // so they form a separate matrix. empty_like preserves optional grid metadata.
@@ -562,9 +569,92 @@ auto R2GradedSparseMatrix<index, Storage>::graded_kernel() -> R2GradedSparseMatr
     return z2_graded_kernel(*this);
 }
 
+// Optional direct indexing for two-coordinate kernels; other posets retain
+// their own kernel algorithm. The default follows the existing matrix entry point.
+template<class Matrix>
+Matrix graded_kernel_with_pivots(Matrix& matrix, bool dense_pivots = false) {
+    if constexpr (is_bigraded_coordinate_degree<base_degree<Matrix>>::value) {
+        if (dense_pivots) return z2_graded_kernel(matrix, true);
+    }
+    return matrix.graded_kernel();
+}
+
 // ---------------------------------------------------------------------------
 // 3. Linear systems: known-basis substitution and general graded reduction
 // ---------------------------------------------------------------------------
+
+/** Prepare fully reduced target-relation bases at the requested source grades.
+ * At grade g, use precisely the relation columns born at degrees <= g.
+ * The returned bases retain the target row coordinates and can be shared by
+ * maps into the same presented target. Repeated grades are prepared only once.
+ */
+template<class Matrix>
+auto prepare_target_relation_reducers(const Matrix& target_relations,
+                                     const vec<typename Matrix::degree_type>& source_degrees,
+                                     int threads = 1) {
+    using Index = matrix_index_t<Matrix>;
+    using Degree = typename Matrix::degree_type;
+    const auto relation_degrees = geometric_col_degrees(target_relations);
+    std::map<Degree, SparseMatrix<Index>> reducers;
+    vec<typename decltype(reducers)::iterator> jobs;
+    for (const auto& grade : source_degrees) {
+        auto [it, inserted] = reducers.try_emplace(grade, 0, target_relations.get_num_rows());
+        if (inserted) jobs.push_back(it);
+    }
+    parallel_for(jobs.size(), threads, [&](std::size_t i) {
+        auto& [grade, reducer] = *jobs[i];
+        for (Index j = 0; j < target_relations.get_num_cols(); ++j)
+            if (Degree_traits<Degree>::smaller_equal(relation_degrees[j], grade))
+                reducer.append_col(target_relations.get_col(j));
+        reducer.compute_num_cols();
+        reducer.column_reduction();
+    });
+    return reducers;
+}
+
+/** Normalize a map using bases from prepare_target_relation_reducers.
+ * The bases must cover every source column grade and use the map's target
+ * coordinates. Reuse them to give a whole family consistent normal forms.
+ */
+template<class Matrix>
+void normalize_map_modulo_target_relations(Matrix& map,
+        const std::map<typename Matrix::degree_type, SparseMatrix<matrix_index_t<Matrix>>>& reducers) {
+    using Index = matrix_index_t<Matrix>;
+    const auto source_degrees = geometric_col_degrees(map);
+    for (Index c = 0; c < map.get_num_cols(); ++c) {
+        const auto& reducer = reducers.at(source_degrees[c]);
+        GRLINA_DEBUG_CHECK(if (map.get_num_rows() != reducer.get_num_rows())
+            throw std::invalid_argument("Map and target relations require common target coordinates"));
+        auto residual = map.get_col(c);
+        // Fully reduced columns contain no other pivot coordinates, so
+        // the original column determines all required cancellations.
+        for (auto row : map.column(c)) {
+            auto pivot = reducer.pivots.find(row);
+            if (pivot != reducer.pivots.end())
+                Column_traits<vec<Index>, Index>::add_to(reducer.column(pivot->second), residual);
+        }
+        map.set_col(c, std::move(residual));
+    }
+    map.rows_computed = false;
+    map._rows.clear();
+    map.pivots.clear();
+}
+
+/** Replace a graded map in place by its normal form modulo target relations.
+ * For each column of grade g, reduce modulo relation columns of degree <= g.
+ * The difference induces the zero map into coker(target_relations), so the
+ * induced map is unchanged. Shape, grades and target coordinates are preserved.
+ * With fixed target relations this is linear and idempotent; lifts of the same
+ * map have the same normal form. Source-relation compatibility is not checked.
+ * Both matrices must use the same target generator coordinates and must not alias.
+ */
+template<class Matrix>
+void normalize_map_modulo_target_relations(Matrix& map, const Matrix& target_relations) {
+    GRLINA_DEBUG_CHECK(if (map.get_num_rows() != target_relations.get_num_rows())
+        throw std::invalid_argument("Map and target relations require common target coordinates"));
+    const auto reducers = prepare_target_relation_reducers(target_relations, geometric_col_degrees(map));
+    normalize_map_modulo_target_relations(map, reducers);
+}
 
 /** An owned, immutable graded basis prepared for repeated coordinate solves.
  * Ambient rows are normalised once; coefficients retain the original basis
@@ -934,7 +1024,8 @@ struct BigradedReduction {
  */
 template<class Matrix>
 BigradedReduction<Matrix> bigraded_reduce_in_colex_order(Matrix D, Matrix P,
-        const vec<matrix_index_t<Matrix>>& original_columns, bool want_image = false) {
+        const vec<matrix_index_t<Matrix>>& original_columns, bool want_image = false,
+        bool dense_pivots = true) {
     using Index = matrix_index_t<Matrix>;
     using Degree = base_degree<Matrix>;
     static_assert(std::tuple_size_v<typename Matrix::degree_type> == 2, "Expected two parameters");
@@ -949,11 +1040,11 @@ BigradedReduction<Matrix> bigraded_reduce_in_colex_order(Matrix D, Matrix P,
                                      empty_matrix_like(P, Index(0), P.get_num_rows())};
     result.image.row_degrees = D.row_degrees;
     result.kernel_image.row_degrees = P.row_degrees;
-    vec<Index> pivots(D.get_num_rows(), Index(-1));
     vec<Index> pending(D.get_num_cols(), Index(-1));
     vec<bool> emitted(D.get_num_cols(), false);
     GradedReductionWorkspace<Index> workspace;
-    visit_bigraded_columns(D.col_degrees, D.get_num_cols(),
+    auto traverse = [&](auto& pivots) {
+      visit_bigraded_columns(D.col_degrees, D.get_num_cols(),
         [&](Index column, auto grade, auto notify) {
             if (emitted[column]) return true;
             Degree birth{grade.first, grade.second};
@@ -985,6 +1076,14 @@ BigradedReduction<Matrix> bigraded_reduce_in_colex_order(Matrix D, Matrix P,
             }
             return true;
         });
+    };
+    if (dense_pivots) {
+        vec<Index> pivots(D.get_num_rows(), Index(-1));
+        traverse(pivots);
+    } else {
+        std::map<Index, Index> pivots;
+        traverse(pivots);
+    }
     for (Index j = 0; j < D.get_num_cols(); ++j)
         if (pending[j] != Index(-1)) result.image.move_col_from(pending[j], D, j);
     result.image.compatibly_sorted = std::is_sorted(result.image.row_degrees.begin(),
@@ -1000,14 +1099,15 @@ BigradedReduction<Matrix> bigraded_reduce_in_colex_order(Matrix D, Matrix P,
  * retain their original target bases.
  */
 template<class Matrix>
-BigradedReduction<Matrix> bigraded_reduce(Matrix D, Matrix P, bool want_image = false) {
+BigradedReduction<Matrix> bigraded_reduce(Matrix D, Matrix P, bool want_image = false,
+                                        bool dense_pivots = true) {
     using Degree = base_degree<Matrix>;
     if constexpr (matrix_grid_backed_v<Matrix>) merge_grids(D, P);
     if (D.get_num_cols() != P.get_num_cols() || D.col_degrees != P.col_degrees)
         throw std::invalid_argument("Joint graded reduction requires the same domain");
     auto order = D.sort_columns_with_permutation(Degree_traits<Degree>::colex_order).new_to_old;
     P.permute_columns_graded(order);
-    return bigraded_reduce_in_colex_order(std::move(D), std::move(P), order, want_image);
+    return bigraded_reduce_in_colex_order(std::move(D), std::move(P), order, want_image, dense_pivots);
 }
 
 /** Semi-minimal generators of a bigraded matrix image, in its original rows. */
@@ -1021,7 +1121,8 @@ Matrix bigraded_image_generators(Matrix matrix) {
 /** Reduce [left right], projecting its kernel onto one domain summand. */
 template<class Matrix>
 BigradedReduction<Matrix> bigraded_reduce_pair(Matrix left, Matrix right,
-                                              bool project_left, bool want_image = false) {
+                                              bool project_left, bool want_image = false,
+                                              bool dense_pivots = true) {
     using Index = matrix_index_t<Matrix>;
     if constexpr (matrix_grid_backed_v<Matrix>) merge_grids(left, right);
     if (left.get_num_rows() != right.get_num_rows() || left.row_degrees != right.row_degrees)
@@ -1033,7 +1134,36 @@ BigradedReduction<Matrix> bigraded_reduce_pair(Matrix left, Matrix right,
     projection.col_degrees = left.col_degrees;
     projection.row_degrees = std::move(selected_degrees);
     for (Index j = 0; j < projection.get_num_rows(); ++j) projection.set_col(offset+j, vec<Index>{j});
-    return bigraded_reduce(std::move(left), std::move(projection), want_image);
+    return bigraded_reduce(std::move(left), std::move(projection), want_image, dense_pivots);
+}
+
+/** Generators of map^-1(im submodule), modulo the supplied target relations.
+ * Over F2, D = [map submodule presentation]. Only the map-domain coordinates
+ * of ker D are needed. Carrying their projection through the same reduction
+ * avoids constructing the other coordinates of a full kernel basis.
+ */
+template<class Matrix>
+Matrix inverse_image_generators(const Matrix& map, const Matrix& presentation,
+                                const Matrix& submodule, bool projected = false,
+                                bool dense_pivots = false) {
+    if constexpr (is_bigraded_coordinate_degree<base_degree<Matrix>>::value) {
+        if (projected) {
+            Matrix right = submodule;
+            right.append_matrix(presentation);
+            return bigraded_reduce_pair(map, std::move(right), true, false, dense_pivots).kernel_image;
+        }
+    }
+    if (dense_pivots) {
+        Matrix combined = map;
+        const auto domain = combined.get_num_cols();
+        combined.append_matrix(submodule);
+        combined.append_matrix(presentation);
+        auto result = graded_kernel_with_pivots(combined, true);
+        result.cull_columns(domain, false);
+        return result;
+    } else {
+        return map.inverse_image_copy(presentation, submodule);
+    }
 }
 
 template<class Matrix>

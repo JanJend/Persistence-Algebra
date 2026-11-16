@@ -204,9 +204,11 @@ public:
 
     /** PNG bytes in memory. Width/height count heatmap pixels; labels add margins.
      * Automatic bounds include padding (a fraction of each axis span).
+     * Axis captions are empty unless supplied explicitly.
      */
     vec<unsigned char> hilbert_function_image(std::size_t width = 800,
-        std::size_t height = 600, double padding = 0.05) const;
+        std::size_t height = 600, double padding = 0.05,
+        const std::string& x_label = "", const std::string& y_label = "") const;
 
     /** PNG restricted to the supplied axes' range, without padding.
      * All induced-grid changes inside that range remain visible.
@@ -214,7 +216,8 @@ public:
     template <typename Degree = degree_type>
     vec<unsigned char> hilbert_function_image(const vec<typename Degree::value_type>& xs,
         const vec<typename Degree::value_type>& ys,
-        std::size_t width = 800, std::size_t height = 600) const;
+        std::size_t width = 800, std::size_t height = 600,
+        const std::string& x_label = "", const std::string& y_label = "") const;
 
     void print_presentation(bool suppress_description = false) const {
         presentation().print_graded(suppress_description);

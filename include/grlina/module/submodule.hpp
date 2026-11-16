@@ -199,7 +199,7 @@ public:
     /** Exact minimization modulo the parent relations, with optional cheap
      * preprocessing (enabled by default). Pass false to use syzygies directly.
      */
-    void minimize_generators(bool lazy_preprocessing = true) {
+    void minimize_generators(bool lazy_preprocessing = true, bool dense_kernel_pivots = false) {
         if constexpr (has_matrix_graded_kernel<Matrix>::value) {
             this->proj_res_.clear();
             this->res_complete_ = false;
@@ -209,7 +209,7 @@ public:
             Matrix ambient = parent()->presentation();
             const index_type relations = ambient.get_num_cols();
             ambient.append_matrix(generators);
-            Matrix syzygies = ambient.graded_kernel();
+            Matrix syzygies = graded_kernel_with_pivots(ambient, dense_kernel_pivots);
             vec<index_type> redundant_generators;
             while (true) {
                 index_type c = -1, r = -1;
@@ -258,28 +258,36 @@ public:
         return contains(other) && other.contains(*this);
     }
 
-    Submodule sum(const Submodule& other) const {
+    Submodule sum(const Submodule& other, bool dense_kernel_pivots = false) const {
         GRLINA_DEBUG_CHECK(if (parent().get() != other.parent().get())
             throw std::invalid_argument("Submodule sum requires the same parent object"));
         Matrix combined = generator_matrix();
         combined.append_matrix(other.generator_matrix());
         Submodule result(parent(), std::move(combined));
-        result.minimize_generators();
+        result.minimize_generators(true, dense_kernel_pivots);
         return result;
     }
 
     /** Intersection computed by the shared CRTP pullback/kernel construction. */
-    Submodule intersection(const Submodule& other, bool minimize = true) const {
+    Submodule intersection(const Submodule& other, bool minimize = true,
+                           bool projected_preimage = false, bool dense_kernel_pivots = false) const {
         GRLINA_DEBUG_CHECK(if (parent().get() != other.parent().get())
             throw std::invalid_argument("Submodule intersection requires the same parent object"));
         if constexpr (!has_matrix_graded_kernel<Matrix>::value) {
             // Jan: implement the poset-specific graded kernel.
             throw std::logic_error("Intersection requires a poset-specific graded_kernel");
         } else {
-            Matrix intersection_generators = parent()->presentation().submodule_intersection(
-                generator_matrix(), other.generator_matrix());
+            Matrix intersection_generators;
+            if (projected_preimage || dense_kernel_pivots) {
+                intersection_generators = generator_matrix() * inverse_image_generators(
+                    generator_matrix(), parent()->presentation(), other.generator_matrix(),
+                    projected_preimage, dense_kernel_pivots);
+            } else {
+                intersection_generators = parent()->presentation().submodule_intersection(
+                    generator_matrix(), other.generator_matrix());
+            }
             Submodule result(parent(), std::move(intersection_generators));
-            if (minimize) result.minimize_generators();
+            if (minimize) result.minimize_generators(true, dense_kernel_pivots);
             return result;
         }
     }

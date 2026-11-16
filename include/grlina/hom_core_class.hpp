@@ -95,6 +95,17 @@ public:
      * computes missing components through the common stored resolution length.
      */
     const std::vector<Matrix>& resolution_maps() const noexcept { return resolution_maps_; }
+    /** Edit the stored generator matrix without copying. Mutable access discards
+     * higher lifts and identity certificates, which edits could invalidate.
+     * Finish edits before computing new lifts or otherwise using this map.
+     * Use a const homomorphism (or std::as_const) for read-only access.
+     */
+    Matrix& generator_lift() {
+        resolution_maps_.resize(1);
+        id_matrix_ = false;
+        identity_lift_count_ = 0;
+        return resolution_maps_[0];
+    }
     const Matrix& generator_lift() const { return resolution_maps_[0]; }
     /** True means identity coefficients, not necessarily an identity map:
      * endpoints and generator degrees may differ. This is a construction
@@ -250,7 +261,8 @@ public:
     }
 
     /** Image of a submodule under this homomorphism. */
-    submodule_type image(const submodule_type& submodule, bool minimize = true) const {
+    submodule_type image(const submodule_type& submodule, bool minimize = true,
+                         bool dense_kernel_pivots = false) const {
         GRLINA_DEBUG_CHECK(if (submodule.parent().get() != domain().get())
             throw std::invalid_argument("Image submodule belongs to a different domain module"));
         Matrix generators = id_matrix_ ? submodule.generator_map().generator_lift()
@@ -262,21 +274,23 @@ public:
                                                     geometric_row_degrees(generator_lift()));
         }
         submodule_type result(target_, std::move(generators));
-        if (minimize) result.minimize_generators();
+        if (minimize) result.minimize_generators(true, dense_kernel_pivots);
         return result;
     }
 
-    submodule_type preimage(const submodule_type& submodule, bool minimize = true) const {
+    submodule_type preimage(const submodule_type& submodule, bool minimize = true,
+                            bool projected_preimage = false, bool dense_kernel_pivots = false) const {
         GRLINA_DEBUG_CHECK(if (submodule.parent().get() != target_.get())
             throw std::invalid_argument("Preimage submodule belongs to a different target module"));
         if constexpr (!has_matrix_graded_kernel<Matrix>::value) {
             // Jan: implement the poset-specific graded kernel.
             throw std::logic_error("Preimage requires a poset-specific graded_kernel");
         } else {
-            Matrix generators = generator_lift().inverse_image_copy(
-                target_->presentation(), submodule.generator_map().generator_lift());
+            Matrix generators = inverse_image_generators(generator_lift(),
+                target_->presentation(), submodule.generator_map().generator_lift(),
+                projected_preimage, dense_kernel_pivots);
             submodule_type result(domain(), std::move(generators));
-            if (minimize) result.minimize_generators();
+            if (minimize) result.minimize_generators(true, dense_kernel_pivots);
             return result;
         }
     }

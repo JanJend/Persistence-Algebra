@@ -88,9 +88,9 @@ void square_root_x(Module& module) {
 inline void validate_size(std::size_t width, std::size_t height) {
     if (width < 2 || height < 2 ||
         width > static_cast<std::size_t>(std::numeric_limits<int>::max() / 4 - 265) ||
-        height > static_cast<std::size_t>(std::numeric_limits<int>::max() - 185))
+        height > static_cast<std::size_t>(std::numeric_limits<int>::max() - 115))
         throw std::invalid_argument("Image needs width and height >= 2, within PNG limits");
-    if ((width + 265) * 4 + 1 > static_cast<std::size_t>(std::numeric_limits<int>::max()) / (height + 185))
+    if ((width + 265) * 4 + 1 > static_cast<std::size_t>(std::numeric_limits<int>::max()) / (height + 115))
         throw std::invalid_argument("Image exceeds the PNG encoder's size limit");
 }
 
@@ -102,8 +102,8 @@ std::vector<Scalar> uniform_axis(Scalar low, Scalar high, std::size_t count) {
     return axis;
 }
 
-/** Draw uniformly sampled values, with coordinate labels, a colour bar and title.
- * Width/height count heatmap pixels; labels add 265 x 185 pixels.
+/** Draw uniformly sampled values, with ticks, a colour bar and optional captions.
+ * Width/height count heatmap pixels; margins add 265 x 115 pixels.
  * Hilbert dimensions use logarithmic colours; landscape heights use linear colours.
  */
 template <typename Scalar, typename Value>
@@ -111,10 +111,11 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
     const std::vector<std::vector<Value>>& values, const std::string& title,
     const std::string& value_label, bool logarithmic,
     long double positive_min = 0, long double positive_max = 0,
-    ColourMap colormap = ColourMap::blue) {
+    ColourMap colormap = ColourMap::blue,
+    const std::string& x_label = "", const std::string& y_label = "") {
     validate_size(xs.size(), ys.size());
     const int w = static_cast<int>(xs.size()), h = static_cast<int>(ys.size());
-    const int left = 100, top = 85, width = left+w+165, height = top+h+100;
+    const int left = 100, top = 45, width = left+w+165, height = top+h+70;
     std::vector<unsigned char> pixels(static_cast<std::size_t>(width)*height*4, 255);
     auto pixel = [&](int x, int y, std::array<unsigned char,3> colour) {
         if (x < 0 || y < 0 || x >= width || y >= height) return;
@@ -130,7 +131,9 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
     CGContextSetRGBFillColor(context.get(), 0.15, 0.17, 0.20, 1);
 #endif
     // align = 0: left, 0.5: centred, 1: right; y is the top of the text.
-    auto text = [&](double x, double y, const std::string& label, int size = 14, double align = 0) {
+    auto text = [&](double x, double y, const std::string& label, int size = 14,
+                    double align = 0, bool vertical = false) {
+        if (label.empty()) return;
 #ifdef GRLINA_HILBERT_CORETEXT
         auto font = CTFontCreateWithName(CFSTR("Helvetica"), size, nullptr);
         const void* keys[] = {kCTFontAttributeName, kCTForegroundColorFromContextAttributeName};
@@ -142,18 +145,29 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
         auto line = CTLineCreateWithAttributedString(styled);
         CGFloat ascent = 0;
         const double advance = CTLineGetTypographicBounds(line, &ascent, nullptr, nullptr);
-        CGContextSetTextPosition(context.get(), x-align*advance, height-y-ascent);
+        CGContextSaveGState(context.get());
+        if (vertical) {
+            CGContextTranslateCTM(context.get(), x, height-y);
+            CGContextRotateCTM(context.get(), std::acos(-1.0)/2);
+            CGContextSetTextPosition(context.get(), -align*advance, -ascent);
+        } else {
+            CGContextSetTextPosition(context.get(), x-align*advance, height-y-ascent);
+        }
         CTLineDraw(line, context.get());
+        CGContextRestoreGState(context.get());
         CFRelease(line); CFRelease(styled); CFRelease(string); CFRelease(attributes); CFRelease(font);
 #else
         const int scale = std::max(1, size/7);
-        x -= align * (label.size()*6-1)*scale;
+        if (vertical) y += align * (label.size()*6-1)*scale;
+        else x -= align * (label.size()*6-1)*scale;
         for (char c : label) {
             const auto* glyph = hilbert_glyph(c);
             for (int col=0; col<5; ++col) for (int row=0; row<7; ++row)
                 if (glyph[col] & (1<<row)) for (int dx=0; dx<scale; ++dx) for (int dy=0; dy<scale; ++dy)
-                    pixel(std::lround(x)+col*scale+dx,std::lround(y)+row*scale+dy,{38,43,51});
-            x += 6*scale;
+                    pixel(std::lround(x)+(vertical ? row*scale+dy : col*scale+dx),
+                          std::lround(y)+(vertical ? -col*scale-dx : row*scale+dy),{38,43,51});
+            if (vertical) y -= 6*scale;
+            else x += 6*scale;
         }
 #endif
     };
@@ -192,7 +206,6 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
     };
     frame(left-1,top-1,w+1,h+1);
     text(left+w/2.0,16,title,22,0.5);
-    text(left+w/2.0,49,"Max "+value_label+": "+number(maximum),14,0.5);
     // Rounded ticks, positioned in coordinate space rather than at grid indices.
     auto ticks = [&](double low, double high, bool horizontal) {
         const double raw = (high-low)/4;
@@ -214,8 +227,8 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
     };
     ticks(xs.front(),xs.back(),true);
     ticks(ys.front(),ys.back(),false);
-    text(left+w/2.0,top+h+43,"X",18,0.5);
-    text(16,top+h/2.0-10,"Y",18);
+    text(left+w/2.0,top+h+43,x_label,18,0.5);
+    text(16,top+h/2.0,y_label,18,0.5,true);
     const int bar = left+w+35, bar_width = 20;
     text(bar-4,top-29,value_label,14);
     for (int y=0; y<h; ++y) for (int x=0; x<bar_width; ++x)
@@ -243,12 +256,6 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
         previous = y;
     }
     if (colour_ticks.empty()) text(bar+bar_width+11,top+h/2.0-8,number(std::max(0.0L,positive_max)));
-    // A separate swatch makes zero explicit without including it in log space.
-    for (int x=1; x<12; ++x) for (int y=1; y<12; ++y)
-        pixel(left+x,top+h+77+y,zero_colour);
-    frame(left,top+h+77,12,12);
-    text(left+21,top+h+75,colormap == ColourMap::blue ? "White: 0" : "Black: 0",12);
-    text(left+w,top+h+75,logarithmic ? "Log colour scale" : "Linear colour scale",12,1);
 #ifdef GRLINA_HILBERT_CORETEXT
     CGContextFlush(context.get());
 #endif
@@ -267,7 +274,8 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
 
 /** Draw a Hilbert function as PNG bytes, without opening a file.
  * xs/ys select the visible range; the full numerical table is sampled at
- * equidistant pixels by coordinate predecessors. Labels add 265 x 185 pixels.
+ * equidistant pixels by coordinate predecessors. Margins add 265 x 115 pixels.
+ * Axis captions and the title are empty by default.
  * Zero colour limits select the logarithmic scale automatically; shared
  * positive_min/max allow comparison across images.
  * Define STB_IMAGE_WRITE_IMPLEMENTATION before any grlina include in one .cpp.
@@ -278,7 +286,8 @@ std::vector<unsigned char> hilbert_function_image(const Function& function,
     const std::vector<Scalar>& xs, const std::vector<Scalar>& ys,
     std::size_t heatmap_width = 800, std::size_t heatmap_height = 600,
     long double positive_min = 0, long double positive_max = 0,
-    const std::string& title = "Hilbert function") {
+    const std::string& title = "",
+    const std::string& x_label = "", const std::string& y_label = "") {
     image_detail::validate_size(heatmap_width, heatmap_height);
     if (xs.empty() || ys.empty()) throw std::invalid_argument("Hilbert image axes must be nonempty");
     hilbert_detail::validate_axis(xs);
@@ -287,7 +296,8 @@ std::vector<unsigned char> hilbert_function_image(const Function& function,
         image_detail::uniform_axis<long double>(xs.front(), xs.back(), heatmap_width),
         image_detail::uniform_axis<long double>(ys.front(), ys.back(), heatmap_height));
     return image_detail::heatmap_image(grid.x_grid, grid.y_grid, grid.values,
-                                       title, "Dimension", true, positive_min, positive_max);
+                                       title, "Dimension", true, positive_min, positive_max,
+                                       ColourMap::blue, x_label, y_label);
 }
 
 /** Render within the numerical table's coordinate range, without padding. */
@@ -295,15 +305,17 @@ template <typename Function>
 std::vector<unsigned char> hilbert_function_image(const Function& function,
     std::size_t width = 800, std::size_t height = 600,
     long double positive_min = 0, long double positive_max = 0,
-    const std::string& title = "Hilbert function") {
+    const std::string& title = "",
+    const std::string& x_label = "", const std::string& y_label = "") {
     if (function.x_grid.empty() || function.y_grid.empty()) {
         auto xs = function.x_grid, ys = function.y_grid;
         if (xs.empty()) xs.push_back(0);
         if (ys.empty()) ys.push_back(0);
-        return hilbert_function_image(function, xs, ys, width, height, positive_min, positive_max, title);
+        return hilbert_function_image(function, xs, ys, width, height, positive_min, positive_max,
+                                      title, x_label, y_label);
     }
     return hilbert_function_image(function, function.x_grid, function.y_grid,
-                                  width, height, positive_min, positive_max, title);
+                                  width, height, positive_min, positive_max, title, x_label, y_label);
 }
 
 /** Write existing PNG bytes only when explicitly requested. */

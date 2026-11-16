@@ -8,11 +8,13 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <iostream>
 #include <iterator>
 #include <mutex>
 #include <numeric>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -31,6 +33,24 @@ template <typename T>
 using pair = std::pair<T, T>;
 template <typename T>
 using set = std::set<T>;
+
+/** Run independent indexed jobs with bounded workers; join before propagating errors. */
+template<class Function>
+void parallel_for(std::size_t count, int threads, Function&& function) {
+    if (threads < 1) throw std::invalid_argument("Thread count must be positive");
+    if (count == 0) return;
+    const auto workers = std::min(count, static_cast<std::size_t>(threads));
+    auto run = [&](std::size_t worker) {
+        for (std::size_t i = worker; i < count; i += workers) function(i);
+    };
+    // ponytail: launch per batch; add a persistent pool only if launch cost matters.
+    std::vector<std::future<void>> pending;
+    pending.reserve(workers - 1);
+    for (std::size_t worker = 1; worker < workers; ++worker)
+        pending.push_back(std::async(std::launch::async, run, worker));
+    run(0);
+    for (auto& worker : pending) worker.get();
+}
 
 // Declare array formatting before the container formatters so nested degree
 // containers also find it through ordinary lookup (std::array has no grlina ADL).

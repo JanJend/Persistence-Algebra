@@ -92,13 +92,14 @@ struct Landscape {
         double maximum = 0;
 
         // Recolour/re-render an already computed grid, with no algebra work.
-        vec<unsigned char> image(ColourMap colormap = ColourMap::blue, double colour_maximum = 0) const {
+        vec<unsigned char> image(ColourMap colormap = ColourMap::blue, double colour_maximum = 0,
+            const std::string& x_label = "", const std::string& y_label = "") const {
             if (!std::isfinite(colour_maximum) || colour_maximum < 0)
                 throw std::invalid_argument("Landscape colour maximum must be finite and nonnegative");
             const auto xs = image_detail::uniform_axis(bounds[0], bounds[2], values.size());
             const auto ys = image_detail::uniform_axis(bounds[1], bounds[3], values.empty() ? 0 : values.front().size());
             return image_detail::heatmap_image(xs, ys, values,
-                "Landscape layer " + std::to_string(layer), "Height", false, 0, colour_maximum, colormap);
+                "", "Height", false, 0, colour_maximum, colormap, x_label, y_label);
         }
     };
     struct Image {
@@ -278,14 +279,16 @@ public:
 
     Image image_with_data(std::size_t layer = 1, std::size_t width = 800, std::size_t height = 600,
                           ColourMap colormap = ColourMap::blue, double colour_maximum = 0,
-                          bool include_values = false) const {
+                          bool include_values = false,
+                          const std::string& x_label = "", const std::string& y_label = "") const {
         auto grid = sample_grid(layer, width, height);
-        auto png = grid.image(colormap, colour_maximum);
+        auto png = grid.image(colormap, colour_maximum, x_label, y_label);
         return {std::move(png), grid.maximum, include_values ? std::move(grid.values) : array<double>{}};
     }
 
     /** PNG bytes for one layer (1-based), without creating a file.
-     * Width/height count heatmap pixels; labels add 265 x 185 pixels.
+     * Width/height count heatmap pixels; margins add 265 x 115 pixels.
+     * Axis captions are empty by default.
      * Evaluate barcodes on lines through the pixels; reuse cached lines and update
      * persistence across additional lines. No cross-slice interpolation. Colours are linear in height.
      * A positive colour_maximum fixes the scale to [0,colour_maximum] for comparison;
@@ -295,8 +298,9 @@ public:
      */
     vec<unsigned char> image(std::size_t layer = 1, std::size_t width = 800,
                              std::size_t height = 600, ColourMap colormap = ColourMap::blue,
-                             double colour_maximum = 0) const {
-        return image_with_data(layer, width, height, colormap, colour_maximum).png;
+                             double colour_maximum = 0,
+                             const std::string& x_label = "", const std::string& y_label = "") const {
+        return image_with_data(layer, width, height, colormap, colour_maximum, false, x_label, y_label).png;
     }
 
     // Export barcodes on the output grid's lines and their direct CSV/SVG samples.

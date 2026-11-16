@@ -11,6 +11,16 @@ using namespace graded_linalg;
 
 template<class Index>
 void columns() {
+    // Mod-2 normalization must also accept the default compact columns.
+    for (const auto& [entries, expected] : vec<std::pair<vec<Index>, vec<Index>>>{
+            {{}, {}}, {{2}, {2}}, {{1, 1}, {}}, {{0, 0, 1, 1, 1, 2, 3, 3}, {1, 2}}}) {
+        CompactColumn<Index> compact(entries);
+        auto vector = entries;
+        convert_mod_2(vector);
+        convert_mod_2(compact);
+        assert(vector == expected);
+        assert(vec<Index>(compact.begin(), compact.end()) == expected);
+    }
     std::mt19937 random(42);
     for (int repeat = 0; repeat < 500; ++repeat) {
         vec<Index> a, b;

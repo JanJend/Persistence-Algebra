@@ -81,9 +81,9 @@ int main(int argc, char** argv) {
     if (argc < 2) {
         std::cerr << "Usage: landscape_image input.scc [width height] [--layer K] "
                      "[--bounds xmin ymin xmax ymax] [--direction vx vy] [--resolution relative_spacing] "
-                     "[--colormap blue|inferno] [--scale MAX] [--maximum-only] [--json] [--include-values] "
+                     "[--colormap blue|inferno] [--scale MAX] [--x-label caption] [--y-label caption] [--maximum-only] [--json] [--include-values] "
                      "[--values-only] [--no-vineyard] [--sqrt-x]\n"
-                     "       landscape_image --render-values [--colormap blue|inferno] [--scale MAX] [--json]\n"
+                     "       landscape_image --render-values [--colormap blue|inferno] [--scale MAX] [--x-label caption] [--y-label caption] [--json]\n"
                      "JSON output includes the sampled maximum; --render-values reads a grid JSON from stdin.\n"
                      "--sqrt-x reparameterizes squared-radius input to radius before sampling; bounds and direction use displayed coordinates.\n";
         return 1;
@@ -95,6 +95,7 @@ int main(int argc, char** argv) {
         bool maximum_only = false;
         bool json_output = false, include_values = false, values_only = false, vineyard = true;
         bool sqrt_x = false;
+        std::string x_label, y_label;
         const bool render_values = std::string(argv[1]) == "--render-values";
         graded_linalg::ColourMap colormap = graded_linalg::ColourMap::blue;
         graded_linalg::r2degree direction{1, 1};
@@ -136,6 +137,8 @@ int main(int argc, char** argv) {
                 for (auto& value : direction) value = number();
             } else if (option == "--resolution") resolution = number();
             else if (option == "--colormap") colormap = graded_linalg::parse_colourmap(next());
+            else if (option == "--x-label") x_label = next();
+            else if (option == "--y-label") y_label = next();
             else if (option == "--scale") {
                 colour_maximum = number();
                 if (colour_maximum <= 0)
@@ -167,7 +170,7 @@ int main(int argc, char** argv) {
             std::cout << std::setprecision(17) << grid.maximum << '\n';
             return std::cout ? 0 : 1;
         }
-        const auto png = values_only ? std::vector<unsigned char>{} : grid.image(colormap, colour_maximum);
+        const auto png = values_only ? std::vector<unsigned char>{} : grid.image(colormap, colour_maximum, x_label, y_label);
         std::cout.rdbuf(output);
         if (json_output) {
             write_grid(grid, include_values, png);

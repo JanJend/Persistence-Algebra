@@ -23,6 +23,8 @@ static_assert(std::is_same_v<Mod, PersistenceModule<Mat>>);
 static_assert(std::is_same_v<Hom, ModuleMorphism<Mat>>);
 static_assert(std::is_nothrow_move_constructible_v<Mat>);
 static_assert(std::is_nothrow_move_constructible_v<R2GradedSparseMatrix<int, CSCStorage<int>>>);
+static_assert(std::is_same_v<decltype(std::declval<Hom&>().generator_lift()), Mat&>);
+static_assert(std::is_same_v<decltype(std::declval<const Hom&>().generator_lift()), const Mat&>);
 
 struct CopyCountingMatrix : GradedSparseMatrix<CoordinateDegree<double, 2>, int, CopyCountingMatrix> {
     using Base = GradedSparseMatrix<CoordinateDegree<double, 2>, int, CopyCountingMatrix>;
@@ -96,7 +98,7 @@ void test_homomorphisms() {
     resolved->compute_projective_resolution();
     Hom I = Hom::identity(resolved);
     assert(I.resolution_maps().size() == 3 && I.check_lifts());
-    Hom J(resolved, resolved, I.generator_lift());
+    Hom J(resolved, resolved, std::as_const(I).generator_lift());
     J.lift_to_resolution();
     assert(J.resolution_maps().size() == 3 && J.check_lifts());
     auto composed = I.compose(J);
@@ -720,7 +722,164 @@ void test_minimization_preserves_injective_storage() {
     assert(edited.inj_res_.empty());
 }
 
+template<class Matrix>
+void test_mutable_generator_lift() {
+    auto module = std::make_shared<Module<Matrix>>(
+        Matrix(1, 1, {{0}}, {{1,1}}, {{0,0}}));
+    module->compute_projective_resolution();
+    auto map = Homomorphism<Matrix>::identity(module);
+    const auto& read_only = map;
+    const auto lift_count = read_only.resolution_maps().size();
+    const auto* storage = read_only.generator_lift().data.data();
+    assert(lift_count > 1 && map.id_matrix()); // Const access preserves certificates.
+
+    Matrix& edit = map.generator_lift();
+    assert(&edit == &read_only.resolution_maps()[0]);
+    assert(edit.data.data() == storage); // Borrow the original allocation.
+    assert(!map.id_matrix() && read_only.resolution_maps().size() == 1);
+    edit.clear_col(0);
+    assert(read_only.generator_lift().get_col(0).empty());
+    const auto composed = Homomorphism<Matrix>::identity(module).compose(map);
+    assert(composed.generator_lift().get_col(0).empty()); // No stale identity shortcut.
+    map.lift_to_resolution();
+    assert(read_only.resolution_maps().size() == lift_count && map.check_lifts());
+}
+
+// Independent oracle: y0 + y1 is a target relation born at (1,1).
+// Maps from an early free generator remain distinct; maps from a later one
+// agree as module maps, although their generator matrices differ.
+template<class Matrix>
+void test_homomorphism_quotient_coordinates() {
+    std::shared_ptr<const Module<Matrix>> target = std::make_shared<const Module<Matrix>>(
+        Matrix(R2GradedSparseMatrix<int>(1, 2, {{0,1}}, {{1,1}}, {{0,0},{0,0}})));
+    for (double birth : {0.0, 2.0}) {
+        std::shared_ptr<const Module<Matrix>> source = std::make_shared<const Module<Matrix>>(
+            Matrix(R2GradedSparseMatrix<int>(0, 1, {}, {}, {{birth,birth}})));
+        Homomorphism<Matrix> first(source, target,
+            Matrix(R2GradedSparseMatrix<int>(1, 2, {{0}}, {{birth,birth}}, {{0,0},{0,0}})));
+        Homomorphism<Matrix> second(source, target,
+            Matrix(R2GradedSparseMatrix<int>(1, 2, {{1}}, {{birth,birth}}, {{0,0},{0,0}})));
+        std::vector<Homomorphism<Matrix>> maps{first, second, first + second};
+        std::vector<Homomorphism<Matrix>> basis = homomorphism_quotient_basis(maps, {});
+        assert(basis.size() == (birth == 0 ? 2 : 1));
+        SparseMatrix<std::ptrdiff_t> coordinates = homomorphism_quotient_coordinates(basis, maps);
+        assert(coordinates.get_col(0) == std::vector<std::ptrdiff_t>({0}));
+        if (birth == 0) {
+            assert(coordinates.get_col(1) == std::vector<std::ptrdiff_t>({1}));
+            assert(coordinates.get_col(2) == std::vector<std::ptrdiff_t>({0,1}));
+            rejects([&] { homomorphism_quotient_coordinates<Matrix>({first}, {second}); });
+        } else {
+            assert(coordinates.get_col(1) == std::vector<std::ptrdiff_t>({0}));
+            assert(coordinates.get_col(2).empty());
+            assert(homomorphism_quotient_basis<Matrix>(maps, {first}).empty());
+            assert(homomorphism_quotient_coordinates<Matrix>({}, maps, {first}).get_num_rows() == 0);
+        }
+        // The same vector may be supplied as both the basis and the query.
+        SparseMatrix<std::ptrdiff_t> identity = homomorphism_quotient_coordinates(basis, basis);
+        for (std::ptrdiff_t j = 0; j < identity.get_num_cols(); ++j)
+            assert(identity.get_col(j) == std::vector<std::ptrdiff_t>({j}));
+        assert(first.generator_lift().get_col(0) == std::vector<int>({0}));
+        assert(second.generator_lift().get_col(0) == std::vector<int>({1}));
+    }
+
+    // Two incomparable free generators: End(X) is diagonal. In Q the two
+    // off-diagonal maps survive. Left composition selects their target;
+    // right composition selects their source, giving different action tables.
+    std::shared_ptr<const Module<Matrix>> module = std::make_shared<const Module<Matrix>>(
+        Matrix(R2GradedSparseMatrix<int>(0, 2, {}, {}, {{0,1},{1,0}})));
+    typename Matrix::degree_type delta{2,2};
+    Homomorphism<Matrix> eta = Homomorphism<Matrix>::canonical_shift(module, delta);
+    std::vector<Homomorphism<Matrix>> endomorphisms{
+        Homomorphism<Matrix>(module, module,
+            Matrix(R2GradedSparseMatrix<int>(2, 2, {{0},{}}, {{0,1},{1,0}}, {{0,1},{1,0}}))),
+        Homomorphism<Matrix>(module, module,
+            Matrix(R2GradedSparseMatrix<int>(2, 2, {{},{1}}, {{0,1},{1,0}}, {{0,1},{1,0}})))};
+    std::vector<Homomorphism<Matrix>> quotient_basis{
+        Homomorphism<Matrix>(module, eta.target(),
+            Matrix(R2GradedSparseMatrix<int>(2, 2, {{1},{}}, {{0,1},{1,0}}, {{-2,-1},{-1,-2}}))),
+        Homomorphism<Matrix>(module, eta.target(),
+            Matrix(R2GradedSparseMatrix<int>(2, 2, {{},{0}}, {{0,1},{1,0}}, {{-2,-1},{-1,-2}})))};
+    assert(End_d_0(eta, endomorphisms).size() == 2);
+    std::vector<Homomorphism<Matrix>> quotient_subspace;
+    for (const Homomorphism<Matrix>& endomorphism : endomorphisms)
+        quotient_subspace.push_back(endomorphism.compose(eta));
+    std::vector<SparseMatrix<std::ptrdiff_t>> left_actions =
+        endomorphism_composition_action(quotient_basis, endomorphisms, delta, true, quotient_subspace);
+    std::vector<SparseMatrix<std::ptrdiff_t>> right_actions =
+        endomorphism_composition_action(quotient_basis, endomorphisms, delta, false, quotient_subspace);
+    assert(left_actions.size() == 2 && right_actions.size() == 2);
+    assert(left_actions[0].get_col(0).empty());
+    assert(left_actions[0].get_col(1) == std::vector<std::ptrdiff_t>({1}));
+    assert(left_actions[1].get_col(0) == std::vector<std::ptrdiff_t>({0}));
+    assert(left_actions[1].get_col(1).empty());
+    assert(right_actions[0].get_col(0) == std::vector<std::ptrdiff_t>({0}));
+    assert(right_actions[0].get_col(1).empty());
+    assert(right_actions[1].get_col(0).empty());
+    assert(right_actions[1].get_col(1) == std::vector<std::ptrdiff_t>({1}));
+
+    // With W=0, H has all four matrix units as a basis. The two diagonal
+    // maps must survive too; implicitly dividing by eta End(X) would kill them.
+    std::vector<Homomorphism<Matrix>> full_hom_basis = quotient_subspace;
+    full_hom_basis.insert(full_hom_basis.end(), quotient_basis.begin(), quotient_basis.end());
+    std::vector<SparseMatrix<std::ptrdiff_t>> left_hom_actions =
+        endomorphism_composition_action(full_hom_basis, endomorphisms, delta, true);
+    std::vector<SparseMatrix<std::ptrdiff_t>> right_hom_actions =
+        endomorphism_composition_action(full_hom_basis, endomorphisms, delta, false);
+    const std::array<std::size_t,4> target_generator{0,1,1,0}, source_generator{0,1,0,1};
+    for (std::size_t g = 0; g < endomorphisms.size(); ++g) {
+        for (std::size_t j = 0; j < full_hom_basis.size(); ++j) {
+            assert(left_hom_actions[g].get_col(j) == (target_generator[j] == g
+                ? std::vector<std::ptrdiff_t>{std::ptrdiff_t(j)} : std::vector<std::ptrdiff_t>{}));
+            assert(right_hom_actions[g].get_col(j) == (source_generator[j] == g
+                ? std::vector<std::ptrdiff_t>{std::ptrdiff_t(j)} : std::vector<std::ptrdiff_t>{}));
+        }
+    }
+
+    // Also allow a different invariant W: quotient out just the matrix unit
+    // mapping source generator 0 to target generator 1. The quotient has dim 3.
+    std::vector<Homomorphism<Matrix>> smaller_module_basis{
+        full_hom_basis[0], full_hom_basis[1], full_hom_basis[3]};
+    const std::array<std::size_t,3> remaining_matrix_units{0,1,3};
+    for (bool left_action : {false, true}) {
+        std::vector<SparseMatrix<std::ptrdiff_t>> smaller_actions = endomorphism_composition_action(
+            smaller_module_basis, endomorphisms, delta, left_action, {quotient_basis[0]});
+        for (std::size_t g = 0; g < endomorphisms.size(); ++g) {
+            for (std::size_t j = 0; j < smaller_module_basis.size(); ++j) {
+                std::size_t generator = left_action
+                    ? target_generator[remaining_matrix_units[j]] : source_generator[remaining_matrix_units[j]];
+                assert(smaller_actions[g].get_col(j) == (generator == g
+                    ? std::vector<std::ptrdiff_t>{std::ptrdiff_t(j)} : std::vector<std::ptrdiff_t>{}));
+            }
+        }
+    }
+
+    // H/H is the zero module: each endomorphism still has a 0-by-0 action.
+    std::vector<Homomorphism<Matrix>> zero_module_basis;
+    std::vector<SparseMatrix<std::ptrdiff_t>> zero_actions = endomorphism_composition_action(
+        zero_module_basis, endomorphisms, delta, true, full_hom_basis);
+    assert(zero_actions.size() == endomorphisms.size());
+    for (const SparseMatrix<std::ptrdiff_t>& action : zero_actions)
+        assert(action.get_num_cols() == 0 && action.get_num_rows() == 0);
+    assert(select_module_generators_from_action(zero_module_basis, zero_actions).empty());
+
+    // A single element with both coordinates nonzero generates Q: the two
+    // diagonal idempotents recover the two basis vectors from its cyclic submodule.
+    std::vector<Homomorphism<Matrix>> left_generators =
+        select_module_generators_from_action(quotient_basis, left_actions);
+    std::vector<Homomorphism<Matrix>> right_generators =
+        select_module_generators_from_action(quotient_basis, right_actions);
+    assert(left_generators.size() == 1 && right_generators.size() == 1);
+    assert(homomorphism_quotient_coordinates(quotient_basis, left_generators).get_col(0)
+        == std::vector<std::ptrdiff_t>({0,1}));
+    assert(homomorphism_quotient_coordinates(quotient_basis, right_generators).get_col(0)
+        == std::vector<std::ptrdiff_t>({0,1}));
+}
+
 int main() {
+    test_mutable_generator_lift<R2GradedSparseMatrix<int, vec<vec<int>>>>();
+    test_mutable_generator_lift<R2GradedSparseMatrix<int, CompactStorage<int>>>();
+    test_homomorphism_quotient_coordinates<R2GradedSparseMatrix<int>>();
+    test_homomorphism_quotient_coordinates<GridGradedSparseMatrix<double, 2, int>>();
     test_resolution_degree_operations();
     test_minimization_preserves_injective_storage();
     test_presentation_adapters();

@@ -251,7 +251,7 @@ auto Module<Matrix>::hilbert_function(const vec<typename Degree::value_type>& xs
 
 template <typename Matrix>
 vec<unsigned char> Module<Matrix>::hilbert_function_image(std::size_t width, std::size_t height,
-                                                         double padding) const {
+    double padding, const std::string& x_label, const std::string& y_label) const {
     if (!std::isfinite(padding) || padding < 0)
         throw std::invalid_argument("Hilbert image padding must be finite and nonnegative");
     const auto function = hilbert_function();
@@ -264,14 +264,17 @@ vec<unsigned char> Module<Matrix>::hilbert_function_image(std::size_t width, std
         return result;
     };
     return graded_linalg::hilbert_function_image(function, bounds(function.x_grid),
-                                                 bounds(function.y_grid), width, height);
+                                                 bounds(function.y_grid), width, height, 0, 0,
+                                                 "", x_label, y_label);
 }
 
 template <typename Matrix>
 template <typename Degree>
 vec<unsigned char> Module<Matrix>::hilbert_function_image(const vec<typename Degree::value_type>& xs,
-    const vec<typename Degree::value_type>& ys, std::size_t width, std::size_t height) const {
-    return graded_linalg::hilbert_function_image(hilbert_function(), xs, ys, width, height);
+    const vec<typename Degree::value_type>& ys, std::size_t width, std::size_t height,
+    const std::string& x_label, const std::string& y_label) const {
+    return graded_linalg::hilbert_function_image(hilbert_function(), xs, ys, width, height,
+                                               0, 0, "", x_label, y_label);
 }
 
 } // namespace graded_linalg

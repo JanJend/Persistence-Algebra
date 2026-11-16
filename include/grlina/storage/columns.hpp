@@ -421,13 +421,13 @@ struct Column_traits<bitset, index> {
  *
  * @param v
  */
-template <typename index>
-void convert_mod_2(vec<index>& v){
+template <typename Column>
+void convert_mod_2(Column& v){
     if(v.size() <= 1){
         return;
     }
-    vec<index> result = vec<index>();
-    index counter = 1;
+    Column result;
+    std::size_t counter = 1;
     auto it_prev = v.begin();
     for(auto it = v.begin() + 1; it != v.end(); it++, it_prev++){
         if(*it == *it_prev){

@@ -26,6 +26,7 @@
 #include "grlina/matrices/r2.hpp"
 #include "grlina/matrices/sparse.hpp"
 #include <cstdlib>
+#include <map>
 #include <utility>
 #include <random>
 #include <vector>
@@ -33,6 +34,22 @@
 #include <grlina/matrices/matrix_algorithms.hpp>
 
 namespace graded_linalg {
+
+/** Algorithms A-1/2, A and B of https://arxiv.org/abs/2604.10381. */
+enum class HomAlgorithm {
+    optimised,        // A-1/2: restrict Q using local target cokernels.
+    full_restriction, // A: also restrict P using the target's graded kernel.
+    hom_exactness    // B: use exactness of Hom(-, target).
+};
+
+inline const char* hom_algorithm_name(HomAlgorithm algorithm) {
+    switch (algorithm) {
+    case HomAlgorithm::optimised: return "optimised";
+    case HomAlgorithm::full_restriction: return "full-restriction";
+    case HomAlgorithm::hom_exactness: return "hom-exactness";
+    }
+    throw std::invalid_argument("Unknown Hom algorithm");
+}
 
 template<typename index>
 using Hom_space_temp = std::pair< SparseMatrix<index>, vec<std::pair<index,index>> >;
@@ -118,8 +135,12 @@ vec<DERIVED> hom_space_basis_new(
     const GradedSparseMatrix<D, index, DERIVED, Storage>& B,
     bool use_hom_exactness = false,
     const bool info = false,
-    const bool reduce_lift_duplicates = false
+    const bool reduce_lift_duplicates = false,
+    const std::size_t max_basis_size = 100000, // Zero permits any dimension; caller enforces resource limits.
+    Hom_space_temp<index>* coefficient_basis = nullptr // Exactness kernel without expanding its maps.
     ) {
+    if (coefficient_basis && !use_hom_exactness)
+        throw std::invalid_argument("Compressed legacy Hom output requires the exactness algorithm");
 
     if constexpr (matrix_grid_backed_v<DERIVED>) {
         const auto& grid_A = static_cast<const DERIVED&>(A);
@@ -128,7 +149,7 @@ vec<DERIVED> hom_space_basis_new(
         auto target = grid_B.to_coordinates();
         source.compute_rows_forward();
         auto lifts = hom_space_basis_new(source, target, use_hom_exactness, info,
-                                         reduce_lift_duplicates);
+                                         reduce_lift_duplicates, max_basis_size, coefficient_basis);
         auto axes = grid_A.grid_;
         for (std::size_t axis = 0; axis < axes.size(); ++axis)
             axes[axis].insert(axes[axis].end(), grid_B.grid_[axis].begin(), grid_B.grid_[axis].end());
@@ -322,7 +343,14 @@ vec<DERIVED> hom_space_basis_new(
             // std::cout << "Dimension of hom-space: " << K.get_num_cols() << std::endl;
         }
 
-        if(K.get_num_cols() > 100000){
+        if (coefficient_basis) {
+            vec<std::pair<index, index>> positions;
+            for (index c = 0; c < A.get_num_rows(); ++c)
+                for (index r : S_column_partition[c]) positions.emplace_back(c, r);
+            *coefficient_basis = {std::move(K), std::move(positions)};
+            return result;
+        }
+        if(max_basis_size && std::size_t(K.get_num_cols()) > max_basis_size){
             std::cout << " Hom-space is too large (" << K.get_num_cols() << ") to convert to a vector of matrices." << std::endl;
             return result;
         }
@@ -936,6 +964,93 @@ Hom_space_temp<index> hom_alpha(const GradedSparseMatrix<D, index, DERIVED, Stor
 }   
 
 
+/** Convert the existing compressed Hom encoding into common flattened map
+ * coordinates. Only sparse entries are materialized, never full graded maps.
+ */
+template<class Storage = DefaultSparseStorage<std::ptrdiff_t>, class Matrix>
+SparseMatrix<std::ptrdiff_t, Storage> hom_basis_coefficients(
+    const Hom_space_temp<matrix_index_t<Matrix>>& hom,
+    const Matrix& source, const Matrix& target) {
+    const MapCoefficientContext<Matrix> context(source, target);
+    SparseMatrix<std::ptrdiff_t, Storage> result(hom.first.get_num_cols(), context.coefficient_rows());
+    result.resize_data(hom.first.get_num_cols());
+    for (matrix_index_t<Matrix> j = 0; j < hom.first.get_num_cols(); ++j) {
+        vec<std::ptrdiff_t> entries;
+        for (auto variable : hom.first.column(j)) {
+            const auto [c, r] = hom.second[variable];
+            entries.push_back(std::ptrdiff_t(c) * context.rows() + r);
+        }
+        std::sort(entries.begin(), entries.end());
+        result.set_col(j, context.normal(entries));
+    }
+    result.column_reduction_triangular(true);
+    return result;
+}
+
+/** Actual Hom classes, as one sparse coefficient column per map. Source and
+ * target presentations provide the common grades. The source row cache must
+ * be computed. Storage is selectable independently of presentation storage.
+ */
+template<class Storage = DefaultSparseStorage<std::ptrdiff_t>, class Matrix>
+SparseMatrix<std::ptrdiff_t, Storage> hom_space_coefficients(
+    const Matrix& source, const Matrix& target,
+    HomAlgorithm algorithm = HomAlgorithm::optimised, bool info = false) {
+    if constexpr (matrix_grid_backed_v<Matrix>) {
+        auto A = source.to_coordinates();
+        const auto B = target.to_coordinates();
+        A.compute_rows_forward();
+        return hom_space_coefficients<Storage>(A, B, algorithm, info);
+    } else {
+        using Index = matrix_index_t<Matrix>;
+        Hom_space_temp<Index> hom;
+        switch (algorithm) {
+        case HomAlgorithm::optimised:
+            hom = hom_space_optimised(source, target, vec<Index>{}, vec<Index>{}, info);
+            break;
+        case HomAlgorithm::full_restriction:
+            if constexpr (has_matrix_graded_kernel<Matrix>::value)
+                hom = hom_space_full_restriction(source, target, vec<Index>{}, vec<Index>{}, info);
+            else throw std::logic_error("Full-restriction Hom requires a graded kernel");
+            break;
+        case HomAlgorithm::hom_exactness:
+            hom_space_basis_new(source, target, true, info, true, 0, &hom);
+            break;
+        default: throw std::invalid_argument("Unknown Hom algorithm");
+        }
+        return hom_basis_coefficients<Storage>(hom, source, target);
+    }
+}
+
+template<class Storage = DefaultSparseStorage<std::ptrdiff_t>, class Matrix>
+SparseMatrix<std::ptrdiff_t, Storage> hom_space_shift_image_coefficients(
+    const Matrix& source, const Matrix& target, const Matrix& shifted_target, bool info = false) {
+    return hom_basis_coefficients<Storage>(
+        hom_space_shift_image(source, target, shifted_target, info), source, shifted_target);
+}
+
+/** Matrix-only adapter, with no per-map grades or module pointers. Large
+ * quotient/composition computations should keep hom_space_coefficients instead
+ * to avoid allocating empty source columns for every map.
+ */
+template<class Matrix, class Storage = DefaultSparseStorage<matrix_index_t<Matrix>>>
+std::vector<SparseMatrix<matrix_index_t<Matrix>, Storage>> hom_space_basis_ungraded(
+    const Matrix& source, const Matrix& target,
+    HomAlgorithm algorithm = HomAlgorithm::optimised, bool info = false) {
+    using Index = matrix_index_t<Matrix>;
+    using PlainMatrix = SparseMatrix<Index, Storage>;
+    auto coefficients = hom_space_coefficients(source, target, algorithm, info);
+    std::vector<PlainMatrix> maps;
+    maps.reserve(coefficients.get_num_cols());
+    const auto rows = target.get_num_rows();
+    for (const auto& entries : coefficients.data) {
+        PlainMatrix map(source.get_num_rows(), rows);
+        map.resize_data(source.get_num_rows());
+        for (auto entry : entries) map.append_entry(entry / rows, entry % rows);
+        maps.push_back(std::move(map));
+    }
+    return maps;
+}
+
 } // namespace graded_linalg
 
 
@@ -944,7 +1059,7 @@ namespace graded_linalg {
 template<class Matrix>
 auto hom_space_optimised_impl(const Matrix& A, const Matrix& B,
     const vec<matrix_index_t<Matrix>>& row_indices_A = vec<matrix_index_t<Matrix>>(), const vec<matrix_index_t<Matrix>>& row_indices_B = vec<matrix_index_t<Matrix>>(),
-    const bool info = false)  {
+    const bool info = false, const Matrix* image_target = nullptr)  {
     using index = matrix_index_t<Matrix>;
     using D = typename Matrix::degree_type;
     using StoredDT = Degree_traits<base_degree<Matrix>>;
@@ -1007,6 +1122,37 @@ auto hom_space_optimised_impl(const Matrix& A, const Matrix& B,
         return std::make_pair( SparseMatrix<index>(0,0), variable_positions);
     }
 
+    // For a canonical target shift, carry only the shifted, normalized Q values
+    // through elimination, rather than all coordinates of a kernel basis.
+    SparseMatrix<index> projection(0, 0);
+    vec<std::pair<index, index>> image_positions;
+    if (image_target) {
+        GRLINA_DEBUG_CHECK(if (!row_indices_A.empty() || !row_indices_B.empty())
+            throw std::invalid_argument("Shift image requires original presentation coordinates"));
+        const auto degrees = geometric_row_degrees(A);
+        const auto reducers = prepare_target_relation_reducers(*image_target, degrees);
+        std::map<std::pair<index, index>, index> coordinates;
+        for (const auto& [column, row] : variable_positions) {
+            vec<index> normal{row};
+            const auto& reducer = reducers.at(degrees[column]);
+            const auto pivot = reducer.pivots.find(row);
+            if (pivot != reducer.pivots.end())
+                Column_traits<vec<index>, index>::add_to(reducer.column(pivot->second), normal);
+            for (index entry : normal) coordinates.try_emplace({column, entry}, 0);
+            projection.append_col(std::move(normal));
+        }
+        if (coordinates.empty())
+            return std::make_pair(SparseMatrix<index>(0, 0), image_positions);
+        for (auto& [position, coordinate] : coordinates) {
+            coordinate = static_cast<index>(image_positions.size());
+            image_positions.push_back(position);
+        }
+        for (index j = 0; j < row_op_threshold; ++j)
+            for (auto& row : projection.data[j])
+                row = coordinates.at({variable_positions[j].first, row});
+        projection.set_num_rows(static_cast<index>(image_positions.size()));
+    }
+
     std::unordered_map<index, index> row_map;
     if(row_indices_B.size() != 0){
         row_map = shiftIndicesMap(row_indices_B );
@@ -1043,9 +1189,21 @@ auto hom_space_optimised_impl(const Matrix& A, const Matrix& B,
         system_stats(timer, "Mixed", S, equation_counter);
     }
 
-    auto K = S.kernel();
-    K.cull_columns(row_op_threshold, false);
-    K.compute_num_cols();
+    SparseMatrix<index> K;
+    if (image_target) {
+        // The P variables have zero payload. Zero columns of the reduced system
+        // carry precisely T(ker(QA-BP)), including corrections killed by eta.
+        projection.resize_data(S.get_num_cols());
+        projection.compute_num_cols();
+        vec<index> zero_columns;
+        S.column_reduction_triangular_with_memory(projection, zero_columns);
+        K = projection.restricted_domain_copy(zero_columns);
+        variable_positions = std::move(image_positions);
+    } else {
+        K = S.kernel();
+        K.cull_columns(row_op_threshold, false);
+        K.compute_num_cols();
+    }
 
     if(info){
         timer.stop();
@@ -1220,6 +1378,120 @@ std::pair< SparseMatrix<index>, vec<std::pair<index,index>> > hom_space_no_opt(
                                          reduce, row_indices_A, row_indices_B, info);
 }
 
+
+/** Compute actual module-map representatives with an explicit Hom algorithm.
+ * The source row cache must be computed. All three algorithms return the full
+ * basis, in the original generator coordinates, without a conversion-size cap.
+ * The historical boolean overload and hom_space_basis_new remain available.
+ */
+template<class Matrix>
+std::vector<Matrix> hom_space_basis(const Matrix& source, const Matrix& target,
+                                  HomAlgorithm algorithm, bool info = false) {
+    using Index = matrix_index_t<Matrix>;
+    if constexpr (matrix_grid_backed_v<Matrix>) {
+        auto coordinate_source = source.to_coordinates();
+        const auto coordinate_target = target.to_coordinates();
+        coordinate_source.compute_rows_forward();
+        auto lifts = hom_space_basis(coordinate_source, coordinate_target, algorithm, info);
+        std::vector<Matrix> result;
+        result.reserve(lifts.size());
+        for (const auto& lift : lifts) result.emplace_back(lift);
+        return result;
+    } else {
+        if (algorithm == HomAlgorithm::hom_exactness)
+            return hom_space_basis_new(source, target, true, info, true, 0);
+        Hom_space_temp<Index> hom;
+        switch (algorithm) {
+        case HomAlgorithm::optimised:
+            hom = hom_space_optimised(source, target, vec<Index>{}, vec<Index>{}, info);
+            break;
+        case HomAlgorithm::full_restriction:
+            if constexpr (has_matrix_graded_kernel<Matrix>::value)
+                hom = hom_space_full_restriction(source, target, vec<Index>{}, vec<Index>{}, info);
+            else
+                throw std::logic_error("Full-restriction Hom requires a graded kernel");
+            hom.first.column_reduction_triangular(true);
+            break;
+        default:
+            throw std::invalid_argument("Unknown Hom algorithm");
+        }
+        const auto& [basis, positions] = hom;
+        std::vector<Matrix> result;
+        result.reserve(basis.get_num_cols());
+        for (Index j = 0; j < basis.get_num_cols(); ++j) {
+            auto map = empty_matrix_like(target, source.get_num_rows(), target.get_num_rows());
+            set_geometric_degrees(map, geometric_row_degrees(source), geometric_row_degrees(target));
+            for (Index entry : basis.column(j)) {
+                const auto [column, row] = positions[entry];
+                map.append_entry(column, row);
+            }
+            result.push_back(std::move(map));
+        }
+        return result;
+    }
+}
+
+/** Compact basis of eta Hom(coker(source), coker(target)).
+ * Trusted input: shifted_target is target shifted by a nonnegative amount,
+ * with the same generator/relation coefficients and order (eta is the identity
+ * on free coordinates). The source row cache must be computed.
+ *
+ * Use the sharp restriction systems of Section 3.2 / Algorithm A-1/2 of
+ * poset_hom.pdf at the ORIGINAL target grades. If L(Q,P)=Q source-target P
+ * and T normalizes Q modulo shifted_target at each source generator grade,
+ * the required image is T(ker L). Carry T through column elimination on L;
+ * its columns over the zero columns of L span exactly this image. This avoids
+ * constructing either a full kernel basis or a basis of the unshifted Hom.
+ * In particular, do not discard original Q variables whose T-image is zero:
+ * they may be needed to satisfy the original relation equations.
+ *
+ * The returned pair has the same encoding as hom_space_optimised: each matrix
+ * column is a map, with entries indexing (source generator, target generator)
+ * pairs. Representatives are normalized modulo the shifted target relations.
+ */
+template<class Matrix>
+Hom_space_temp<matrix_index_t<Matrix>> hom_space_shift_image(
+    const Matrix& source, const Matrix& target, const Matrix& shifted_target,
+    bool info = false) {
+    using Index = matrix_index_t<Matrix>;
+    GRLINA_DEBUG_CHECK(if (target.get_num_rows() != shifted_target.get_num_rows() ||
+                          target.get_num_cols() != shifted_target.get_num_cols())
+        throw std::invalid_argument("Shift image requires the same target presentation bases"));
+    if constexpr (matrix_grid_backed_v<Matrix>) {
+        auto coordinate_source = source.to_coordinates();
+        const auto coordinate_target = target.to_coordinates();
+        const auto coordinate_shift = shifted_target.to_coordinates();
+        coordinate_source.compute_rows_forward();
+        return hom_space_shift_image(coordinate_source, coordinate_target, coordinate_shift, info);
+    } else {
+        return hom_space_optimised_impl(source, target, vec<Index>{}, vec<Index>{}, info,
+                                        &shifted_target);
+    }
+}
+
+/** Generator-lift representatives of hom_space_shift_image.
+ * For eta^d End_0(X), pass (X, X, X_d), where X_d = X; X_d.shift(d).
+ * Only independent, nonzero shifted maps are materialized.
+ */
+template<class Matrix>
+std::vector<Matrix> hom_space_shift_image_basis(
+    const Matrix& source, const Matrix& target, const Matrix& shifted_target,
+    bool info = false) {
+    using Index = matrix_index_t<Matrix>;
+    const auto [basis, positions] = hom_space_shift_image(source, target, shifted_target, info);
+    std::vector<Matrix> result;
+    result.reserve(basis.get_num_cols());
+    for (Index j = 0; j < basis.get_num_cols(); ++j) {
+        auto map = empty_matrix_like(shifted_target, source.get_num_rows(), target.get_num_rows());
+        set_geometric_degrees(map, geometric_row_degrees(source), geometric_row_degrees(shifted_target));
+        for (Index entry : basis.column(j)) {
+            const auto [column, row] = positions[entry];
+            map.append_entry(column, row);
+        }
+        result.push_back(std::move(map));
+    }
+    return result;
+}
 
 } // namespace graded_linalg
 

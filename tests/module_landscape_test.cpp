@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
         for (int i = offset; i < offset+4; ++i) value = (value << 8) | bytes[i];
         return value;
     };
-    assert(image_dimension(png,16) == 305 && image_dimension(png,20) == 215);
+    assert(image_dimension(png,16) == 305 && image_dimension(png,20) == 145);
     assert(!compressed.image(2, 40, 30).empty()); // No second layer: a valid zero image.
     assert(!compressed.image(std::numeric_limits<std::size_t>::max(), 20, 20).empty());
     assert(CountedMatrix::reductions == after_png); // Absent layers require no reductions.

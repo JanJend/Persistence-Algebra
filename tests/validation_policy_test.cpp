@@ -104,7 +104,7 @@ void same_algebra_in_both_modes() {
     rejects([&] { (void)whole.equals(foreign_zero); });
     whole.compute_presentation();
     expect(whole.dimension_at({1,1}) == 2);
-    auto maps = End_2d_0(parent, {1,1});
+    auto maps = End_d_0(parent, {1,1});
     expect(maps.size() == 1 && maps[0].check_lifts());
     expect(maps[0].generator_lift().data == array<int>({{1}, {}}));
     auto canonical = Homomorphism<Mat>::canonical_shift(parent, {1,1});
