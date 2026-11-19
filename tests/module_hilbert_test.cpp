@@ -258,6 +258,62 @@ void test_scalar_types_and_stored_axes() {
     assert(floating.dimension_at(vec<FloatMatrix::degree_type>{{0.25f,0.5f},{1.25f,2.5f}}) == vec<long>({1,0}));
 }
 
+void test_graded_betti_numbers() {
+    using Mat = R2GradedSparseMatrix<int>;
+    // Two square intervals, a redundant relation, and a cancellable generator/relation pair.
+    Module<Mat> module(Mat(6,3,{{0},{0},{0},{1},{1},{2}},
+        {{1,0},{0,1},{1,0},{1,0},{0,1},{0,0}}, {{0,0},{0,0},{0,0}}));
+    const auto before = module.hilbert_function();
+    const auto betti = graded_betti_numbers(module);
+    assert(module.res_complete_ && module.proj_res_.size() == 2);
+    assert(betti.size() == 4);
+    const std::array<std::array<std::size_t,3>,4> expected{{{2,0,0},{0,2,0},{0,2,0},{0,0,2}}};
+    for (std::size_t i=0; i<4; ++i) {
+        assert(betti[i].x == i/2 && betti[i].y == i%2);
+        assert(betti[i].multiplicities == expected[i]);
+    }
+    assert(module.hilbert_function().values == before.values);
+    // A supplied, nonminimal resolution has duplicated syzygies and a higher map.
+    Mat presentation(2,1,{{0},{0}},{{0,1},{1,0}},{{0,0}});
+    Mat duplicate_syzygies(2,2,{{0,1},{0,1}},{{1,1},{1,1}},presentation.col_degrees);
+    Module<Mat> resolution(ChainComplex<Mat>({presentation,duplicate_syzygies}));
+    resolution.compute_projective_resolution();
+    assert(resolution.proj_res_.size() == 3);
+    const auto resolved = graded_betti_numbers(resolution);
+    assert(resolved.size() == 4);
+    for (std::size_t i=0; i<4; ++i) {
+        assert(resolved[i].x == betti[i].x && resolved[i].y == betti[i].y);
+        for (int kind=0; kind<3; ++kind)
+            assert(resolved[i].multiplicities[kind]*2 == betti[i].multiplicities[kind]);
+    }
+    // Different types may share a degree (a free birth and an interval death).
+    Module<Mat> coincident(Mat(1,2,{{0}},{{1,1}},{{0,0},{1,1}}));
+    const auto shared = graded_betti_numbers(coincident);
+    assert(shared.size() == 2 && shared[1].x == 1 && shared[1].y == 1);
+    assert((shared[1].multiplicities == std::array<std::size_t,3>{1,1,0}));
+    Module<Mat> free(Mat(0,1,{}, {}, {{2,3}}));
+    const auto birth = graded_betti_numbers(free);
+    assert(birth.size() == 1 && birth[0].x == 2 && birth[0].y == 3);
+    assert((birth[0].multiplicities == std::array<std::size_t,3>{1,0,0}));
+    Module<Mat> zero(Mat(1,1,{{0}},{{0,0}},{{0,0}}));
+    assert(graded_betti_numbers(zero).empty());
+    Module<Mat> empty;
+    assert(graded_betti_numbers(empty).empty());
+
+    const auto function = module.hilbert_function();
+    const auto plain = graded_linalg::hilbert_function_image(function,80,60);
+    const auto marked = graded_linalg::hilbert_function_image(function,80,60,0,0,"","","",betti);
+    assert(marked != plain);
+    const auto clean = graded_linalg::hilbert_function_image(function,80,60,0,0,
+        "Hidden title","Hidden X","Hidden Y",betti,true);
+    const auto clean_without_captions = graded_linalg::hilbert_function_image(function,80,60,0,0,
+        "","","",betti,true);
+    assert(clean == clean_without_captions && clean != marked);
+    // Explicit cropping hides points outside the bounds without moving them.
+    assert(!graded_linalg::hilbert_function_image(function,vec<double>{0.2,0.8},
+        vec<double>{0.2,0.8},80,60,0,0,"","","",betti).empty());
+}
+
 void test_png_and_sampling_cost() {
     assert(image_detail::decimal_label(535781) == "535781");
     assert(image_detail::decimal_label(0.00001234) == "0.00001234");
@@ -322,5 +378,6 @@ int main() {
     test_no_kernel_and_explicit_completeness();
     test_mixed_handcrafted_summands();
     test_scalar_types_and_stored_axes();
+    test_graded_betti_numbers();
     test_png_and_sampling_cost();
 }

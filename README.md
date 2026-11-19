@@ -674,6 +674,7 @@ After building, the following executables are available in `build/`:
 |---|---|
 | `minimize` | Compute a minimal presentation from an input `.scc`/`.firep` file |
 | `resolution` | Compute a free resolution (up to second syzygies) |
+| `betti_image` | Plot the Hilbert function with minimal graded Betti markers; optionally export Betti numbers as CSV |
 | `hom` | Compute the homomorphism space between two presentations |
 | `shift_endo` | Compute the shift-endomorphism of a presentation |
 | `snap_grid` | Snap all degrees to a coarser grid |
@@ -748,6 +749,38 @@ grid, so shared colour scales need not rely on a coarsely sampled export CSV.
 `y_grid`, `values[x][y]`, and the sampled `maximum`, without generating a PNG.
 The dimensions, `--bounds`, and `--sqrt-x` select the same grid as PNG output.
 The sampled maximum may be smaller than the exact `--maximum-only` result.
+
+`betti_image` accepts either a two-parameter presentation or a free resolution
+(`.scc`/`.firep`). It minimizes the input using the existing module algorithms,
+completes the minimal free resolution, and reuses the Hilbert PNG renderer:
+
+```sh
+cmake -S . -B build
+cmake --build build --target betti_image
+build/betti_image input.scc --betti-output betti.csv > hilbert_betti.png
+# Image and dimension colour bar only, without axis text or a Betti legend.
+build/betti_image input.scc --image-only > hilbert_betti_clean.png
+# Optional: show squared-radius input in radius units, with axis captions.
+build/betti_image input.scc 1000 700 --sqrt-x --x-label Radius --y-label Codensity > hilbert_betti_radius.png
+```
+
+Green circles mark generators (`beta0`), orange crosses mark relations (`beta1`),
+and purple diamonds mark syzygies (`beta2`). Markers stay at their exact grades;
+different shapes can share a grade. Their size grows with multiplicity (capped
+after multiplicity 8). A legend reports the three whole-module totals, including
+points outside an explicitly cropped view. The optional CSV contains one row per
+nonzero bidegree, with columns `x,y,beta0,beta1,beta2`; omitted degrees have all
+three Betti numbers zero. CSV coordinates always use the original input units,
+including with `--sqrt-x`. The source file is unchanged. Empty modules have no
+markers or legend. The legend adds 35 pixels to the usual image height (85 for
+narrow images). `hilbert_image --betti` enables the same behavior.
+Both Hilbert image commands also read older two-parameter resolution files
+whose second header line was written as `3`; three-coordinate grades are rejected.
+
+In C++, `graded_betti_numbers(module)` minimizes and completes the module in
+place and returns `std::vector<BettiDegree>` with `x`, `y`, and
+`multiplicities[0..2]`. Pass this vector as the final optional argument to
+`hilbert_function_image` to overlay it on an existing Hilbert table.
 
 `Landscape` owns a copy of the presentation and cached barcodes on parallel
 diagonal slices. Each query evaluates its own line's barcode, reusing a cached

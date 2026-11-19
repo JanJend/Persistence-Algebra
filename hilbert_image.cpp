@@ -3,17 +3,53 @@
 #include <grlina/invariants/hilbert_function.hpp>
 #include <iomanip>
 #include <iostream>
+#include <filesystem>
+#include <sstream>
 #ifdef _WIN32
 #include <fcntl.h>
 #include <io.h>
 #endif
 
+namespace graded_linalg {
+
+R2Module<int> read_hilbert_module(const std::string& path) {
+    std::ifstream input(path);
+    if (!input) throw std::runtime_error("Unable to open SCC input file: " + path);
+    auto header_line = [&] {
+        std::string line;
+        while (std::getline(input,line)) {
+            line = line.substr(0,line.find('#'));
+            const auto first = line.find_first_not_of(" \t\r");
+            if (first != std::string::npos)
+                return line.substr(first,line.find_last_not_of(" \t\r")-first+1);
+        }
+        return std::string{};
+    };
+    const auto header = header_line(), parameters = header_line();
+    if (header == "scc2020" && parameters == "3") {
+        // Older R2 resolution files wrote the number of chain groups here.
+        // The normal R2 parser still requires exactly two coordinates per grade;
+        // genuine three-parameter input is rejected rather than projected.
+        std::stringstream normalized;
+        normalized << "scc2020\n2\n" << input.rdbuf();
+        return R2Module<int>(normalized);
+    }
+    input.clear();
+    input.seekg(0);
+    return R2Module<int>(input);
+}
+
+} // namespace graded_linalg
+
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::cerr << "Usage: hilbert_image input.scc [width height] [--bounds xmin ymin xmax ymax] [--scale min max] [--x-label caption] [--y-label caption] [--sqrt-x] [--maximum-only] [--values-only]\n"
+        std::cerr << "Usage: " << argv[0] << " input.scc [width height] [--bounds xmin ymin xmax ymax] [--scale min max] [--x-label caption] [--y-label caption] [--sqrt-x] [--betti] [--betti-output file.csv] [--image-only] [--maximum-only] [--values-only]\n"
                      "--sqrt-x plots squared-radius input in radius; bounds are in displayed coordinates.\n"
                      "--maximum-only reports the exact whole-module maximum, independent of display bounds.\n"
-                     "--values-only returns JSON with x_grid, y_grid, values[x][y], and the sampled maximum, without rendering.\n";
+                     "--values-only returns JSON with x_grid, y_grid, values[x][y], and the sampled maximum, without rendering.\n"
+                     "--betti minimizes the input and marks generators, relations and syzygies (default for betti_image).\n"
+                     "--betti-output also saves x,y,beta0,beta1,beta2 in the original input coordinates.\n"
+                     "--image-only keeps the image and dimension colour bar, without captions, axis ticks or a Betti legend.\n";
         return 1;
     }
     try {
@@ -29,6 +65,13 @@ int main(int argc, char** argv) {
         bool sqrt_x = false;
         bool maximum_only = false;
         bool values_only = false;
+        bool image_only = false;
+#ifdef GRLINA_BETTI_IMAGE
+        bool show_betti = true;
+#else
+        bool show_betti = false;
+#endif
+        std::string betti_output;
         std::string x_label, y_label;
         auto number = [&] {
             if (++position == argc) throw std::invalid_argument("Missing image option value");
@@ -56,6 +99,13 @@ int main(int argc, char** argv) {
             }
             else if (option == "--maximum-only") maximum_only = true;
             else if (option == "--values-only") values_only = true;
+            else if (option == "--image-only") image_only = true;
+            else if (option == "--betti") show_betti = true;
+            else if (option == "--betti-output") {
+                if (++position == argc) throw std::invalid_argument("Missing Betti CSV path");
+                betti_output = argv[position];
+                show_betti = true;
+            }
             else throw std::invalid_argument("Unknown image option: " + option);
         }
         if (maximum_only && values_only)
@@ -64,9 +114,26 @@ int main(int argc, char** argv) {
         // Keep parser/algebra diagnostics out of the binary image stream.
         if (sqrt_x && !xs.empty() && xs.front() < 0)
             throw std::invalid_argument("Radius plot bounds must be nonnegative");
+        if (!betti_output.empty() && std::filesystem::exists(betti_output) &&
+            std::filesystem::equivalent(argv[1],betti_output))
+            throw std::invalid_argument("Betti CSV must not overwrite the input module");
         auto* output = std::cout.rdbuf(std::cerr.rdbuf());
-        graded_linalg::R2Module<int> module(argv[1]);
+        auto module = graded_linalg::read_hilbert_module(argv[1]);
+        auto betti = show_betti ? graded_linalg::graded_betti_numbers(module) :
+                                 std::vector<graded_linalg::BettiDegree>{};
         if (sqrt_x) graded_linalg::image_detail::square_root_x(module);
+        if (!betti_output.empty()) {
+            std::ofstream csv;
+            csv.exceptions(std::ios::badbit | std::ios::failbit);
+            csv.open(betti_output);
+            csv << std::setprecision(std::numeric_limits<long double>::max_digits10)
+                << "x,y,beta0,beta1,beta2\n";
+            for (const auto& point : betti)
+                csv << point.x << ',' << point.y << ',' << point.multiplicities[0] << ','
+                    << point.multiplicities[1] << ',' << point.multiplicities[2] << '\n';
+            csv.close();
+        }
+        if (sqrt_x) for (auto& point : betti) point.x = std::sqrt(static_cast<double>(point.x));
         module.compute_projective_resolution();
         const auto function = module.hilbert_function();
         if (maximum_only) {
@@ -112,7 +179,7 @@ int main(int argc, char** argv) {
             return std::cout ? 0 : 1;
         }
         const auto png = graded_linalg::hilbert_function_image(function, xs, ys, width, height,
-                                                              positive_min, positive_max, "", x_label, y_label);
+                                                              positive_min, positive_max, "", x_label, y_label, betti, image_only);
         std::cout.rdbuf(output);
 #ifdef _WIN32
         _setmode(_fileno(stdout), _O_BINARY);

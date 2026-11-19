@@ -19,6 +19,13 @@
 #endif
 
 namespace graded_linalg {
+
+/** Nonzero graded Betti numbers at one bidegree: generators, relations, syzygies. */
+struct BettiDegree {
+    long double x, y;
+    std::array<std::size_t, 3> multiplicities{};
+};
+
 namespace hilbert_detail {
 
 /** Axes may be empty; nonempty axes must be finite and nondecreasing. */
@@ -112,10 +119,16 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
     const std::string& value_label, bool logarithmic,
     long double positive_min = 0, long double positive_max = 0,
     ColourMap colormap = ColourMap::blue,
-    const std::string& x_label = "", const std::string& y_label = "") {
+    const std::string& x_label = "", const std::string& y_label = "",
+    const std::vector<BettiDegree>& betti = {}, bool image_only = false) {
     validate_size(xs.size(), ys.size());
     const int w = static_cast<int>(xs.size()), h = static_cast<int>(ys.size());
-    const int left = 100, top = 45, width = left+w+165, height = top+h+70;
+    const int left = image_only ? 1 : 100, top = image_only ? 35 : 45;
+    const int width = left+w+165;
+    const int legend_columns = width >= 800 ? 3 : 1;
+    const int legend_height = betti.empty() || image_only ? 0 : 3/legend_columns*25+10;
+    const int height = top+h+(image_only ? 10 : 70)+legend_height;
+    validate_size(w, h+legend_height);
     std::vector<unsigned char> pixels(static_cast<std::size_t>(width)*height*4, 255);
     auto pixel = [&](int x, int y, std::array<unsigned char,3> colour) {
         if (x < 0 || y < 0 || x >= width || y >= height) return;
@@ -205,7 +218,7 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
         for (int j=y; j<=y+dy; ++j) { pixel(x,j,ink); pixel(x+dx,j,ink); }
     };
     frame(left-1,top-1,w+1,h+1);
-    text(left+w/2.0,16,title,22,0.5);
+    if (!image_only) text(left+w/2.0,16,title,22,0.5);
     // Rounded ticks, positioned in coordinate space rather than at grid indices.
     auto ticks = [&](double low, double high, bool horizontal) {
         const double raw = (high-low)/4;
@@ -225,10 +238,12 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
             else text(left-12,y-8,number(value),14,1);
         }
     };
-    ticks(xs.front(),xs.back(),true);
-    ticks(ys.front(),ys.back(),false);
-    text(left+w/2.0,top+h+43,x_label,18,0.5);
-    text(16,top+h/2.0,y_label,18,0.5,true);
+    if (!image_only) {
+        ticks(xs.front(),xs.back(),true);
+        ticks(ys.front(),ys.back(),false);
+        text(left+w/2.0,top+h+43,x_label,18,0.5);
+        text(16,top+h/2.0,y_label,18,0.5,true);
+    }
     const int bar = left+w+35, bar_width = 20;
     text(bar-4,top-29,value_label,14);
     for (int y=0; y<h; ++y) for (int x=0; x<bar_width; ++x)
@@ -256,6 +271,47 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
         previous = y;
     }
     if (colour_ticks.empty()) text(bar+bar_width+11,top+h/2.0-8,number(std::max(0.0L,positive_max)));
+    if (!betti.empty()) {
+        const std::array<std::array<unsigned char,3>,3> colours{{{0,158,115},{213,94,0},{146,57,205}}};
+        // Concentric circle, cross and diamond remain distinguishable at a shared grade.
+        auto marker = [&](int cx, int cy, int kind, std::size_t count, bool clip) {
+            const int radius = (kind == 0 ? 4 : kind == 1 ? 6 : 9) +
+                static_cast<int>(std::min(3.0, std::log2(static_cast<double>(count))));
+            for (int dx=-radius-2; dx<=radius+2; ++dx)
+                for (int dy=-radius-2; dy<=radius+2; ++dy) {
+                    const int x = cx+dx, y = cy+dy;
+                    if (clip && (x < left || x >= left+w || y < top || y >= top+h)) continue;
+                    const double distance = kind == 0 ? std::abs(std::hypot(dx,dy)-radius) :
+                        kind == 1 ? (std::max(std::abs(dx),std::abs(dy)) <= radius ?
+                            std::abs(std::abs(dx)-std::abs(dy))/std::sqrt(2.0) : 100) :
+                        std::abs(std::abs(dx)+std::abs(dy)-radius)/std::sqrt(2.0);
+                    if (distance <= 2) pixel(x,y,{255,255,255});
+                    if (distance <= 0.8) pixel(x,y,colours[kind]);
+                }
+        };
+        std::array<std::size_t,3> totals{};
+        for (const auto& point : betti) {
+            if (!std::isfinite(point.x) || !std::isfinite(point.y))
+                throw std::invalid_argument("Betti coordinates must be finite");
+            for (int kind=0; kind<3; ++kind) totals[kind] += point.multiplicities[kind];
+            if (point.x < xs.front() || point.x > xs.back() ||
+                point.y < ys.front() || point.y > ys.back()) continue;
+            const auto position = [](long double value, long double low, long double high, int pixels) {
+                return std::lround((high > low ? (value-low)/(high-low) : 0.5L)*(pixels-1));
+            };
+            const int x = left+position(point.x,xs.front(),xs.back(),w);
+            const int y = top+h-1-position(point.y,ys.front(),ys.back(),h);
+            for (int kind : {2,0,1})
+                if (point.multiplicities[kind]) marker(x,y,kind,point.multiplicities[kind],true);
+        }
+        const char* labels[] = {"b0 Generators: ", "b1 Relations: ", "b2 Syzygies: "};
+        for (int kind=0; !image_only && kind<3; ++kind) {
+            const int x = 25+(kind%legend_columns)*(width/legend_columns);
+            const int y = top+h+80+(kind/legend_columns)*25;
+            marker(x,y+7,kind,1,false);
+            text(x+17,y,std::string(labels[kind])+std::to_string(totals[kind]),14);
+        }
+    }
 #ifdef GRLINA_HILBERT_CORETEXT
     CGContextFlush(context.get());
 #endif
@@ -280,6 +336,7 @@ std::vector<unsigned char> heatmap_image(const std::vector<Scalar>& xs, const st
  * positive_min/max allow comparison across images.
  * Define STB_IMAGE_WRITE_IMPLEMENTATION before any grlina include in one .cpp.
  * GRLINA_HILBERT_CORETEXT optionally enables macOS system fonts.
+ * image_only removes plot labels, ticks and the Betti legend, retaining the colour bar.
  */
 template <typename Function, typename Scalar>
 std::vector<unsigned char> hilbert_function_image(const Function& function,
@@ -287,7 +344,8 @@ std::vector<unsigned char> hilbert_function_image(const Function& function,
     std::size_t heatmap_width = 800, std::size_t heatmap_height = 600,
     long double positive_min = 0, long double positive_max = 0,
     const std::string& title = "",
-    const std::string& x_label = "", const std::string& y_label = "") {
+    const std::string& x_label = "", const std::string& y_label = "",
+    const std::vector<BettiDegree>& betti = {}, bool image_only = false) {
     image_detail::validate_size(heatmap_width, heatmap_height);
     if (xs.empty() || ys.empty()) throw std::invalid_argument("Hilbert image axes must be nonempty");
     hilbert_detail::validate_axis(xs);
@@ -297,7 +355,7 @@ std::vector<unsigned char> hilbert_function_image(const Function& function,
         image_detail::uniform_axis<long double>(ys.front(), ys.back(), heatmap_height));
     return image_detail::heatmap_image(grid.x_grid, grid.y_grid, grid.values,
                                        title, "Dimension", true, positive_min, positive_max,
-                                       ColourMap::blue, x_label, y_label);
+                                       ColourMap::blue, x_label, y_label, betti, image_only);
 }
 
 /** Render within the numerical table's coordinate range, without padding. */
@@ -306,16 +364,17 @@ std::vector<unsigned char> hilbert_function_image(const Function& function,
     std::size_t width = 800, std::size_t height = 600,
     long double positive_min = 0, long double positive_max = 0,
     const std::string& title = "",
-    const std::string& x_label = "", const std::string& y_label = "") {
+    const std::string& x_label = "", const std::string& y_label = "",
+    const std::vector<BettiDegree>& betti = {}, bool image_only = false) {
     if (function.x_grid.empty() || function.y_grid.empty()) {
         auto xs = function.x_grid, ys = function.y_grid;
         if (xs.empty()) xs.push_back(0);
         if (ys.empty()) ys.push_back(0);
         return hilbert_function_image(function, xs, ys, width, height, positive_min, positive_max,
-                                      title, x_label, y_label);
+                                      title, x_label, y_label, betti, image_only);
     }
     return hilbert_function_image(function, function.x_grid, function.y_grid,
-                                  width, height, positive_min, positive_max, title, x_label, y_label);
+                                  width, height, positive_min, positive_max, title, x_label, y_label, betti, image_only);
 }
 
 /** Write existing PNG bytes only when explicitly requested. */

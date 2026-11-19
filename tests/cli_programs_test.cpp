@@ -55,8 +55,8 @@ static void require_contains(const std::string& output, const std::string& expec
 
 int main(int argc, char** argv) {
     // fixture directory followed by every module-aware CLI in CMake order.
-    if (argc != 18) {
-        std::cerr << "Expected fixture directory and 16 executable paths\n";
+    if (argc != 19) {
+        std::cerr << "Expected fixture directory and 17 executable paths\n";
         return 2;
     }
 
@@ -164,6 +164,56 @@ int main(int argc, char** argv) {
         const std::vector<std::string> landscape_options{
             (fixtures / "interval.scc").string(), "40", "30", "--bounds", "0", "0", "2", "2",
             "--resolution", "0.1"};
+        // Check both input forms after cancellation, and exact graded multiplicities.
+        const std::string square = "scc2020\n2\n3 1 0\n1 0 ; 0\n0 1 ; 0\n1 0 ; 0\n0 0 ;\n";
+        const auto square_path = temporary / "square.scc";
+        { std::ofstream file(square_path); file << square; }
+        const auto betti_csv = temporary / "betti.csv";
+        const auto marked = run(executable[16], {square_path.string(), "100", "80",
+            "--betti-output", betti_csv.string()}, temporary, "betti_image");
+        if (marked.substr(0,8) != png.substr(0,8))
+            throw std::runtime_error("betti_image stdout is not a PNG");
+        const std::string expected_betti = "x,y,beta0,beta1,beta2\n0,0,1,0,0\n0,1,0,1,0\n1,0,0,1,0\n1,1,0,0,1\n";
+        if (read_file(betti_csv) != expected_betti)
+            throw std::runtime_error("betti_image did not minimize the presentation");
+        run(executable[4], {square_path.string(), (temporary / "square_resolution.scc").string()},
+            temporary, "betti_resolution");
+        const auto from_resolution = run(executable[16], {(temporary / "square_resolution.scc").string(),
+            "100", "80", "--betti-output", betti_csv.string()}, temporary, "betti_image_resolution");
+        if (read_file(betti_csv) != expected_betti || marked != from_resolution)
+            throw std::runtime_error("Betti plots differ between a presentation and its resolution");
+        auto legacy = read_file(temporary / "square_resolution.scc");
+        legacy.replace(legacy.find('\n')+1,1,"3");
+        const auto legacy_path = temporary / "legacy_resolution.scc";
+        { std::ofstream file(legacy_path); file << legacy; }
+        const auto from_legacy = run(executable[16], {legacy_path.string(), "100", "80"},
+            temporary, "betti_legacy_resolution");
+        if (from_legacy != marked) throw std::runtime_error("Legacy R2 resolution was not recognized");
+        const auto three_parameters = temporary / "three_parameters.scc";
+        { std::ofstream file(three_parameters);
+          file << "scc2020\n3\n1 1 0\n1 1 1 ; 0\n0 0 0 ;\n"; }
+        bool rejected_three = false;
+        try { run(executable[16], {three_parameters.string()}, temporary, "betti_reject_three"); }
+        catch (const std::runtime_error& error) {
+            rejected_three = std::string(error.what()).find("Expected ';'") != std::string::npos;
+        }
+        if (!rejected_three) throw std::runtime_error("betti_image accepted three-parameter input");
+        bool protected_input = false;
+        try { run(executable[16], {square_path.string(), "--betti-output", square_path.string()},
+                  temporary, "betti_protect_input"); }
+        catch (const std::runtime_error& error) {
+            protected_input = std::string(error.what()).find("must not overwrite") != std::string::npos;
+        }
+        if (!protected_input || read_file(square_path) != square)
+            throw std::runtime_error("Betti CSV output did not protect the source module");
+        const auto opt_in = run(executable[14], {square_path.string(), "100", "80", "--betti"},
+            temporary, "hilbert_betti_option");
+        if (opt_in != marked) throw std::runtime_error("hilbert_image --betti differs from betti_image");
+        run(executable[16], {square_path.string(), "100", "80", "--sqrt-x", "--bounds", "0", "0", "1", "1",
+            "--betti-output", betti_csv.string()}, temporary, "betti_radius");
+        if (read_file(betti_csv) != expected_betti)
+            throw std::runtime_error("Radius plotting changed the exported Betti degrees");
+
         auto landscape = run(executable[15], landscape_options, temporary, "landscape_image");
         auto options = landscape_options;
         options.insert(options.end(), {"--layer", "2"});

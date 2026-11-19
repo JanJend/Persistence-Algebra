@@ -105,6 +105,19 @@ add_executable(hilbert_image hilbert_image.cpp)
 target_link_libraries(hilbert_image grlina::grlina)
 set_target_properties(hilbert_image PROPERTIES DEBUG_POSTFIX "_debug")
 
+# Share Hilbert sampling/options; this executable enables minimal Betti markers by default.
+add_executable(betti_image hilbert_image.cpp)
+target_link_libraries(betti_image grlina::grlina)
+target_compile_definitions(betti_image PRIVATE GRLINA_BETTI_IMAGE=1)
+set_target_properties(betti_image PROPERTIES DEBUG_POSTFIX "_debug")
+
+if(APPLE)
+    foreach(_hilbert_cli hilbert_image betti_image)
+        target_compile_definitions(${_hilbert_cli} PRIVATE GRLINA_HILBERT_CORETEXT=1)
+        target_link_libraries(${_hilbert_cli} "-framework CoreText" "-framework CoreGraphics" "-framework CoreFoundation")
+    endforeach()
+endif()
+
 add_executable(landscape_image landscape_image.cpp)
 target_link_libraries(landscape_image grlina::grlina)
 set_target_properties(landscape_image PROPERTIES DEBUG_POSTFIX "_debug")
@@ -132,7 +145,7 @@ foreach(_module_cli delete_gens_and_rels minimize_pres mpfree_clone)
     set_target_properties(${_module_cli} PROPERTIES DEBUG_POSTFIX "_debug")
 endforeach()
 
-install(TARGETS shift_endo cut_module hom minimize pres_to_quiver resolution snap_grid submodule_at analyse_ind thickness hilbert_image landscape_image size
+install(TARGETS shift_endo cut_module hom minimize pres_to_quiver resolution snap_grid submodule_at analyse_ind thickness hilbert_image betti_image landscape_image size
                 delete_gens_and_rels minimize_pres mpfree_clone
     RUNTIME DESTINATION bin
 )
@@ -248,7 +261,8 @@ if(GRLINA_BUILD_TESTS)
         $<TARGET_FILE:minimize_pres>
         $<TARGET_FILE:mpfree_clone>
         $<TARGET_FILE:hilbert_image>
-        $<TARGET_FILE:landscape_image>)
+        $<TARGET_FILE:landscape_image>
+        $<TARGET_FILE:betti_image>)
     target_link_libraries(cli_programs_test grlina::grlina)
     endif()
 

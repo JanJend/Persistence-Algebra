@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <numeric>
 #include <stdexcept>
 #include <type_traits>
@@ -25,6 +26,40 @@ template <typename Scalar>
 inline constexpr bool two_parameters<CoordinateDegree<Scalar, 2>> = true;
 
 } // namespace hilbert_detail
+
+/** Minimize a two-parameter presentation/resolution in place, complete it, and
+ * count its free summands at each bidegree. Zero Betti numbers are omitted.
+ */
+template <typename Matrix>
+std::vector<BettiDegree> graded_betti_numbers(Module<Matrix>& module) {
+    static_assert(hilbert_detail::two_parameters<typename Matrix::degree_type>,
+                  "Graded Betti numbers require two coordinate parameters");
+    if (!module.has_presentation()) return {};
+    for (const auto& differential : module.proj_res_.differentials()) {
+        for (auto degree : geometric_row_degrees(differential))
+            if (!std::isfinite(degree[0]) || !std::isfinite(degree[1]))
+                throw std::invalid_argument("Betti coordinates must be finite");
+        for (auto degree : geometric_col_degrees(differential))
+            if (!std::isfinite(degree[0]) || !std::isfinite(degree[1]))
+                throw std::invalid_argument("Betti coordinates must be finite");
+    }
+    module.minimize();
+    module.compute_projective_resolution();
+    std::map<std::array<long double,2>, std::array<std::size_t,3>> counts;
+    for (auto degree : geometric_row_degrees(module.presentation()))
+        ++counts[{degree[0],degree[1]}][0];
+    for (std::size_t i=0; i<module.proj_res_.size(); ++i) {
+        const auto& differential = module.proj_res_[i];
+        if (i >= 2 && differential.get_num_cols())
+            throw std::logic_error("A minimal two-parameter resolution must stop at F2");
+        for (auto degree : geometric_col_degrees(differential))
+            ++counts[{degree[0],degree[1]}][i+1];
+    }
+    std::vector<BettiDegree> result;
+    for (const auto& entry : counts)
+        result.push_back({entry.first[0],entry.first[1],entry.second});
+    return result;
+}
 
 /** A two-parameter Hilbert function tabulated on a Cartesian grid.
  * values[x][y] is the integer dimension at (x_grid[x], y_grid[y]).
